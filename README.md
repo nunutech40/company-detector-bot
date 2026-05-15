@@ -36,6 +36,7 @@ Yang belum production:
 - [TRD AI Company Detection Agent](TRD_Deteksi_Perusahaan_AI_OpenClaw_v1.md): technical architecture, custom tools, data model, multi-agent design, deployment notes.
 - [Building Plan OpenClaw Telegram MVP](BUILDING_PLAN_OpenClaw_Telegram_MVP_From_VPS.md): implementation plan from VPS setup to Telegram MVP.
 - [Next Level Enrichment Plan](NEXT_LEVEL_ENRICHMENT_PLAN.md): email-first plan for company enrichment, social footprint discovery, and personal-to-business relationship detection.
+- [Product Workflow and Storage Plan](PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md): how Postgres, Slack alerts, and web dashboard should work together after MVP.
 - [Backlog](BACKLOG.md): remaining production work and stabilization status.
 - [OpenClaw Agent Prompt](openclaw_workspace/AGENTS.md): behavior contract used by the Telegram agent.
 - [Tool Notes](openclaw_workspace/TOOLS.md): current runtime, tool availability, operational rules.
@@ -188,6 +189,7 @@ Operational VPS details, passwords, and tokens are intentionally not tracked in 
 
 See [BACKLOG.md](BACKLOG.md). The next sensible production steps are:
 - Email-first company/social enrichment as described in [NEXT_LEVEL_ENRICHMENT_PLAN.md](NEXT_LEVEL_ENRICHMENT_PLAN.md).
+- Postgres/Slack/dashboard workflow as described in [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 - Postgres schema for jobs/tool runs/evidence/final reports.
 - Queue worker with Redis/BullMQ.
 - Worker API endpoint for platform registration integration.
