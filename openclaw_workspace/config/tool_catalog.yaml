@@ -63,10 +63,11 @@ tools:
     priority: mvp
 
   web_search:
-    status: not_configured
-    type: openclaw_builtin
-    cost: depends_provider
-    priority: mvp_later
+    status: enabled_with_ddg
+    type: custom_script
+    command: "node scripts/ddg_search.js <query>"
+    cost: free
+    priority: mvp
 
   web_fetch:
     status: check_runtime
@@ -79,6 +80,13 @@ tools:
     type: provider_plugin
     cost: paid
     priority: phase_2
+
+  free_scraper:
+    status: enabled
+    type: custom_script
+    command: "node scripts/free_scraper.js <url>"
+    cost: free
+    priority: mvp
 
   tavily_search:
     status: disabled_waiting_budget
