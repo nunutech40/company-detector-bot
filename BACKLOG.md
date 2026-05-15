@@ -9,6 +9,7 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [x] Sinkronkan status tools antara `tool_catalog.yaml` dan `TOOLS.md`.
 - [x] Jadikan Slack delivery eksplisit via `--send-slack` atau `COMPANY_DETECTION_SEND_SLACK=true`.
 - [x] Test ulang DDG/free scraper dari VPS setelah deploy.
+- [x] Buat flow map dan tools/algorithms reference supaya alur tetap gampang dibaca.
 
 ## 1. Database & Asynchronous Queue
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.

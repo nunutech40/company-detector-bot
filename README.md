@@ -35,6 +35,8 @@ Yang belum production:
 - [PRD Deteksi Perusahaan v6](PRD_Deteksi_Perusahaan_v6_AI_OpenClaw_Serious_With_Theory.md): product goal, principles, classifications, tool philosophy, reporting expectations.
 - [TRD AI Company Detection Agent](TRD_Deteksi_Perusahaan_AI_OpenClaw_v1.md): technical architecture, custom tools, data model, multi-agent design, deployment notes.
 - [Building Plan OpenClaw Telegram MVP](BUILDING_PLAN_OpenClaw_Telegram_MVP_From_VPS.md): implementation plan from VPS setup to Telegram MVP.
+- [Flow Map](FLOW_MAP.md): top-down readable flow, decision points, and future multi-agent map.
+- [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md): detailed map of every tool, skill, algorithm, scoring rule, and change impact.
 - [Next Level Enrichment Plan](NEXT_LEVEL_ENRICHMENT_PLAN.md): email-first plan for company enrichment, social footprint discovery, and personal-to-business relationship detection.
 - [Product Workflow and Storage Plan](PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md): how Postgres, Slack alerts, and web dashboard should work together after MVP.
 - [Backlog](BACKLOG.md): remaining production work and stabilization status.
@@ -80,6 +82,8 @@ High-level flow:
 
 9. `evidence_store.js`
    Saves JSON evidence and text report snapshots.
+
+For the fuller flow and decision points, read [FLOW_MAP.md](FLOW_MAP.md). For per-tool algorithms and change impact, read [TOOLS_AND_ALGORITHMS.md](TOOLS_AND_ALGORITHMS.md).
 
 ## Commands
 
