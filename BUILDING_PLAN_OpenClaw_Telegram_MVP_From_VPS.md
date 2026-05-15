@@ -838,9 +838,9 @@ Proses yang berhasil dilakukan:
 Proses yang gagal dilakukan:
 ❌ {{failed_1}} — {{reason}}
 
-Proses yang dilewati / belum tersedia:
-⏭ {{skipped_1}} — {{reason}}
-⏭ {{skipped_2}} — {{reason}}
+Proses yang dilewati / diganti (Workaround):
+⏭ {{skipped_tool}} (waiting budget) → diganti dengan {{free_alternative_tool}}
+⏭ {{skipped_tool_2}} — {{reason}}
 
 Evidence ditemukan:
 - {{evidence_1}}

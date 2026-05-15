@@ -425,11 +425,13 @@ Report ke Slack harus text naratif, bukan JSON mentah. Gaya bahasa: seperti asis
 >
 > \- Enrichment API
 >
-> Alasan tools dilewati:
+> Alasan tools dilewati / diganti:
 >
-> Bukti dari email domain dan halaman company website sudah cukup kuat, tidak ada konflik data,
+> \- Firecrawl menunggu budget → diganti menggunakan Free Scraper
 >
-> dan confidence sudah melewati threshold untuk founder_verified.
+> \- Enrichment API menunggu budget → diganti menggunakan pencarian SERP Dorking
+>
+> \- SERP Search tidak dipakai karena bukti awal dari web scraping sudah sangat kuat (confidence terpenuhi).
 >
 > Evidence utama:
 >
