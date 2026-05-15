@@ -8,6 +8,7 @@ const { scoreCompanyEvidence } = require("./scoring_engine");
 const { crawlWebsite } = require("./website_crawler_router");
 const { buildQueries } = require("./serp_query_builder");
 const { renderTelegramReport } = require("./report_formatter");
+const { sendToSlack } = require("./slack_reporter");
 
 function nowIso() {
   return new Date().toISOString();
@@ -122,6 +123,10 @@ async function main() {
   if (shouldSave) {
     result.storage = storeResult(result);
   }
+  
+  // Kirim ke Slack jika environment-nya sudah diset
+  await sendToSlack(result.telegram_report);
+  
   console.log(asJson ? JSON.stringify(result, null, 2) : result.telegram_report);
   process.exit(result.ok ? 0 : 1);
 }
