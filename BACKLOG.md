@@ -17,17 +17,28 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [ ] **Setup Queue (Redis + BullMQ)**: Implementasi antrean pekerjaan agar sistem bisa menerima banyak request bersamaan tanpa *bottleneck*.
 - [ ] **Buat API Endpoint**: `POST /internal/company-detection/jobs` di server/worker Node.js.
 
-## 2. Delivery ke Slack
+## 2. Next Level Email-First Enrichment
+- [ ] **Company Profile Builder**: Setelah custom/company domain terdeteksi, bangun `company_profile` berisi nama, website, deskripsi bisnis, industri, lokasi jika tersedia, dan source confidence.
+- [ ] **Social Link Extractor**: Ambil social links dari website perusahaan dan halaman publik yang ditemukan.
+- [ ] **SERP Social Discovery**: Cari LinkedIn company, Instagram, X, Facebook, YouTube, TikTok, marketplace/app/product pages via query builder + DDG/search provider.
+- [ ] **Personal-To-Business Discovery**: Untuk free email, gunakan local-part sebagai low-confidence identity hint untuk mencari public profile/business relationship.
+- [ ] **Role Signal Extractor**: Ekstrak sinyal seperti CEO, founder, owner, agency, consultant dari snippet/public pages dengan guardrail anti-overclaim.
+- [ ] **Relationship Scorer**: Tambah `business_relationship` seperti `personal_with_business_affiliation`, `founder_or_owner_candidate`, atau `business_relationship_unknown`.
+- [ ] **Maps/Local Signal**: Mulai dari SERP snippet untuk Google Maps/local business; official Places API bisa menyusul jika budget dan legal jelas.
+
+Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](NEXT_LEVEL_ENRICHMENT_PLAN.md).
+
+## 3. Delivery ke Slack
 - [ ] **Buat Slack App** di workspace perusahaan.
 - [ ] **Konfigurasi Slack Token**: Masukkan `SLACK_BOT_TOKEN` dan `SLACK_APP_TOKEN` ke environment OpenClaw/VPS.
 - [ ] **Modifikasi Report Formatter**: Pastikan `report_formatter.js` bisa mengirimkan JSON terstruktur untuk dikonversi menjadi *Block Kit* atau pesan Slack naratif.
 
-## 3. Implementasi Tools & Scraping (Prioritas Berikutnya)
+## 4. Implementasi Tools & Scraping (Prioritas Berikutnya)
 - [ ] **Web Search Provider Resmi**: Free fallback `ddg_search` sudah aktif, tapi dedicated provider seperti Brave/Tavily/Exa belum dikonfigurasi.
 - [ ] **Scraping Engine Mendalam**: Lightweight crawler dan `free_scraper` sudah aktif; perlu engine lebih kuat untuk JS-heavy/deep crawl jika dibutuhkan.
 - [ ] **Social & Public Profile Checker**: Buat skrip pencarian LinkedIn via SERP snippet, GitHub, X (Twitter), atau Product Hunt.
 
-## 4. Arsitektur Multi-Agent & Ops
+## 5. Arsitektur Multi-Agent & Ops
 - [ ] **Aktifkan Sub-agents**: Gunakan `sessions_spawn` di OpenClaw untuk investigasi paralel (satu sub-agent cek SERP, sub-agent lain cek website).
 - [ ] **Dashboard Internal**: Bangun UI sederhana untuk admin mereview hasil yang `inconclusive` atau `business_owner_candidate` dengan confidence menengah.
 - [ ] **Error & Cost Tracking**: Pantau rate limit API dan error jika memakai provider eksternal.

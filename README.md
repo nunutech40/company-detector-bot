@@ -20,6 +20,7 @@ Yang sudah aktif:
 - `/tool_status` dan `/last_report`.
 
 Yang belum production:
+- Next-level enrichment untuk company profile, social footprint, dan personal-to-business discovery.
 - Postgres evidence store.
 - Redis/BullMQ job queue.
 - Worker API endpoint.
@@ -34,6 +35,7 @@ Yang belum production:
 - [PRD Deteksi Perusahaan v6](PRD_Deteksi_Perusahaan_v6_AI_OpenClaw_Serious_With_Theory.md): product goal, principles, classifications, tool philosophy, reporting expectations.
 - [TRD AI Company Detection Agent](TRD_Deteksi_Perusahaan_AI_OpenClaw_v1.md): technical architecture, custom tools, data model, multi-agent design, deployment notes.
 - [Building Plan OpenClaw Telegram MVP](BUILDING_PLAN_OpenClaw_Telegram_MVP_From_VPS.md): implementation plan from VPS setup to Telegram MVP.
+- [Next Level Enrichment Plan](NEXT_LEVEL_ENRICHMENT_PLAN.md): email-first plan for company enrichment, social footprint discovery, and personal-to-business relationship detection.
 - [Backlog](BACKLOG.md): remaining production work and stabilization status.
 - [OpenClaw Agent Prompt](openclaw_workspace/AGENTS.md): behavior contract used by the Telegram agent.
 - [Tool Notes](openclaw_workspace/TOOLS.md): current runtime, tool availability, operational rules.
@@ -185,6 +187,7 @@ Operational VPS details, passwords, and tokens are intentionally not tracked in 
 ## Next Work
 
 See [BACKLOG.md](BACKLOG.md). The next sensible production steps are:
+- Email-first company/social enrichment as described in [NEXT_LEVEL_ENRICHMENT_PLAN.md](NEXT_LEVEL_ENRICHMENT_PLAN.md).
 - Postgres schema for jobs/tool runs/evidence/final reports.
 - Queue worker with Redis/BullMQ.
 - Worker API endpoint for platform registration integration.
