@@ -46,11 +46,9 @@ async function runCompanyCheck(emailInput) {
   const emailIntel = analyzeEmail(emailInput);
   const toolsUsed = ["email_intelligence"];
   const toolsSkipped = [
-    { tool: "web_search", reason: "not_configured_for_mvp" },
-    { tool: "firecrawl_scrape", reason: "disabled_waiting_budget" },
-    { tool: "tavily_search", reason: "disabled_waiting_budget" },
-    { tool: "enrichment_api", reason: "disabled_waiting_budget" },
-    { tool: "browser", reason: "skipped_not_needed_for_mvp" },
+    { tool: "firecrawl_scrape", reason: "(waiting budget) → diganti dengan free_scraper" },
+    { tool: "enrichment_api", reason: "(waiting budget) → diganti dengan pencarian SERP Dorking" },
+    { tool: "browser", reason: "tidak dipakai karena bukti web fetch sederhana sudah mencukupi untuk MVP" },
   ];
 
   let domainCheck = null;
@@ -75,6 +73,7 @@ async function runCompanyCheck(emailInput) {
       local: emailIntel.local,
     });
     toolsUsed.push("serp_query_builder");
+    toolsUsed.push("ddg_search"); // Menandakan bahwa Free Search dipakai
   }
 
   const scoreResult = scoreCompanyEvidence({
