@@ -231,6 +231,13 @@ Karena sebagian tools butuh dana/API key/approval, sistem harus mendukung status
 >
 > \- LinkedIn direct scraping tidak dipakai karena policy membatasi direct automation ke platform tersebut.
 
+## 8.1 Alternatif Tools Gratis (Workaround)
+
+Jika tools berbayar (seperti Firecrawl, Tavily, atau Enrichment API) masih berstatus `disabled_waiting_budget`, AI diharapkan untuk menggunakan alternatif gratis melalui *Custom Tools* yang disediakan di VPS:
+- **Pengganti `firecrawl_scrape`**: AI dapat memanggil *Free Scraper Tool* berbasis script Node.js (menggunakan `axios` + `cheerio` atau `readability`) untuk membaca isi teks murni dari sebuah website secara gratis.
+- **Pengganti `tavily_search` / API Search Berbayar**: AI dapat memanggil *Free Search Tool* yang menggunakan *scraping* DuckDuckGo HTML atau Brave Search API (yang memiliki *free tier* besar).
+- **Pengganti `enrichment_api`**: Alih-alih membayar untuk API pihak ketiga, AI dapat melakukan pencarian *SERP Dorking* (contoh: `site:linkedin.com/in/ "Nama Lengkap"`) dan membaca "teks snippet" dari hasil pencarian Google/DuckDuckGo untuk mengekstrak informasi *Role* dan *Company*.
+
 # 9. AI Orchestrator Operating Policy
 
 OpenClaw agent harus diberi operating policy seperti di bawah. Ini bukan sekadar prompt bebas, tetapi kontrak perilaku agent.

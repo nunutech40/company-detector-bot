@@ -153,6 +153,13 @@ Tools di bawah dipetakan berdasarkan kebutuhan produk. Tidak semua harus aktif d
 | github_public_checker                | Input: username/name. Output: profile/company/blog/org evidence.                           | Phase 2      |
 | producthunt_checker                  | Input: username/name/company. Output: maker/product evidence.                              | Phase 2      |
 
+## 6.2 Alternatif Tools Gratis (Workaround MVP)
+
+Untuk mencegah hambatan budget/API key pada eksekusi MVP (seperti `firecrawl`, `tavily`, atau `enrichment_api`), implementasi dapat menggunakan alternatif berikut sebagai *Custom Tools*:
+- **Free Search (`web_search` fallback)**: Gunakan DuckDuckGo HTML scraper script (`ddg_search.js`) atau Brave Search API (2.000 free requests/bulan).
+- **Free Web Scraper (`firecrawl_scrape` fallback)**: Gunakan script custom Node.js (`axios` + `cheerio` atau `@mozilla/readability`) untuk mengekstrak plain-text dari halaman web perusahaan (`/about`, `/team`) tanpa biaya.
+- **LinkedIn / Profile Enrichment (`enrichment_api` fallback)**: Gunakan **SERP Dorking** (misal: `site:linkedin.com/in/ "Nama User"`). AI dapat membaca langsung *snippet* hasil pencarian Google/DuckDuckGo untuk mengekstrak *Role* tanpa membuka halaman profil aslinya (yang berisiko diblokir).
+
 # 7. Multi-Agent Design
 
 MVP dapat berjalan dengan single orchestrator agent. Multi-agent digunakan saat volume, latensi, atau kompleksitas evidence meningkat. Multi-agent tidak wajib dari awal, tetapi desainnya perlu disiapkan.

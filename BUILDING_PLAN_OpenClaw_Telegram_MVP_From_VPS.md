@@ -920,6 +920,13 @@ MVP hari ini dianggap berhasil kalau:
 - [ ] Simpan evidence
 - [ ] Kirim report Telegram/Slack
 
+## 11.5 Implementasi Free Tools (Workaround MVP)
+
+Jika tools berbayar belum ada *budget*-nya, kita bisa mengimplementasikan skrip gratis:
+- [ ] Buat skrip `ddg_search.js` atau integrasi Brave Search API untuk fungsi *web_search* (Gratis).
+- [ ] Buat skrip `free_scraper.js` (pakai `cheerio` atau `readability`) untuk menggantikan `firecrawl_scrape` (Gratis).
+- [ ] Ubah `serp_query_builder.js` agar AI bisa *SERP Dorking* `site:linkedin.com/in/` tanpa harus langganan *Enrichment API* seperti PDL/Apollo.
+
 ---
 
 # PHASE 12 — Roadmap Lengkap dari Nol ke Production
