@@ -1,0 +1,35 @@
+classifications:
+  possible_company_affiliated:
+    threshold: 65
+    automation_action: route_company_associated
+    owner_claim_allowed: false
+
+  likely_personal_email:
+    threshold_max: 44
+    automation_action: continue_as_personal_or_unknown
+    owner_claim_allowed: false
+
+  unknown_needs_more_evidence:
+    threshold_range: [35, 64]
+    automation_action: store_unknown_retry_later
+    owner_claim_allowed: false
+
+  suspicious_or_invalid:
+    automation_action: risk_or_format_review
+    owner_claim_allowed: false
+
+evidence_weights:
+  custom_email_domain: 30
+  free_email_provider: -30
+  role_email: 10
+  disposable_email: -40
+  mx_records_present: 10
+  address_records_present: 5
+  website_active_with_title: 20
+  website_active_without_title: 15
+  website_inactive: -20
+
+claim_safety:
+  founder_verified:
+    allowed_in_mvp: false
+    requirement: explicit_role_evidence_or_two_independent_sources

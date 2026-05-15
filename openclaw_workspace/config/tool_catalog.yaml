@@ -1,0 +1,105 @@
+tools:
+  email_intelligence:
+    status: enabled
+    type: custom_script
+    command: "node scripts/email_intelligence.js <email>"
+    cost: free
+    priority: mvp
+
+  domain_checker:
+    status: enabled
+    type: custom_script
+    command: "node scripts/domain_checker.js <domain>"
+    cost: free_or_low
+    priority: mvp
+
+  company_check:
+    status: enabled
+    type: custom_script
+    command: "node scripts/company_check.js <email>"
+    cost: free_or_low
+    priority: mvp
+
+  scoring_engine:
+    status: enabled
+    type: custom_script
+    command: "node scripts/scoring_engine.js"
+    cost: free
+    priority: mvp
+
+  website_crawler_router:
+    status: enabled
+    type: custom_script
+    command: "node scripts/website_crawler_router.js <domain>"
+    cost: free_or_low
+    priority: mvp
+
+  serp_query_builder:
+    status: enabled
+    type: custom_script
+    command: "node scripts/serp_query_builder.js <email>"
+    cost: free
+    priority: mvp
+
+  report_formatter:
+    status: enabled
+    type: custom_script
+    command: "node scripts/report_formatter.js"
+    cost: free
+    priority: mvp
+
+  last_report:
+    status: enabled
+    type: custom_script
+    command: "node scripts/last_report.js [email]"
+    cost: free
+    priority: mvp
+
+  tool_status:
+    status: enabled
+    type: custom_script
+    command: "node scripts/tool_status.js"
+    cost: free
+    priority: mvp
+
+  web_search:
+    status: not_configured
+    type: openclaw_builtin
+    cost: depends_provider
+    priority: mvp_later
+
+  web_fetch:
+    status: check_runtime
+    type: openclaw_builtin
+    cost: free_or_low
+    priority: mvp
+
+  firecrawl_scrape:
+    status: disabled_waiting_budget
+    type: provider_plugin
+    cost: paid
+    priority: phase_2
+
+  tavily_search:
+    status: disabled_waiting_budget
+    type: provider_plugin
+    cost: paid
+    priority: phase_2
+
+  enrichment_api:
+    status: disabled_waiting_budget
+    type: paid_vendor
+    cost: paid
+    priority: phase_4
+
+  browser:
+    status: optional
+    type: openclaw_builtin
+    cost: high_runtime
+    priority: phase_2
+
+  telegram_message:
+    status: enabled
+    type: channel
+    cost: free
+    priority: mvp
