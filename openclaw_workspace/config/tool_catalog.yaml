@@ -111,3 +111,10 @@ tools:
     type: channel
     cost: free
     priority: mvp
+
+  slack_reporter:
+    status: optional
+    type: custom_script
+    command: "node scripts/company_check.js <email> --send-slack"
+    cost: free
+    priority: phase_2

@@ -39,3 +39,5 @@ Evidence files are intentional audit snapshots. Retention is bounded by environm
 - Never claim founder/owner without explicit role evidence.
 - Free email with no extra evidence should remain personal/unknown.
 - Paid tools unavailable in MVP must be marked skipped, not treated as failure.
+- `ddg_search` and `free_scraper` must only be listed in `tools_used` if they successfully ran.
+- Failed fallback tools must be recorded in `tool_errors`.

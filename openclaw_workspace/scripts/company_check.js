@@ -9,6 +9,8 @@ const { crawlWebsite } = require("./website_crawler_router");
 const { buildQueries } = require("./serp_query_builder");
 const { renderTelegramReport } = require("./report_formatter");
 const { sendToSlack } = require("./slack_reporter");
+const { searchDuckDuckGo } = require("./ddg_search");
+const { scrapeUrl } = require("./free_scraper");
 
 function nowIso() {
   return new Date().toISOString();
@@ -47,14 +49,17 @@ async function runCompanyCheck(emailInput) {
   const emailIntel = analyzeEmail(emailInput);
   const toolsUsed = ["email_intelligence"];
   const toolsSkipped = [
-    { tool: "firecrawl_scrape", reason: "(waiting budget) → diganti dengan free_scraper" },
-    { tool: "enrichment_api", reason: "(waiting budget) → diganti dengan pencarian SERP Dorking" },
-    { tool: "browser", reason: "tidak dipakai karena bukti web fetch sederhana sudah mencukupi untuk MVP" },
+    { tool: "firecrawl_scrape", reason: "disabled_waiting_budget" },
+    { tool: "tavily_search", reason: "disabled_waiting_budget" },
+    { tool: "enrichment_api", reason: "disabled_waiting_budget" },
   ];
+  const toolErrors = [];
 
   let domainCheck = null;
   let websiteCrawler = null;
   let serpQueries = null;
+  let ddgSearch = null;
+  let freeScraper = null;
   const evidence = [...(emailIntel.evidence || [])];
 
   if (emailIntel.ok && !emailIntel.is_free_email && !emailIntel.is_disposable) {
@@ -74,8 +79,69 @@ async function runCompanyCheck(emailInput) {
       local: emailIntel.local,
     });
     toolsUsed.push("serp_query_builder");
-    toolsUsed.push("ddg_search"); // Menandakan bahwa Free Search dipakai
+
+    const primaryQuery =
+      emailIntel.is_free_email
+        ? (serpQueries.queries || []).find((query) => query.includes(`"${emailIntel.local}"`))
+        : serpQueries.queries && serpQueries.queries[0];
+    if (primaryQuery) {
+      ddgSearch = await searchDuckDuckGo(primaryQuery, { limit: 5 });
+      if (ddgSearch.ok) {
+        toolsUsed.push("ddg_search");
+        if (ddgSearch.results.length > 0) {
+          evidence.push({
+            source_type: "free_serp_search",
+            source_url: ddgSearch.results[0].url,
+            reliability: "low",
+            claim: "Free SERP search returned public candidate results.",
+            value: ddgSearch.results.map((item) => item.title).slice(0, 3),
+            confidence_delta: 5,
+          });
+        }
+      } else {
+        toolErrors.push({ tool: "ddg_search", error: ddgSearch.error || "search_failed" });
+      }
+    } else {
+      toolsSkipped.push({ tool: "ddg_search", reason: "no_search_query_built" });
+    }
   }
+
+  const scrapeTarget =
+    (domainCheck && domainCheck.website_active && domainCheck.website && (domainCheck.website.final_url || domainCheck.website.url)) ||
+    (websiteCrawler && websiteCrawler.pages || []).find((page) => page.active)?.final_url ||
+    null;
+  if (scrapeTarget) {
+    freeScraper = await scrapeUrl(scrapeTarget, { limit: 2500 });
+    if (freeScraper.ok) {
+      toolsUsed.push("free_scraper");
+      const text = freeScraper.content_snippet.toLowerCase();
+      if (/\b(company|business|platform|solution|service|commerce|customer|client)\b/.test(text)) {
+        evidence.push({
+          source_type: "free_scraper",
+          source_url: freeScraper.final_url || freeScraper.url,
+          reliability: "low",
+          claim: "Lightweight scraper found business-like page content.",
+          value: freeScraper.content_snippet.slice(0, 220),
+          confidence_delta: 5,
+        });
+      }
+    } else {
+      toolErrors.push({ tool: "free_scraper", error: freeScraper.error || "scrape_failed" });
+    }
+  } else {
+    toolsSkipped.push({ tool: "free_scraper", reason: "no_active_url_to_scrape" });
+  }
+
+  const hasLightweightWebEvidence =
+    Boolean(domainCheck && domainCheck.website_active) ||
+    Boolean(websiteCrawler && websiteCrawler.active_page_count > 0) ||
+    Boolean(freeScraper && freeScraper.ok);
+  toolsSkipped.push({
+    tool: "browser",
+    reason: hasLightweightWebEvidence
+      ? "skipped_not_needed_for_mvp"
+      : "optional_fallback_disabled_for_mvp",
+  });
 
   const scoreResult = scoreCompanyEvidence({
     base_score: 35,
@@ -103,9 +169,12 @@ async function runCompanyCheck(emailInput) {
     email_intelligence: emailIntel,
     domain_checker: domainCheck,
     website_crawler: websiteCrawler,
+    ddg_search: ddgSearch,
+    free_scraper: freeScraper,
     serp_queries: serpQueries,
     tools_used: toolsUsed,
     tools_skipped: toolsSkipped,
+    tool_errors: toolErrors,
     evidence,
     summary: buildSummary(scoreResult.classification, emailIntel, domainCheck),
     recommendation: buildRecommendation(scoreResult.classification, emailIntel),
@@ -118,14 +187,18 @@ async function main() {
   const args = process.argv.slice(2);
   const asJson = args.includes("--json");
   const shouldSave = args.includes("--save");
+  const shouldSendSlack = args.includes("--send-slack") || process.env.COMPANY_DETECTION_SEND_SLACK === "true";
   const email = args.find((arg) => !arg.startsWith("--"));
   const result = await runCompanyCheck(email);
   if (shouldSave) {
     result.storage = storeResult(result);
   }
-  
-  // Kirim ke Slack jika environment-nya sudah diset
-  await sendToSlack(result.telegram_report);
+
+  if (shouldSendSlack) {
+    result.delivery = {
+      slack_sent: await sendToSlack(result.telegram_report),
+    };
+  }
   
   console.log(asJson ? JSON.stringify(result, null, 2) : result.telegram_report);
   process.exit(result.ok ? 0 : 1);

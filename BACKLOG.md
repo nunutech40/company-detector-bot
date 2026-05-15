@@ -2,6 +2,14 @@
 
 Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa sistem dari fase MVP Telegram menuju Production-Grade sesuai PRD dan TRD:
 
+## 0. Stabilization dari Perubahan Terakhir
+- [x] Pastikan `ddg_search` tidak dicatat di `tools_used` kalau tidak benar-benar dipanggil/berhasil.
+- [x] Pastikan kegagalan DDG/free scraper masuk `tool_errors`, bukan evidence palsu.
+- [x] Pastikan `free_scraper` hanya dicatat dipakai jika ada active URL dan scrape berhasil.
+- [x] Sinkronkan status tools antara `tool_catalog.yaml` dan `TOOLS.md`.
+- [x] Jadikan Slack delivery eksplisit via `--send-slack` atau `COMPANY_DETECTION_SEND_SLACK=true`.
+- [x] Test ulang DDG/free scraper dari VPS setelah deploy.
+
 ## 1. Database & Asynchronous Queue
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
 - [ ] **Buat Skema Tabel**: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`.
@@ -15,8 +23,8 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [ ] **Modifikasi Report Formatter**: Pastikan `report_formatter.js` bisa mengirimkan JSON terstruktur untuk dikonversi menjadi *Block Kit* atau pesan Slack naratif.
 
 ## 3. Implementasi Tools & Scraping (Prioritas Berikutnya)
-- [ ] **Web Search Provider**: Konfigurasi provider search (saat ini `not_configured`).
-- [ ] **Scraping Engine**: Implementasi crawler/scraper yang bisa membaca konten *website* secara mendalam (saat ini bergantung pada domain_checker sederhana).
+- [ ] **Web Search Provider Resmi**: Free fallback `ddg_search` sudah aktif, tapi dedicated provider seperti Brave/Tavily/Exa belum dikonfigurasi.
+- [ ] **Scraping Engine Mendalam**: Lightweight crawler dan `free_scraper` sudah aktif; perlu engine lebih kuat untuk JS-heavy/deep crawl jika dibutuhkan.
 - [ ] **Social & Public Profile Checker**: Buat skrip pencarian LinkedIn via SERP snippet, GitHub, X (Twitter), atau Product Hunt.
 
 ## 4. Arsitektur Multi-Agent & Ops

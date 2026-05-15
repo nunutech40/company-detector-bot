@@ -1,49 +1,56 @@
 #!/usr/bin/env node
+"use strict";
 
-const url = process.argv[2];
-
-if (!url) {
-  console.log(JSON.stringify({ ok: false, error: 'missing_url' }));
-  process.exit(1);
+function cleanHtml(html, limit = 5000) {
+  return String(html || "")
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, limit);
 }
 
-async function scrape() {
+async function scrapeUrl(url, options = {}) {
+  const targetUrl = String(url || "").trim();
+  if (!targetUrl) {
+    return { ok: false, error: "missing_url", url: null };
+  }
+
   try {
-    const response = await fetch(url, {
+    const response = await fetch(targetUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       },
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(options.timeoutMs || 10000),
     });
-    
+
     if (!response.ok) {
-      console.log(JSON.stringify({ ok: false, error: `http_${response.status}` }));
-      return;
+      return { ok: false, error: `http_${response.status}`, url: targetUrl };
     }
-    
+
     const html = await response.text();
-    
-    // Sangat sederhana: buang script, style, lalu hapus tag HTML. 
-    // Untuk production sebaiknya pakai parser seperti cheerio atau mozilla/readability.
-    let text = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-      
-    // Ambil max 5000 karakter agar tidak membebani context token AI
-    text = text.substring(0, 5000);
-    
-    console.log(JSON.stringify({
+
+    return {
       ok: true,
-      url: url,
-      content_snippet: text
-    }, null, 2));
-    
+      url: targetUrl,
+      final_url: response.url,
+      content_snippet: cleanHtml(html, options.limit || 5000),
+      reliability: "low",
+    };
   } catch (error) {
-    console.log(JSON.stringify({ ok: false, error: error.message }));
+    return { ok: false, error: error.message, url: targetUrl };
   }
 }
 
-scrape();
+if (require.main === module) {
+  scrapeUrl(process.argv[2]).then((result) => {
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(result.ok ? 0 : 1);
+  });
+}
+
+module.exports = {
+  scrapeUrl,
+};

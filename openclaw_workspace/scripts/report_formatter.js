@@ -54,6 +54,10 @@ function renderTelegramReport(result) {
     skipped.push(`${item.tool}: ${item.reason}.`);
   }
 
+  for (const item of result.tool_errors || []) {
+    failed.push(`${item.tool}: ${item.error}.`);
+  }
+
   const evidence = result.evidence.map((item) => {
     const value = Array.isArray(item.value) ? item.value.join(", ") : item.value;
     return `${item.claim}${value ? ` (${value})` : ""}`;

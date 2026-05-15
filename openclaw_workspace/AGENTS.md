@@ -123,6 +123,8 @@ For today's MVP, prefer free/local reasoning first:
 - `scripts/scoring_engine.js`
 - `scripts/website_crawler_router.js`
 - `scripts/serp_query_builder.js`
+- `scripts/ddg_search.js`
+- `scripts/free_scraper.js`
 - `scripts/report_formatter.js`
 - `scripts/evidence_store.js`
 - `scripts/tool_status.js`
@@ -134,7 +136,15 @@ Paid/optional tools should be skipped with reason:
 - Firecrawl: `disabled_waiting_budget`
 - Tavily: `disabled_waiting_budget`
 - enrichment API: `disabled_waiting_budget`
-- browser: `skipped_not_needed_for_mvp` unless explicitly needed
+- browser: `skipped_not_needed_for_mvp` if lightweight evidence exists, otherwise `optional_fallback_disabled_for_mvp`
+
+Fallback/error rules:
+
+- Only report a tool in `tools_used` if it actually ran successfully.
+- If `ddg_search` or `free_scraper` fails, include it in `tool_errors`, not evidence.
+- If `free_scraper` has no active URL to scrape, include it in `tools_skipped`.
+- Treat DDG/free scraper evidence as low reliability.
+- Slack delivery is not automatic; only send Slack if explicitly requested by runtime flags/env.
 
 ## Automation Output Rule
 
