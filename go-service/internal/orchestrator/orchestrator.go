@@ -161,13 +161,26 @@ func Run(ctx context.Context, input model.RegisterInput, options Options) model.
 func inputEvidence(input model.RegisterInput) []model.EvidenceItem {
 	out := []model.EvidenceItem{}
 	if input.FullName != "" {
-		out = append(out, model.EvidenceItem{SourceType: "registration_input", Reliability: "medium", Claim: "Signup provided a full name.", Value: input.FullName, ConfidenceDelta: 0})
+		out = append(out, model.EvidenceItem{
+			SourceType: "registration_input", Reliability: "medium",
+			Claim: "Signup provided a full name.", Value: input.FullName,
+			ConfidenceDelta: 0,
+		})
 	}
 	if input.BrandName != "" {
-		out = append(out, model.EvidenceItem{SourceType: "registration_input", Reliability: "medium", Claim: "Signup provided a brand/company field.", Value: input.BrandName, ConfidenceDelta: 10})
+		out = append(out, model.EvidenceItem{
+			SourceType: "registration_input", Reliability: "medium",
+			Claim: "Signup provided a brand/company field.", Value: input.BrandName,
+			ConfidenceDelta: 10,
+		})
 	}
 	if input.PhoneMasked != "" {
-		out = append(out, model.EvidenceItem{SourceType: "registration_input", Reliability: "low", Claim: "Signup provided a phone number for internal correlation only.", Value: input.PhoneMasked, ConfidenceDelta: 0})
+		out = append(out, model.EvidenceItem{
+			SourceType: "registration_input", Reliability: "low",
+			Claim:           "Signup provided a phone number. Use for confirmation only — if found in tool results (website/marketplace/WA Business), cross-check with this number for strong confirmation (+25 delta).",
+			Value:           input.PhoneMasked,
+			ConfidenceDelta: 0, // no delta until confirmed via tool
+		})
 	}
 	return out
 }

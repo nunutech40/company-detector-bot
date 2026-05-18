@@ -51,6 +51,22 @@ func hasVerifiableSource(item model.EvidenceItem) bool {
 	return strings.TrimSpace(item.SourceURL) != "" || strings.TrimSpace(item.ToolCall) != ""
 }
 
+// PhoneConfirmationEvidence creates a high-confidence evidence item when
+// a phone number found in tool results matches the registered no_hp.
+// This should be called by the AI orchestrator when a match is found.
+// Delta: +25 (strong confirmation — same person/business)
+func PhoneConfirmationEvidence(sourceURL string, foundIn string) model.EvidenceItem {
+	return model.EvidenceItem{
+		SourceType:      "phone_confirmation",
+		SourceURL:       sourceURL,
+		ToolCall:        "phone_match(" + foundIn + ")",
+		Reliability:     "high",
+		Claim:           "Phone number from registration matches number found in " + foundIn + ".",
+		ConfidenceDelta: 25,
+		Verified:        true,
+	}
+}
+
 func classify(email model.EmailIntelligence, domain *model.DomainCheck, score int, input model.RegisterInput) model.Classification {
 	if !email.OK || email.IsDisposable {
 		return model.ClassificationSuspicious

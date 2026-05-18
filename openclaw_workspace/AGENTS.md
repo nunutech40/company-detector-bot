@@ -78,13 +78,28 @@ The final report must answer both questions with evidence.
 {
   "email": "required — primary routing signal",
   "full_name": "optional — identity hint for person search",
-  "no_hp": "optional — internal correlation only, NEVER search publicly",
+  "no_hp": "optional — for CONFIRMATION only, NEVER use as search query",
   "brand_name": "optional — strongest non-email business hint"
 }
 ```
 
 `username` from platform registration is NOT trusted. Ignore it.
-`no_hp` must NEVER be used in public search queries.
+
+**`no_hp` usage rules:**
+- NEVER search `no_hp` publicly (Google, DDG, Bing, etc.)
+- NEVER include `no_hp` in any search query
+- USE for confirmation only: if you find a phone number in a tool result (website, marketplace, social media), cross-check it with `no_hp`
+- If match found → strong confirmation signal, confidence increases significantly
+- Example:
+  ```
+  Found in Tokopedia: "Naway Store — WA: 08123456789"
+  no_hp from register: "08123456789"
+  → MATCH → strong confirmation: this account = store owner
+  ```
+- WhatsApp Business check is allowed: check if the number has a WA Business profile (public info)
+  ```
+  web_fetch("https://wa.me/628123456789")  → check if WA Business profile exists
+  ```
 
 ---
 
@@ -165,6 +180,18 @@ web_search("site:<company_domain> <full_name>")
 web_fetch("<company_domain>/team")
 ```
 
+Step 2.6 — Phone confirmation (if no_hp is available):
+```
+# If you found a phone number in any tool result, cross-check with no_hp
+# Example: found "WA: 08123456789" in Tokopedia store page
+# Compare with no_hp from register → if match → strong confirmation
+
+# Also check WhatsApp Business profile (public info):
+web_fetch("https://wa.me/62<no_hp_without_leading_zero>")
+# If WA Business profile exists → business signal
+# If profile has business name/description → extract it
+```
+
 **Phase 2 output — structured findings:**
 ```
 Business Relationship: [found / not_found / inconclusive]
@@ -192,6 +219,12 @@ Findings:
     - Source: [url]
     - Claim: "Tatak Subekti — Owner at Naway Store"
     - Reliability: medium/high
+  
+  Phone Confirmation:
+    - no_hp match: [yes/no/not_checked]
+    - Found in: [source where phone was found]
+    - WA Business: [yes/no/not_checked]
+    - WA Business name: [if found]
 ```
 
 ---

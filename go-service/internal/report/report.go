@@ -40,7 +40,7 @@ func inputLines(result model.CompanyCheckResult) []string {
 		lines = append(lines, fmt.Sprintf("Brand/company: %s", result.Input.BrandName))
 	}
 	if result.Input.PhoneMasked != "" {
-		lines = append(lines, fmt.Sprintf("No HP: %s (internal only)", result.Input.PhoneMasked))
+		lines = append(lines, fmt.Sprintf("No HP: %s (untuk konfirmasi — jika nemu nomor ini di website/marketplace/WA Business, itu konfirmasi kuat)", result.Input.PhoneMasked))
 	}
 	return lines
 }
