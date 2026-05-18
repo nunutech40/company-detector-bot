@@ -15,19 +15,42 @@ Ada dua versi:
 
 ## 0. Mental Model Paling Pendek
 
+Sistem ini adalah **Agentic Company Detector** — sama seperti agentic coding, tapi untuk investigasi bisnis. Ada dua layer:
+
+```text
+Layer 1 — Deterministik (Go packages):
+  Validasi, routing, scoring, storage, delivery
+  Cepat, predictable, auditable
+  Juga berfungsi sebagai fallback mode ketika AI tidak tersedia
+
+Layer 2 — AI Reasoning Loop (OpenClaw Agent):
+  Observe → Orient → Decide → Act → loop
+  AI pilih tools, iterate dari temuan, pivot strategi
+  Kalau tool gagal → cari alternatif dari catalog
+  Loop sampai confidence cukup atau budget habis
+```
+
+Versi sekarang (MVP) masih deterministik penuh — AI hanya sebagai gateway. Phase A akan mengaktifkan AI reasoning loop.
+
 Versi sekarang punya 3 langkah besar:
 
 ```text
-Input email -> cek sinyal perusahaan/personal -> keluarkan classification + evidence summary.
+Input email -> [Deterministik] cek sinyal perusahaan/personal -> keluarkan classification + evidence summary.
 ```
 
-Versi level 2 punya 4 langkah besar:
+Versi Phase A (AI loop aktif):
 
 ```text
-Input identity/register -> cek route company/personal -> enrich profil/relasi bisnis -> keluarkan structured result untuk automation.
+Input email -> [Deterministik] normalisasi + hipotesis awal -> [AI] reasoning loop (iterate tools) -> [Deterministik] scoring + output.
 ```
 
-Jadi inti produknya bukan "simpan ke SQL" atau "kirim Slack". Itu cuma delivery/storage. Inti produknya adalah **mengubah email/register input menjadi keputusan bisnis yang bisa dipakai automation**.
+Versi level 2 (enrichment penuh):
+
+```text
+Input identity/register -> [AI] investigasi mendalam -> enrich profil/relasi bisnis -> [Deterministik] structured result untuk automation.
+```
+
+Inti produknya adalah **mengubah email/register input menjadi keputusan bisnis yang bisa dipakai automation** — bukan cuma "simpan ke SQL" atau "kirim Slack".
 
 ## 1. Flow Sekarang: Telegram MVP
 
@@ -126,23 +149,36 @@ sequenceDiagram
 
 ### 1.4 Output Sekarang
 
-Output utama:
+Output aktual dari Go `internal/report`:
 
 ```text
-Company Detection MVP Report
+Company Detection Report
+
+Kesimpulan: [headline + alasan + gaps]
+Classification: ...
+Confidence: low/medium/high (N/100)
+Automation: ...
+
+Input: [email, nama, brand, hp masked]
+
+Proses investigasi:
+[1] Email Intelligence  [Deterministik]
+  Algoritma, Hasil, Artinya, Delta, Evaluasi
+
+[2] Routing Decision  [Deterministik]
+  ...
+
+[3] Domain Checker  [Tools — DNS + HTTP]  (custom domain only)
+  ...
+
+[AI Reasoning]  ← belum aktif; direncanakan di Phase A
+  Profil, Reasoning (apa yang seharusnya AI lakukan), Butuh (tools yang belum aktif), Dampak
+
+[Deterministik] Scoring Engine — Kesimpulan Akhir
+  Base score, Total delta, Final score, Classification, Action
+
+Rekomendasi automation: ...
 ```
-
-Isi output:
-
-- email input
-- kesimpulan sementara/final
-- classification
-- confidence
-- proses berhasil
-- proses gagal
-- proses dilewati
-- evidence
-- rekomendasi automation
 
 Classification saat ini:
 

@@ -1,35 +1,37 @@
 # Next Level Enrichment Plan
 
-Dokumen ini menjelaskan pengembangan setelah MVP email detection. Fokusnya tetap email-first: sistem mulai dari email/register input, lalu memperkaya data secara bertahap untuk menemukan profil perusahaan, social footprint, dan kemungkinan hubungan personal ke bisnis.
+Dokumen ini menjelaskan tools dan algoritma yang perlu dibangun untuk mendukung AI reasoning loop. Dalam arsitektur Agentic Company Detector, enrichment bukan "level 2 terpisah" — enrichment adalah **tool catalog yang dipanggil AI** ketika investigasi awal belum cukup.
 
-Plan ini bukan pengganti MVP. Ini adalah layer lanjutan di atas flow yang sudah berjalan:
+Semakin kaya tool catalog, semakin banyak jalur yang bisa AI pilih ketika satu jalur gagal atau tidak informatif.
+
+Plan ini dibangun di atas fondasi yang sudah ada:
 
 ```text
-email_intelligence
--> domain_checker
--> website_crawler_router
--> serp_query_builder
--> ddg_search/free_scraper
--> scoring_engine
--> report_formatter
--> evidence_store
+[Deterministik — sudah ada]
+email_intelligence → domain_checker → website_crawler → query_builder
+→ ddg_search/free_scraper → scoring_engine → report_formatter → evidence_store
+
+[AI Reasoning Loop — Phase A, akan memanggil tools di atas + tools baru di bawah]
 ```
 
 ## 1. Goal
 
-MVP saat ini menjawab:
+MVP saat ini menjawab (deterministik):
 
 ```text
 Apakah email/register input ini kemungkinan terkait perusahaan?
 ```
 
-Next level menjawab:
+AI reasoning loop (Phase A+) menjawab:
 
 ```text
 Kalau ini perusahaan, perusahaan apa, bergerak di bidang apa, punya footprint apa, dan akun sosial apa saja?
 
-Kalau ini personal/free email, apakah orang tersebut punya hubungan dengan bisnis, perusahaan, agency, freelancer operation, atau founder/owner signal?
+Kalau ini personal/free email, apakah orang tersebut punya hubungan dengan bisnis?
+Apakah local-part email adalah brand hint? Apakah ada toko/profil publik yang bisa ditemukan?
 ```
+
+Perbedaan kuncinya: AI tidak berhenti di satu jalur. Kalau DDG gagal, AI coba Brave. Kalau Instagram diblokir, AI cari dari arah lain. Kalau nemu nama toko dari local-part, AI pivot ke pencarian marketplace.
 
 ## 2. Prinsip Utama
 

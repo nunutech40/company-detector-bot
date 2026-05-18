@@ -7,22 +7,22 @@ Dokumentasi project ini dibagi supaya gampang dibaca dan gampang diubah. Root `R
 Untuk paham project dari nol:
 
 1. [High Level Business Flow](product/HIGH_LEVEL_BUSINESS_FLOW.md)
-   Mulai dari sini. Ini menjawab: input masuk dari mana, diproses lewat logika apa, dan output akhirnya apa.
+   Mulai dari sini. Gambaran besar: input dari mana, dua layer arsitektur (deterministik + AI), output akhirnya apa.
 
 2. [Flow Map](technical/FLOW_MAP.md)
-   Baca setelah paham gambar besar. Ini menjelaskan alur runtime, branching, decision point, dan batas perubahan supaya tidak menyenggol semua hal.
+   Baca setelah paham gambar besar. Ini menjelaskan arsitektur dua layer secara detail: kapan deterministik, kapan AI, bagaimana fallback bekerja, dan roadmap Phase A–E.
 
 3. [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
-   Baca kalau mau tahu script/tool mana melakukan apa, algoritmanya gimana, dan impact kalau satu bagian diubah.
+   Baca kalau mau tahu tool/algoritma mana melakukan apa, dan mana yang bisa dipanggil AI vs yang selalu deterministik.
 
 4. [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
-   Baca kalau mau memahami rencana dan status transisi dari Node.js prototype ke Go production worker/service.
+   Baca kalau mau memahami status transisi dari Node.js prototype ke Go production — Go sudah deployed di VPS.
 
 4b. [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md)
-   Baca kalau mau tahu checklist mana yang sudah selesai, mana yang belum, dan command test Go terbaru.
+   Checklist granular status transisi Go.
 
 5. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
-   Baca kalau mau tahu project sudah sampai mana dibanding PRD/TRD/plan, dan gap yang masih ada.
+   Baca kalau mau tahu project sudah sampai mana, gap yang masih ada, dan next priority.
 
 6. [Backlog](../BACKLOG.md)
    Baca kalau mau menentukan kerja berikutnya.
@@ -44,10 +44,10 @@ Untuk paham project dari nol:
 ## Technical Docs
 
 - [TRD](technical/TRD.md)
-  Target architecture teknis: worker, queue, Postgres evidence store, API contract, deployment, security, observability.
+  Target architecture teknis: arsitektur dua layer (deterministik + AI reasoning loop), tool catalog, Postgres, deployment, security, observability, roadmap Phase A–E.
 
 - [Flow Map](technical/FLOW_MAP.md)
-  Peta alur runtime, decision points, data flow, dan future multi-agent map.
+  Arsitektur dua layer: deterministik sebagai fondasi + AI reasoning loop sebagai primary mode. Kapan pakai masing-masing, bagaimana fallback bekerja, roadmap Phase A–E.
 
 - [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
   Kamus tool/script, algoritma, scoring behavior, config, dan change impact map.
