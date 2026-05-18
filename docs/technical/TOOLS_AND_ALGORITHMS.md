@@ -86,13 +86,14 @@ Algorithm:
 
 1. Normalize current input package: `email`, `full_name`, `no_hp`, `brand_name`.
 2. Run `email_intelligence`.
-2. If email custom domain and not disposable:
+3. If email custom domain and not disposable:
    - run `domain_checker`
    - run `website_crawler_router`
-3. Run `serp_query_builder`.
-4. Pick primary query:
-   - custom domain: domain/company query
-   - free email: local-part public profile query
+4. Build simple fallback query (inline, no separate package):
+   - custom domain: `"<domain>" company`
+   - free email with full_name: `"<local>" OR "<fullname>"`
+   - free email without full_name: `"<local>"`
+   - Note: Query selection sekarang dilakukan oleh AI reasoning loop. Go hanya menyediakan simple fallback query.
 5. Run `ddg_search` if query exists.
 6. Choose active URL from domain checker or crawler.
 7. Run `free_scraper` if active URL exists.
@@ -100,7 +101,7 @@ Algorithm:
    - `skipped_not_needed_for_mvp` if lightweight evidence exists
    - `optional_fallback_disabled_for_mvp` otherwise
 9. Run `scoring_engine`.
-10. Run `report_formatter`.
+10. Run `report_formatter` (fallback mode only — AI handles narrative in Phase A).
 11. If `--save`, run `evidence_store`.
 12. If `--send-slack` is present and action routes company-associated, run Go Slack reporter.
 
@@ -272,40 +273,29 @@ Change impact:
 
 ## 5. Search And Scrape Fallback Tools
 
-### `serp_query_builder.js`
+### Fallback Query (inline, Go `internal/orchestrator`)
+
+> **Note:** Query selection sekarang dilakukan oleh AI reasoning loop (Phase A). Go hanya menyediakan simple fallback query yang digunakan ketika AI tidak tersedia.
 
 Role:
 
-- Build query variants from email/domain/local/full_name/brand_name.
-- Does not search by itself.
+- Build a single simple search query for fallback mode.
+- Inline logic in orchestrator — tidak ada package terpisah.
 
 Algorithm:
 
 ```text
-domain query:
-  "<domain>" company
-  site:<domain> about OR team OR contact
-  "<root>" startup OR company OR platform
-  "<domain>" LinkedIn
+if custom domain:
+  query = "<domain>" company
 
-full_name query if full_name exists:
-  "<full_name>" "<domain-or-brand>"
-  "<full_name>" founder OR owner OR company OR LinkedIn
+if free email + full_name:
+  query = "<local>" OR "<fullname>"
 
-brand_name query if brand_name exists:
-  "<brand_name>" company OR business OR official
-  "<full_name>" "<brand_name>"
-
-local-part query:
-  "<local>" GitHub OR Product Hunt OR LinkedIn
-
-`no_hp` is not used for public search by default.
+if free email, no full_name:
+  query = "<local>"
 ```
 
-Decision rule in `company_check`:
-
-- custom domain uses first company/domain query.
-- free email uses local-part public-profile query.
+`no_hp` is not used for public search.
 
 ### `ddg_search.js`
 
@@ -434,25 +424,29 @@ Change impact:
 Role:
 
 - Convert JSON result into Telegram-safe text.
+- **Fallback mode only** — digunakan ketika AI reasoning tidak aktif.
+- Di Phase A, AI reasoning loop yang menghasilkan narasi investigasi langsung.
 
-Sections (format aktual):
+Sections (format fallback):
 
+- Header: `[FALLBACK MODE — AI reasoning tidak aktif]`
 - Kesimpulan (headline + alasan + gaps)
 - Classification, Confidence, Automation
 - Input
-- Proses investigasi — setiap step berlabel `[ALGO]`, `[TOOL — ...]`, atau `[AI]` (AI belum aktif)
-  - Tindakan, Hasil, Hipotesis, Delta, Status per step
+- Fallback summary:
+  - Tools dijalankan (tools_used)
+  - Tools gagal (tool_errors) dengan error message
+  - Tools dilewati (tools_skipped) dengan alasan
+  - Evidence count
+  - Note: "[Fallback Mode] AI reasoning tidak aktif. Untuk investigasi lebih dalam, jalankan ulang saat AI tersedia."
+- Scoring summary (deterministik)
 - Rekomendasi automation
 
-Step labels:
-- `[ALGO]` — keputusan deterministik dari kode
-- `[TOOL — ...]` — keputusan dari network/external call
-- `[AI]` — keputusan AI orchestrator (direncanakan di Phase A, belum aktif)
+Note:
 
-Rule:
-
-- `tool_errors` dan `tools_skipped` muncul di Status baris tiap step yang relevan.
-- Setiap step menampilkan score delta dan running score sementara.
+- Narasi investigasi step-by-step (investigationSteps) sudah dihapus — AI yang handle di Phase A.
+- `looksLikeBrand()` dan `initialHypothesis()` sudah dihapus — AI yang detect ini.
+- Query selection sudah dihapus dari report — AI yang handle query selection.
 
 ### `evidence_store.js`
 
@@ -566,11 +560,11 @@ Each new tool must declare:
 
 If changing:
 
-- free email logic -> check `email_intelligence`, `serp_query_builder`, `scoring_engine`.
+- free email logic -> check `email_intelligence`, fallback query (orchestrator), `scoring_engine`.
 - domain/website logic -> check `domain_checker`, `website_crawler_router`, `free_scraper`, browser skip reason.
-- search behavior -> check `serp_query_builder`, `ddg_search`, evidence reliability.
+- search behavior -> check fallback query (orchestrator), `ddg_search`, evidence reliability.
 - scoring -> check `scoring_engine`, `scoring_rules.yaml`, report examples.
-- report wording -> check `report_formatter`, `AGENTS.md`, Telegram screenshots/results.
+- report wording -> check `report_formatter` (fallback mode), `AGENTS.md`, Telegram screenshots/results.
 - storage -> check `evidence_store` and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 - Slack -> check `slack_reporter`, alert decision rules, and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 - multi-agent -> check [Flow Map](FLOW_MAP.md), [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md), and [TRD](TRD.md).

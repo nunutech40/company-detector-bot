@@ -81,8 +81,11 @@ Input (email, full_name, no_hp, brand_name)
 │  │ [TOOL DNS+HTTP]  │  │ [TOOL HTTP+ALGO] │                │
 │  └──────────────────┘  └──────────────────┘                │
 │  ┌──────────────────┐  ┌──────────────────┐                │
-│  │ query_builder    │  │ search (DDG/Brave)│               │
-│  │ [ALGO]           │  │ [TOOL]           │                │
+│  │ fallback query   │  │ search (DDG/Brave)│               │
+│  │ [ALGO inline]    │  │ [TOOL]           │                │
+│  │ (AI handles      │  │                  │                │
+│  │  query selection │  │                  │                │
+│  │  in Phase A)     │  │                  │                │
 │  └──────────────────┘  └──────────────────┘                │
 │  ┌──────────────────┐  ┌──────────────────┐                │
 │  │ free_scraper     │  │ web_fetch        │                │
@@ -115,6 +118,10 @@ Input (email, full_name, no_hp, brand_name)
 
 Flow saat ini adalah **deterministik penuh** — tidak ada AI di dalam loop investigasi. OpenClaw hanya berperan sebagai gateway.
 
+> **Note:** Query builder (`serp_query_builder`) sudah dihapus sebagai package terpisah. Query selection sekarang dilakukan oleh AI reasoning loop (Phase A). Go hanya menyediakan simple fallback query yang di-inline di orchestrator.
+>
+> Report narasi investigasi step-by-step juga sudah dihapus dari Go. Go hanya menghasilkan fallback report (tools used/failed/skipped + scoring summary) ketika AI tidak tersedia. Di Phase A, AI yang menghasilkan narasi investigasi.
+
 ```text
 Telegram input
   │
@@ -127,11 +134,11 @@ Go company-check [DETERMINISTIK orchestrator]
   ├─ emailintel [ALGO]
   ├─ domaincheck [TOOL DNS+HTTP]  ← hanya jika custom domain
   ├─ crawler [TOOL HTTP+ALGO]     ← hanya jika custom domain
-  ├─ query builder [ALGO]
+  ├─ fallback query [ALGO inline] ← simple query, AI handle query selection di Phase A
   ├─ search/DDG [TOOL]
   ├─ scraper [TOOL HTTP+ALGO]     ← hanya jika ada URL aktif
   ├─ scoring [ALGO]
-  ├─ report [ALGO]
+  ├─ report [ALGO — fallback mode only, AI handle narasi di Phase A]
   ├─ evidence store [ALGO]        ← jika --save
   └─ slack [TOOL]                 ← jika --send-slack
 ```
@@ -193,9 +200,10 @@ OpenClaw Gateway
 ```
 
 **Yang berubah di Phase A:**
-- AI memilih query, bukan template query builder
+- AI memilih query, bukan fallback query builder
 - AI bisa iterasi dari temuan (round 2, round 3)
 - AI bisa detect brand hint dari local-part email
+- AI menghasilkan narasi investigasi langsung (bukan Go report formatter)
 - Scoring dan classification tetap deterministik
 
 **Yang tidak berubah:**
@@ -203,6 +211,7 @@ OpenClaw Gateway
 - Scoring formula tetap deterministik
 - Evidence harus dari tool output, bukan AI reasoning langsung
 - Storage dan delivery tetap deterministik
+- Go report formatter tetap ada sebagai fallback ketika AI tidak tersedia
 
 **Prerequisite Phase A:**
 - Brave Search API aktif (DDG terlalu fragile untuk AI loop)

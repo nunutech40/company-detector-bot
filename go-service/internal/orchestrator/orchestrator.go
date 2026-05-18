@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"company-detector/go-service/internal/domaincheck"
 	"company-detector/go-service/internal/emailintel"
 	"company-detector/go-service/internal/model"
-	"company-detector/go-service/internal/query"
 	"company-detector/go-service/internal/report"
 	"company-detector/go-service/internal/scoring"
 	"company-detector/go-service/internal/scraper"
@@ -64,14 +64,20 @@ func Run(ctx context.Context, input model.RegisterInput, options Options) model.
 		return result
 	}
 
-	result.SerpQueries = queryPtr(query.Build(query.Input{
-		Email:                input.Email,
-		Domain:               email.Domain,
-		Local:                email.Local,
-		FullName:             input.FullName,
-		BrandName:            input.BrandName,
-		IncludeDomainQueries: !email.IsFreeEmail,
-	}))
+	// Simple inline query: AI reasoning loop handles query selection in Phase A.
+	// Go only provides a simple fallback query.
+	primaryQuery := buildFallbackQuery(email, input)
+	if primaryQuery != "" {
+		result.SerpQueries = &model.QueryPlan{
+			OK:                   true,
+			Email:                input.Email,
+			Domain:               email.Domain,
+			IncludeDomainQueries: !email.IsFreeEmail,
+			FullName:             input.FullName,
+			BrandName:            input.BrandName,
+			Queries:              []string{primaryQuery},
+		}
+	}
 
 	var domain *model.DomainCheck
 	var crawl *model.WebsiteCrawler
@@ -107,7 +113,6 @@ func Run(ctx context.Context, input model.RegisterInput, options Options) model.
 		}
 	}
 
-	primaryQuery := choosePrimaryQuery(*result.SerpQueries, email)
 	if primaryQuery == "" {
 		result.ToolsSkipped = append(result.ToolsSkipped, model.ToolSkipped{Tool: "ddg_search", Reason: "no_search_query_available"})
 	} else if options.SkipNetwork {
@@ -156,6 +161,20 @@ func Run(ctx context.Context, input model.RegisterInput, options Options) model.
 	result.Recommendation = recommendation(result)
 	result.TelegramReport = report.Render(result)
 	return result
+}
+
+// buildFallbackQuery builds a simple search query for fallback mode.
+// AI reasoning loop handles query selection in Phase A.
+// - custom domain: `"<domain>" company`
+// - free email: `"<local>" OR "<fullname>"` (fullname used if available)
+func buildFallbackQuery(email model.EmailIntelligence, input model.RegisterInput) string {
+	if !email.IsFreeEmail {
+		return fmt.Sprintf(`"%s" company`, email.Domain)
+	}
+	if input.FullName != "" {
+		return fmt.Sprintf(`"%s" OR "%s"`, email.Local, input.FullName)
+	}
+	return fmt.Sprintf(`"%s"`, email.Local)
 }
 
 func inputEvidence(input model.RegisterInput) []model.EvidenceItem {
@@ -215,21 +234,6 @@ func runScrape(ctx context.Context, targetURL string, options Options) model.Scr
 		return options.Scrape(ctx, targetURL)
 	}
 	return scraper.Scrape(ctx, targetURL, scraper.Options{})
-}
-
-func choosePrimaryQuery(plan model.QueryPlan, email model.EmailIntelligence) string {
-	if len(plan.Queries) == 0 {
-		return ""
-	}
-	if !email.IsFreeEmail {
-		return plan.Queries[0]
-	}
-	for _, q := range plan.Queries {
-		if strings.Contains(q, "company") || strings.Contains(q, "LinkedIn") {
-			return q
-		}
-	}
-	return plan.Queries[0]
 }
 
 func pickScrapeURL(domain *model.DomainCheck, crawl *model.WebsiteCrawler) string {
@@ -315,10 +319,6 @@ func recommendation(result model.CompanyCheckResult) string {
 	default:
 		return "Simpan sebagai unknown, lalu retry enrichment saat tool pencarian/DB production aktif."
 	}
-}
-
-func queryPtr(plan model.QueryPlan) *model.QueryPlan {
-	return &plan
 }
 
 func min(a, b int) int {
