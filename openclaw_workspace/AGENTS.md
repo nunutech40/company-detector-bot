@@ -72,6 +72,36 @@ The final report must answer both questions with evidence.
 
 ---
 
+## How To Work: Reasoning Loop
+
+```
+1. OBSERVE   — baca input, pahami apa yang ada
+2. ORIENT    — bentuk hipotesis awal dari tipe email, nama, brand
+3. DECIDE    — pilih tool yang paling informatif (cek information gain dulu)
+4. ACT       — jalankan tool
+5. OBSERVE   — baca hasilnya
+6. ORIENT    — update hipotesis berdasarkan evidence baru
+7. DECIDE    — apakah temuan ini membuka jalur baru yang spesifik?
+               YA → lanjut ke jalur baru itu
+               TIDAK → stop jalur ini, coba jalur lain atau simpulkan
+8. Ulangi sampai: confidence >= 75 ATAU budget habis ATAU tidak ada jalur baru
+9. SCORE     — jalankan Go scoring engine untuk finalisasi
+10. REPORT   — buat report lengkap
+```
+
+**Information gain check (wajib sebelum setiap tool call):**
+Tanya diri sendiri: *"Apakah tool ini akan memberi informasi yang belum saya punya?"*
+- YA → jalankan
+- TIDAK → skip, catat alasannya, lanjut
+
+**Token efficiency:**
+- Setiap tool call = token. Efisien.
+- Kalau sudah cukup evidence → stop lebih awal
+- Kalau search tidak nemu → coba SATU angle berbeda, lalu stop jalur itu
+- Kalau tool gagal → coba SATU alternatif, lalu move on
+
+---
+
 ## Input Contract
 
 ```json
@@ -329,10 +359,69 @@ Examples:
 ## Stop Conditions
 
 Stop investigating when ANY of these is true:
-- Phase 1 confidence >= 75 AND 2+ independent evidence sources
-- Phase 2 business relationship confirmed OR clearly not found after 3 attempts
-- Tool budget exhausted (max 10 tool calls per investigation)
-- All reasonable paths tried and returned nothing useful
+
+**Hard stops (stop immediately):**
+- Confidence >= 75 AND 2+ independent evidence sources confirm the same claim
+- Classification is `suspicious_or_invalid` (don't waste budget on spam)
+- Context is clearly personal with zero business signals after 3 different search angles
+
+**Soft stops (stop current phase, move to next or conclude):**
+- Tool budget exhausted: max 10 tool calls per full investigation
+- 3 consecutive tool calls returned nothing new
+- All reasonable paths for current hypothesis have been tried
+
+**Information gain check (before every tool call):**
+Ask yourself: *"Will this tool call give me information I don't already have?"*
+- If YES → run it
+- If NO → skip it, note why, move on
+
+Examples of low information gain (skip these):
+```
+❌ Search "Tatak Subekti" again after already searching "Tatak Subekti LinkedIn"
+❌ Fetch a URL that returned 404 or empty content before
+❌ Search the same brand name with slightly different keywords after 2 failed attempts
+❌ Run domain_checker on a domain you already checked
+```
+
+Examples of high information gain (run these):
+```
+✅ Found Instagram URL → fetch it (new data source)
+✅ Found company name → search for their domain (new angle)
+✅ Found phone number → check WA Business (confirmation)
+✅ Found domain → check /about page (role evidence)
+```
+
+---
+
+## Evidence Chain: How Findings Unlock Next Steps
+
+Each finding should unlock a more specific next step. This is not circular — it's convergent:
+
+```
+Round 1 — from input:
+  email: nawaystore@yahoo.com
+  → local part "nawaystore" → brand hint
+  → search: "nawaystore tokopedia OR shopee OR instagram"
+  → FOUND: instagram.com/nawaystore
+
+Round 2 — from Round 1 finding:
+  instagram.com/nawaystore
+  → fetch Instagram page
+  → FOUND: bio says "Naway Store | WA: 08123456789 | nawaystore.id"
+  → phone match with no_hp → +25 confidence
+  → new lead: nawaystore.id domain
+
+Round 3 — from Round 2 finding:
+  nawaystore.id
+  → domain_checker: website active, MX present
+  → fetch /about: "Tatak Subekti — Founder"
+  → FOUND: explicit role evidence
+  → confidence >= 75 → STOP
+
+Total: 3 rounds, ~6 tool calls, clear conclusion
+```
+
+**Key principle:** Each round uses findings from the previous round as input. If a round produces no new leads → stop.
 
 ---
 
