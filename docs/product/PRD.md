@@ -1,8 +1,37 @@
 **PRODUCT REQUIREMENTS DOCUMENT**
 
-**AI Company Detection Agent**
+**AI Company Detection Agent — Agentic Company Detector**
 
-Deteksi akun yang punya, mewakili, atau terafiliasi dengan perusahaan dari data register menggunakan OpenClaw sebagai AI Orchestrator
+Deteksi akun yang punya, mewakili, atau terafiliasi dengan perusahaan dari data register menggunakan OpenClaw sebagai AI Orchestrator dengan reasoning loop berbasis tool catalog
+
+| **Field**        | **Value**                                                              |
+|------------------|------------------------------------------------------------------------|
+| Versi            | v6 - Agentic Company Detector                                          |
+| Bahasa           | Indonesia                                                              |
+| Owner            | Nunu Nugraha / Product & Engineering                                   |
+| Tanggal          | 18 Mei 2026                                                            |
+| Status           | Active — Phase A (AI Reasoning Loop) in progress                       |
+| Delivery Channel | Telegram (dev/testing) + Slack (all results; production routing nanti) |
+
+Prinsip utama: sistem ini adalah **Agentic Company Detector** — sama seperti agentic coding, tapi untuk investigasi bisnis. AI sebagai orchestrator yang reasoning loop, didukung oleh tool catalog yang kaya dan algoritma deterministik sebagai fondasi. AI tidak bekerja "sekarepe". AI diberi goal, tool catalog, scoring rubric, retry budget, dan stop condition. **Deterministik pipeline tetap ada sebagai fallback mode** ketika AI tidak tersedia atau kehabisan budget — dalam kondisi itu sistem tetap jalan dengan hasil yang lebih terbatas.
+
+## Arsitektur Dua Layer
+
+```
+Layer 1 — Deterministik:
+  Algoritma Go (emailintel, domain_checker, crawler, scoring, report)
+  Cepat, predictable, auditable, tidak butuh token LLM
+  Dipakai untuk: validasi, routing, scoring, storage, delivery
+  Juga berfungsi sebagai: fallback mode ketika AI tidak tersedia
+
+Layer 2 — AI Reasoning Loop:
+  OpenClaw Agent dengan reasoning loop (ReAct/OODA pattern)
+  Fleksibel, bisa pivot strategi, iterasi dari temuan
+  Dipakai untuk: query selection, evidence interpretation, iterative discovery
+  Prinsip: AI collect evidence, scoring dan classification tetap deterministik
+```
+
+Analogi: persis seperti agentic coding — AI punya goal, punya tool catalog, dan dia reasoning loop sampai goal tercapai atau budget habis. Kalau satu tool gagal, AI cari alternatif dari catalog. Kalau AI tidak tersedia, deterministik pipeline jalan sebagai fallback.
 
 | **Field**        | **Value**                                    |
 |------------------|----------------------------------------------|
@@ -17,15 +46,33 @@ Prinsip utama: AI tidak bekerja “sekarepe”. AI diberi tujuan, rules, batasan
 
 # 1. Executive Summary
 
-Goal utama produk ini adalah **mendeteksi apakah akun yang mendaftar di platform merupakan individu biasa, pekerja yang terafiliasi dengan perusahaan, pemilik/founder bisnis, agency/freelancer bisnis, akun tidak jelas, atau spam/suspicious.** Input awal berasal dari data register, lalu AI/OpenClaw menjalankan investigasi berbasis tools secara fleksibel, bukan flow linear yang kaku.
+Goal utama produk ini adalah **mendeteksi apakah akun yang mendaftar di platform merupakan individu biasa, pekerja yang terafiliasi dengan perusahaan, pemilik/founder bisnis, agency/freelancer bisnis, akun tidak jelas, atau spam/suspicious.**
 
-Sistem akan menghasilkan dua output:
+Sistem bekerja seperti **agentic coding** — AI punya goal, punya tool catalog, dan dia reasoning loop sampai goal tercapai atau budget habis:
 
-- Slack report naratif: laporan seperti asisten kepada bos/team, berisi apa yang dicek, hasil, bukti, confidence, tools yang dipakai, tools yang dilewati, dan rekomendasi.
+```
+Input (email, full_name, brand_name, no_hp)
+  → [Deterministik] normalisasi + email intelligence + hipotesis awal
+  → [AI Reasoning Loop]
+      Observe: baca hipotesis + evidence saat ini
+      Orient:  analisis sinyal — brand hint? nama orang? custom domain?
+      Decide:  tool mana yang paling informatif?
+      Act:     panggil tool
+      → baca hasil → update hipotesis → decide: stop atau lanjut?
+      → kalau tool gagal → cari alternatif dari catalog
+      → loop sampai confidence cukup atau budget habis
+  → [Deterministik] scoring engine → classification → report → storage
+```
+
+Deterministik pipeline tetap ada sebagai **fallback mode** — ketika AI tidak tersedia atau kehabisan budget, sistem tetap jalan dengan hasil yang lebih terbatas tapi tetap auditable.
+
+Sistem menghasilkan dua output:
+
+- Report naratif (Telegram/Slack): laporan seperti asisten kepada bos/team, berisi reasoning AI, tools yang dipakai, tools yang gagal dan alternatifnya, evidence, confidence, dan rekomendasi.
 
 - Internal JSON result: data terstruktur untuk database, audit, dashboard, retry, segmentasi, dan automation lanjutan.
 
-Dokumen ini sengaja memasukkan tools yang mungkin belum langsung dapat diakses karena butuh API key, dana, atau approval. Saat eksekusi, tools tersebut boleh di-skip dengan alasan yang dicatat di report.
+Dokumen ini sengaja memasukkan tools yang mungkin belum langsung dapat diakses karena butuh API key, dana, atau approval. Saat eksekusi, tools tersebut boleh di-skip dengan alasan yang dicatat di report — dan AI harus mencari alternatif dari catalog sebelum menyerah.
 
 # 2. Problem Statement
 

@@ -1,8 +1,10 @@
-# Company Detector Bot
+# Company Detector Bot — Agentic Company Detector
 
-AI Company Detection Agent berbasis OpenClaw untuk mengecek apakah email/register input kemungkinan terkait perusahaan, personal, suspicious, atau butuh evidence tambahan.
+AI Company Detection Agent berbasis OpenClaw untuk mendeteksi apakah akun yang register di platform merupakan individu biasa, karyawan perusahaan, pemilik bisnis, founder, agency, atau suspicious/spam.
 
-MVP saat ini berjalan lewat Telegram: user mengirim `/check email@domain.com`, agent menjalankan investigation flow, lalu mengembalikan classification, confidence, evidence summary, tool status, dan automation recommendation.
+Sistem ini bekerja seperti **agentic coding** — AI punya goal, punya tool catalog, dan dia reasoning loop sampai goal tercapai atau budget habis. Kalau satu tool gagal, AI cari alternatif. Kalau AI tidak tersedia, deterministik pipeline jalan sebagai fallback.
+
+MVP saat ini berjalan lewat Telegram: user mengirim `/check email@domain.com`, agent menjalankan investigation flow, lalu mengembalikan report dengan narasi tiga layer: `[Deterministik]`, `[Tools]`, dan `[AI Reasoning]` (AI Reasoning belum aktif di fase ini — direncanakan di Phase A).
 
 ## Current Status
 
@@ -20,12 +22,11 @@ Yang sudah aktif:
 
 Yang belum production:
 
-- Telegram end-to-end test via bot (gateway aktif, perlu manual send untuk konfirmasi).
-- Next-level company/social enrichment.
-- Personal-to-business relationship discovery.
+- **Phase A (next)**: AI Reasoning Loop — rewrite AGENTS.md jadi reasoning loop, Brave Search API, expose Go tools sebagai callable functions.
+- **Tool Catalog Expansion**: brand_hint_detector, social_link_extractor, role_signal_extractor, marketplace_search, LinkedIn/Instagram SERP.
+- Next-level company/social enrichment dan personal-to-business relationship discovery.
 - Postgres, queue, dashboard, dan platform register API.
-- Slack alert routing production.
-- Multi-agent parallel investigation.
+- Multi-agent parallel investigation (setelah Phase A terbukti).
 
 ## Read The Docs
 

@@ -59,16 +59,38 @@ Referensi detail DB/Slack/dashboard: [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](docs
 - [ ] **Scraping Engine Mendalam**: Lightweight crawler dan `free_scraper` sudah aktif; perlu engine lebih kuat untuk JS-heavy/deep crawl jika dibutuhkan.
 - [ ] **Social & Public Profile Checker**: Buat skrip pencarian LinkedIn via SERP snippet, GitHub, X (Twitter), atau Product Hunt.
 
-## 6. Phase A: Single Agent + Reasoning Loop
-*Prerequisite: Brave Search API aktif.*
+## 6. Tool Catalog Expansion (untuk AI Reasoning Loop)
+*Semakin banyak tools, semakin banyak jalur yang bisa AI pilih ketika satu jalur gagal.*
+
+### Algoritma Deterministik (Go packages — gratis, selalu tersedia)
+- [ ] **brand_hint_detector**: Deteksi apakah local part email adalah brand/toko (nawaystore, tokoshop, dll) bukan nama orang. Sudah ada `looksLikeBrand()` di report.go, perlu dipindah ke package tersendiri dan diperluas.
+- [ ] **social_link_extractor**: Extract social media links dari HTML halaman website (Instagram, LinkedIn, TikTok, Facebook, YouTube).
+- [ ] **role_signal_extractor**: Deteksi kata kunci CEO/founder/owner/direktur dari teks snippet.
+- [ ] **company_name_normalizer**: Normalize nama perusahaan dari berbagai format (PT X, CV X, X Inc, dll).
+- [ ] **marketplace_url_detector**: Deteksi URL Tokopedia/Shopee/Bukalapak dari teks atau search results.
+
+### Tools Network (perlu konfigurasi/budget)
+- [ ] **Brave Search API** (free 2000 req/bulan): Ganti DDG HTML, reliable, tidak diblokir ISP.
+- [ ] **OpenClaw web_search provider config**: Konfigurasi Brave sebagai provider di OpenClaw.
+- [ ] **OpenClaw web_fetch**: Sudah ada di OpenClaw, pastikan dikonfigurasi dan bisa dipanggil AI.
+- [ ] **Marketplace search adapter**: Search Tokopedia/Shopee via public search (gratis).
+- [ ] **Instagram SERP search**: Search `site:instagram.com "keyword"` via Brave/DDG (gratis).
+- [ ] **LinkedIn SERP search**: Search `site:linkedin.com/in/ "nama"` via Brave/DDG (gratis).
+- [ ] **GitHub public checker**: Search GitHub profile via API public (gratis, rate limited).
+- [ ] **Firecrawl** (paid): Scrape JS-heavy pages, structured extraction.
+- [ ] **Tavily** (paid): AI-friendly search dengan domain filter.
+
+## 7. Phase A: Single Agent + Reasoning Loop
+*Prerequisite: Brave Search API aktif + minimal 3 tools dari Tool Catalog Expansion.*
 
 - [ ] **Rewrite AGENTS.md** dari "panggil script langsung" menjadi "investigasi dengan reasoning loop" — AI bisa reasoning dari hasil tiap step, pivot query, dan jalankan round berikutnya.
 - [ ] **Expose Go tools sebagai callable functions** terpisah supaya AI bisa panggil `emailintel`, `domaincheck`, `scraper` satu per satu sesuai kebutuhan, bukan satu script monolitik.
-- [ ] **Iterative evidence loop** — AI bisa jalankan round 2, round 3 dari temuan sebelumnya (contoh: nemu instagram dari local-part → fetch instagram → extract company name → cek domain).
-- [ ] **Local-part brand signal detection** — AI harus bisa detect bahwa `nawaystore` adalah brand hint, bukan hanya nama orang, dan pivot strategi pencarian.
+- [ ] **Iterative evidence loop** — AI bisa jalankan round 2, round 3 dari temuan sebelumnya.
+- [ ] **Fallback ke deterministik** — kalau AI tidak tersedia atau budget habis, report menunjukkan "AI Reasoning: tidak aktif, fallback ke deterministik pipeline".
+- [ ] **AI reasoning log** — setiap round AI harus menulis: hipotesis saat ini, tool yang dipilih, kenapa, hasilnya apa, hipotesis berubah ke mana.
 - [ ] **Test benchmark** dengan kasus `nawaystore@yahoo.com` sebagai ukuran improvement vs deterministik.
 
-## 7. Arsitektur Multi-Agent & Ops
+## 8. Arsitektur Multi-Agent & Ops
 *Masuk setelah Phase A terbukti menghasilkan evidence lebih kaya dan volume naik.*
 
 - [ ] **Aktifkan Sub-agents**: Gunakan `sessions_spawn` di OpenClaw untuk investigasi paralel (satu sub-agent cek SERP, sub-agent lain cek website).

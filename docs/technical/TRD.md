@@ -5,7 +5,32 @@
 Versi: 1.0 | Status: Draft Teknis | Bahasa: Indonesia  
 Disusun untuk kebutuhan implementasi perusahaan berdasarkan PRD Deteksi Perusahaan v6
 
-*Tujuan teknis: membangun sistem yang dapat menginvestigasi data register, mengidentifikasi apakah akun punya/mewakili/terafiliasi perusahaan, menyimpan bukti, menghitung confidence, dan mengirim laporan naratif ke Slack.*
+*Tujuan teknis: membangun Agentic Company Detector — sistem yang menggunakan AI reasoning loop untuk menginvestigasi data register, dengan tool catalog yang kaya (deterministik + network tools) sebagai action surface, scoring deterministik sebagai ground truth, dan deterministik pipeline sebagai fallback mode ketika AI tidak tersedia.*
+
+# Arsitektur Dua Layer
+
+Sistem ini dibangun di atas dua layer yang bekerja bersama:
+
+```
+Layer 1 — Deterministik (Go packages):
+  emailintel, domain_checker, crawler, query_builder,
+  search adapters, scraper, scoring_engine, report, evidence_store
+  → Cepat, predictable, auditable
+  → Juga berfungsi sebagai fallback mode ketika AI tidak tersedia
+
+Layer 2 — AI Reasoning Loop (OpenClaw Agent):
+  Observe → Orient → Decide → Act → loop
+  → AI pilih tool dari catalog berdasarkan hipotesis
+  → Kalau tool gagal → cari alternatif
+  → Loop sampai confidence cukup atau budget habis
+  → Scoring dan classification tetap deterministik
+```
+
+Aturan penting:
+- AI collect evidence, scoring dan classification **selalu** deterministik
+- AI tidak boleh mengarang evidence — semua klaim harus dari tool output
+- Kalau AI tidak tersedia → deterministik pipeline jalan sebagai fallback
+- Report harus menunjukkan reasoning AI: kenapa pilih tool ini, hasilnya apa, hipotesis berubah ke mana
 
 # Daftar Isi
 
@@ -45,16 +70,17 @@ Dokumen ini menerjemahkan PRD Deteksi Perusahaan menjadi kebutuhan teknis implem
 
 OpenClaw digunakan sebagai orchestration layer karena tools di OpenClaw memang berfungsi sebagai typed functions yang dapat dipanggil agent, misalnya exec, browser, web_search, web_fetch, x_search, message, code_execution, dan subagents. Skill boleh dipakai sebagai instruksi, tetapi TRD ini fokus pada tools, runtime, data model, deployment, dan integration contract.
 
-| **Area**        | **Keputusan Teknis**                                                                         |
-|-----------------|----------------------------------------------------------------------------------------------|
-| Primary runtime | OpenClaw Gateway + custom investigation worker                                               |
-| Execution model | Bounded agentic investigation loop, bukan pipeline kaku                                      |
-| Deployment awal | Docker Compose di VPS atau cloud VM                                                          |
-| Queue           | Redis + BullMQ/Celery, atau Temporal untuk versi lebih serius                                |
-| Database        | Postgres sebagai evidence store dan result store                                             |
-| Search/scrape   | OpenClaw web_search, x_search, web_fetch, browser, Firecrawl, Tavily/Brave/Exa jika tersedia |
-| Slack report    | OpenClaw message tool atau Slack Web API melalui custom tool                                 |
-| Fallback budget | Tool yang belum ada API key/budget ditandai disabled/skipped, bukan menghambat sistem        |
+| **Area**        | **Keputusan Teknis**                                                                                    |
+|-----------------|----------------------------------------------------------------------------------------------------------|
+| Primary runtime | OpenClaw Agent (AI reasoning loop) + Go tool catalog (deterministik)                                    |
+| Execution model | Agentic reasoning loop — AI pilih tools, iterate dari temuan, fallback ke deterministik jika AI down     |
+| Fallback mode   | Deterministik pipeline Go — jalan otomatis ketika AI tidak tersedia atau budget habis                    |
+| Deployment awal | Docker Compose di VPS atau cloud VM                                                                      |
+| Queue           | Redis + BullMQ/Celery, atau Temporal untuk versi lebih serius                                            |
+| Database        | Postgres sebagai evidence store dan result store                                                         |
+| Search/scrape   | Brave Search API (free tier, primary), DDG HTML (fallback), OpenClaw web_search/web_fetch, Firecrawl/Tavily jika tersedia |
+| Slack report    | OpenClaw message tool atau Slack Web API melalui custom tool                                             |
+| Fallback budget | Tool yang belum ada API key/budget ditandai disabled/skipped — AI harus cari alternatif sebelum menyerah |
 
 # 2. Scope dan Non-Scope
 
@@ -352,14 +378,22 @@ pgdata:
 
 # 13. Roadmap Implementasi
 
-| **Fase**                  | **Deliverables**                                                                   | **Tools Aktif**                                             |
-|---------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| Phase 0 - Design          | Finalisasi PRD/TRD, schema DB, tool catalog, Slack report format.                  | Tidak perlu                                                 |
-| Phase 1 - MVP             | Queue, Postgres, email_intelligence, web_search, web_fetch, scoring, Slack report. | web_search, web_fetch, code_execution/message, custom tools |
-| Phase 2 - Scraping+       | Firecrawl/Tavily, browser fallback, GitHub/X/Product Hunt checks.                  | Firecrawl, Tavily, x_search, browser                        |
-| Phase 3 - Multi-agent     | Subagents untuk parallel investigation dan advanced scoring.                       | sessions_spawn/subagents                                    |
-| Phase 4 - Paid enrichment | People/company enrichment vendor, cost-based routing.                              | PDL/Apollo/Clearbit-like custom tools                       |
-| Phase 5 - Ops Dashboard   | Review dashboard, evidence viewer, feedback loop, metrics.                         | Internal admin app                                          |
+| **Fase**                        | **Deliverables**                                                                                          | **Tools Aktif**                                                    |
+|---------------------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Phase 0 - Design ✅              | Finalisasi PRD/TRD, schema DB, tool catalog, report format.                                               | Tidak perlu                                                        |
+| Phase 1 - MVP Deterministik ✅   | Go CLI, emailintel, domain_checker, crawler, DDG search, scoring, report, file evidence, Slack/Telegram.  | Go tools, DDG fallback, Slack                                      |
+| Phase A - AI Reasoning Loop     | Rewrite AGENTS.md jadi reasoning loop. AI pilih tools, iterate, fallback ke deterministik jika AI down.   | Brave Search API, OpenClaw web_search/web_fetch, Go tools as callable functions |
+| Phase B - Tool Catalog Expansion| Tambah tools gratis: brand_hint_detector, social_link_extractor, marketplace_search, role_signal_extractor | Brave, DDG, web_fetch, custom Go tools                             |
+| Phase C - Postgres + Queue      | Postgres evidence store, Redis queue, job lifecycle, DB writer.                                           | Semua tools Phase A+B                                              |
+| Phase D - Paid Tools            | Firecrawl, Tavily, enrichment API — dipakai AI ketika free tools tidak cukup.                             | Firecrawl, Tavily, PDL/Apollo                                      |
+| Phase E - Multi-Agent           | Sub-agents paralel untuk investigasi kompleks. Masuk setelah volume naik.                                 | sessions_spawn/subagents                                           |
+| Phase F - Ops Dashboard         | Review dashboard, evidence viewer, feedback loop, metrics.                                                | Internal admin app                                                 |
+
+**Catatan penting Phase A:**
+- Deterministik pipeline tetap ada sebagai fallback — tidak dihapus
+- AI reasoning loop menggantikan deterministik sebagai primary mode
+- Report harus menunjukkan: reasoning AI, tools yang dipilih, kenapa, hasilnya apa, hipotesis berubah ke mana
+- Kalau AI tidak tersedia → report menunjukkan "AI Reasoning: tidak aktif, fallback ke deterministik pipeline"
 
 # 14. Risiko Teknis dan Mitigasi
 
