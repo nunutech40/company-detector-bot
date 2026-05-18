@@ -650,6 +650,115 @@ Setiap tool baru harus declare:
 
 ---
 
+## 11. OpenClaw Built-in Tools — Terpasang, Implementasi Besok
+
+Tools ini sudah dikonfigurasi di `openclaw.json` dan siap dipakai. Implementasi detail besok.
+
+### `llm-task` — JSON-only Structured Extraction
+
+**Status:** ✅ Plugin enabled di `openclaw.json`
+
+**Fungsi:** Jalankan LLM task terpisah yang return JSON terstruktur (schema-validated). Ideal untuk extract data dari teks mentah hasil `web_search` atau `web_fetch`.
+
+**Use case untuk app ini:**
+- Extract `{name, role, company, location, phone}` dari teks mentah search results
+- Validate dan normalize data sebelum disimpan ke evidence
+- Data langsung bisa disimpan ke DB karena sudah structured JSON
+
+**Rencana implementasi:**
+```
+llm-task(
+  prompt: "Extract business entity from this text. Return only JSON.",
+  input: "<teks dari search/fetch>",
+  schema: {name, role, company, location, phone, confidence}
+)
+```
+
+**Keuntungan:** Output selalu valid JSON, bisa pakai model berbeda dari main model, tidak ada hallucination karena input adalah teks nyata dari tool.
+
+---
+
+### `hooks` — Event-driven Delivery
+
+**Status:** ✅ Hooks enabled di `openclaw.json`, workspace hooks directory dibuat
+
+**Fungsi:** Trigger script otomatis saat event tertentu terjadi di gateway.
+
+**Use case untuk app ini:**
+- `message:sent` → trigger `deliver_report_with_env.sh` setiap kali AI kirim reply ke Telegram
+- Memastikan Slack selalu dapat report yang sama dengan Telegram tanpa bergantung AI
+
+**Rencana implementasi:**
+- Buat `workspace/hooks/deliver-on-message-sent/handler.ts`
+- Filter: hanya trigger kalau message mengandung "Company Detection Report"
+- Action: jalankan `deliver_report_with_env.sh` di background
+
+**File placeholder:** `openclaw_workspace/hooks/deliver-on-message-sent/HOOK.md`
+
+---
+
+### `Standing Orders` — Persistent Instructions
+
+**Status:** ✅ File `STANDING_ORDERS.md` dibuat di workspace
+
+**Fungsi:** Instruksi yang selalu di-inject ke setiap session. Lebih reliable dari instruksi di AGENTS.md karena tidak bisa di-override session context.
+
+**Use case untuk app ini:**
+- Pastikan AI selalu jalankan `finish_investigation.sh` di akhir investigasi
+- Pastikan AI selalu report token usage setelah selesai
+
+**Rencana implementasi:**
+- Tambahkan referensi ke `STANDING_ORDERS.md` dari `AGENTS.md`
+- Atau rename ke salah satu bootstrap filename yang auto-injected
+
+**File placeholder:** `openclaw_workspace/STANDING_ORDERS.md`
+
+---
+
+### `x_search` — Search X/Twitter
+
+**Status:** ⏳ Butuh `XAI_API_KEY` (berbayar) — belum dikonfigurasi
+
+**Fungsi:** Search X/Twitter posts menggunakan xAI Grok.
+
+**Use case untuk app ini:**
+- Cari profil `@naway.inc` di X
+- Lihat bio dan posts untuk role evidence
+
+**Catatan:** Butuh xAI API key. Kalau tidak mau bayar, bisa pakai `web_search("site:x.com @naway.inc")` sebagai alternatif gratis.
+
+---
+
+### `llm-task` untuk DB-ready Output
+
+**Status:** ⏳ Implementasi besok
+
+**Konsep:** Setelah AI selesai investigasi, jalankan `llm-task` untuk normalize semua temuan ke JSON schema yang konsisten. Output ini langsung bisa di-INSERT ke Postgres tanpa parsing tambahan.
+
+```json
+{
+  "email": "nawaystore@yahoo.com",
+  "classification": "business_owner_candidate",
+  "confidence": 80,
+  "business": {
+    "name": "Naway.inc",
+    "domain": "nawaystore.id",
+    "marketplace": ["tokopedia.com/nawaystore"],
+    "social_media": ["instagram.com/naway.inc", "tiktok.com/@naway.inc"]
+  },
+  "person": {
+    "name": "Tatak Subekti",
+    "role": "owner",
+    "phone_confirmed": true
+  },
+  "location": {
+    "city": "Jakarta Utara"
+  }
+}
+```
+
+---
+
 ## 10. Change Impact Map
 
 If changing:

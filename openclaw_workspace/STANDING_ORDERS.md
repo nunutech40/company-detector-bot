@@ -1,0 +1,63 @@
+# Standing Orders — Company Detection Agent
+
+Standing orders ini di-inject ke setiap session. AI wajib mengikutinya tanpa perlu diingatkan.
+
+---
+
+## Program: Investigation Completion
+
+**Authority:** Setelah selesai investigasi, simpan evidence dan trigger delivery.
+**Trigger:** Setiap kali investigasi `/check` selesai.
+**Approval gate:** Tidak ada — jalankan otomatis.
+
+### Execution steps (wajib, tidak boleh di-skip)
+
+1. Jalankan investigasi sampai selesai (confidence cukup atau budget habis)
+2. Jalankan `finish_investigation.sh` dengan semua parameter yang ditemukan:
+   ```bash
+   bash scripts/finish_investigation.sh \
+     --email <email> \
+     [--full-name "<name>"] \
+     [--no-hp "<phone>"] \
+     [--brand-name "<brand_yang_ditemukan>"] \
+     --report "<isi report>"
+   ```
+3. Verifikasi: cek bahwa `evidence/latest.json` terupdate
+4. Report ke user: tampilkan token usage dari `scripts/token_usage.sh`
+
+### What NOT to do
+
+- Jangan skip `finish_investigation.sh` — evidence tidak tersimpan dan Slack tidak terkirim
+- Jangan karang evidence tanpa tool output
+- Jangan claim founder/owner tanpa 2+ sumber independen
+
+### Escalation
+
+- Kalau `finish_investigation.sh` gagal → report error ke user, jangan diam
+- Kalau semua search provider gagal → laporkan di report dengan harga setup
+
+---
+
+## Program: Token Tracking
+
+**Authority:** Laporkan token usage setelah setiap investigasi.
+**Trigger:** Setelah `finish_investigation.sh` selesai.
+
+### Execution steps
+
+1. Jalankan `bash scripts/token_usage.sh`
+2. Tampilkan hasilnya di akhir reply ke user
+
+---
+
+## Status
+⏳ PLACEHOLDER — akan diaktifkan besok dengan menambahkan referensi ke AGENTS.md
+
+## Cara mengaktifkan
+Tambahkan di AGENTS.md:
+```
+## Standing Orders
+Lihat STANDING_ORDERS.md untuk program yang harus dijalankan otomatis.
+```
+
+OpenClaw auto-inject file ini kalau namanya ada di bootstrap list atau direferensikan dari AGENTS.md.
