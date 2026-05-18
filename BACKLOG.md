@@ -15,12 +15,12 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [x] Selaraskan input contract ke field realistis `email`, `full_name`, `no_hp`, `brand_name` dan hilangkan dependency trusted pada `username`.
 
 ## 1. Database & Asynchronous Queue
-- [ ] **Go Transition Spec Freeze**: finalkan input/output/evidence/scoring contract sebelum rewrite.
-- [ ] **Go Golden Fixtures**: buat fixture input/expected output untuk parity JS vs Go.
-- [ ] **Go Service Skeleton**: buat `go-service/` dengan CLI parity untuk `company-check`.
-- [ ] **Go Unit Tests**: port pure logic dengan unit test dan golden fixtures.
-- [ ] **Go Integration Tests**: test DNS/fetch/search/Slack dengan mock dan real opt-in tests.
-- [ ] **Go Side-by-Side Cutover**: deploy Go di VPS, bandingkan dengan JS, lalu switch OpenClaw jika parity aman.
+- [x] **Go Transition Spec Freeze**: finalkan input/output/evidence/scoring contract sebelum rewrite.
+- [x] **Go Golden Fixtures**: buat fixture input/expected output untuk parity JS vs Go. *(8 input fixtures + coverage via unit tests; static JSON intentionally not used — policy di `expected/README.md`)*
+- [x] **Go Service Skeleton**: buat `go-service/` dengan CLI parity untuk `company-check`.
+- [x] **Go Unit Tests**: port pure logic dengan unit test dan golden fixtures.
+- [x] **Go Integration Tests**: test DNS/fetch/search/Slack dengan mock dan real opt-in tests. *(VPS live tests passed, Slack delivery ok=true)*
+- [x] **Go Side-by-Side Cutover**: deploy Go di VPS, bandingkan dengan JS, lalu switch OpenClaw. *(Go binary di VPS, OpenClaw workspace cut over ke Go wrapper)*
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
 - [ ] **Buat Skema Tabel**: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`.
 - [ ] **Migrasi Evidence Store**: Ubah `evidence_store.js` yang tadinya menyimpan file JSON fisik menjadi operasi `INSERT` ke tabel Postgres.
@@ -54,11 +54,23 @@ Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](docs/product/NEXT_LEVEL_ENRICH
 Referensi detail DB/Slack/dashboard: [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](docs/product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 
 ## 5. Implementasi Tools & Scraping (Prioritas Berikutnya)
-- [ ] **Web Search Provider Resmi**: Free fallback `ddg_search` sudah aktif, tapi dedicated provider seperti Brave/Tavily/Exa belum dikonfigurasi.
+- [ ] **Brave Search API**: Setup Brave Search API sebagai pengganti DDG HTML fallback. Free tier 2000 req/bulan. Ini prerequisite untuk Phase A (AI Reasoning Loop) karena DDG sering diblokir ISP.
+- [ ] **Web Search Provider Resmi**: Setelah Brave aktif, expose sebagai provider di OpenClaw `web_search` config.
 - [ ] **Scraping Engine Mendalam**: Lightweight crawler dan `free_scraper` sudah aktif; perlu engine lebih kuat untuk JS-heavy/deep crawl jika dibutuhkan.
 - [ ] **Social & Public Profile Checker**: Buat skrip pencarian LinkedIn via SERP snippet, GitHub, X (Twitter), atau Product Hunt.
 
-## 6. Arsitektur Multi-Agent & Ops
+## 6. Phase A: Single Agent + Reasoning Loop
+*Prerequisite: Brave Search API aktif.*
+
+- [ ] **Rewrite AGENTS.md** dari "panggil script langsung" menjadi "investigasi dengan reasoning loop" — AI bisa reasoning dari hasil tiap step, pivot query, dan jalankan round berikutnya.
+- [ ] **Expose Go tools sebagai callable functions** terpisah supaya AI bisa panggil `emailintel`, `domaincheck`, `scraper` satu per satu sesuai kebutuhan, bukan satu script monolitik.
+- [ ] **Iterative evidence loop** — AI bisa jalankan round 2, round 3 dari temuan sebelumnya (contoh: nemu instagram dari local-part → fetch instagram → extract company name → cek domain).
+- [ ] **Local-part brand signal detection** — AI harus bisa detect bahwa `nawaystore` adalah brand hint, bukan hanya nama orang, dan pivot strategi pencarian.
+- [ ] **Test benchmark** dengan kasus `nawaystore@yahoo.com` sebagai ukuran improvement vs deterministik.
+
+## 7. Arsitektur Multi-Agent & Ops
+*Masuk setelah Phase A terbukti menghasilkan evidence lebih kaya dan volume naik.*
+
 - [ ] **Aktifkan Sub-agents**: Gunakan `sessions_spawn` di OpenClaw untuk investigasi paralel (satu sub-agent cek SERP, sub-agent lain cek website).
 - [ ] **Dashboard Internal**: Bangun UI sederhana untuk admin mereview hasil yang `inconclusive` atau `business_owner_candidate` dengan confidence menengah.
 - [ ] **Error & Cost Tracking**: Pantau rate limit API dan error jika memakai provider eksternal.

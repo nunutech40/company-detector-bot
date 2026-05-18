@@ -20,7 +20,7 @@ Yang sudah aktif:
 
 Yang belum production:
 
-- VPS deployment of the Go binary; local/OpenClaw workspace command has been cut over to Go wrapper.
+- Telegram end-to-end test via bot (gateway aktif, perlu manual send untuk konfirmasi).
 - Next-level company/social enrichment.
 - Personal-to-business relationship discovery.
 - Postgres, queue, dashboard, dan platform register API.
@@ -140,7 +140,7 @@ Fallback policy:
 - A tool enters `tools_used` only when it actually runs successfully.
 - Failed DDG/free scraper calls go to `tool_errors`, not evidence.
 - Skipped paid/unavailable tools go to `tools_skipped`.
-- Slack delivery is part of the Telegram `/check` command through `--send-slack`, but Go only posts when the result routes company-associated and Slack env is configured.
+- Slack delivery is part of the Telegram `/check` command through `--send-slack`. Go posts to Slack for **all results** regardless of classification. After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
 
 Current register input contract:
 

@@ -61,12 +61,19 @@ func TestReportUsesConclusionFirstAndHumanFlow(t *testing.T) {
 		t.Fatalf("report does not start with conclusion-first format:\n%s", text)
 	}
 	for _, want := range []string{
-		"Data yang berhasil dikumpulkan:",
-		"Alur pengecekan:",
-		"Email intelligence mengecek",
-		"Domain checker mengecek",
-		"Scoring engine menggabungkan",
-		"Domain email adalah custom domain, bukan provider email gratis",
+		"Proses investigasi:",
+		"[1] Email Intelligence",
+		"Hipotesis:",
+		"Delta    :",
+		"[2] Routing Decision",
+		"[3] Domain Checker",
+		"MENGUAT",
+		"[4] Website Crawler",
+		"SEMAKIN KUAT",
+		"[SCORING] Kesimpulan Akhir",
+		"Base score",
+		"Total delta",
+		"Classification : possible_company_affiliated",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("report missing %q:\n%s", want, text)

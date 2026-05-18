@@ -383,9 +383,9 @@ Approximate completion by layer:
 
 | Layer | Completion | Comment |
 |---|---:|---|
-| VPS/OpenClaw/Telegram MVP | 85% | Runtime works; operational hardening remains. |
-| Email/company detection logic | 75% | MVP good; needs tests and schema stabilization. |
-| Evidence/report audit | 55% | File-based done; Postgres missing. |
+| VPS/OpenClaw/Telegram MVP | 95% | Go binary deployed, live test passed, Slack ok. Satu-satunya yang pending: manual Telegram send untuk konfirmasi end-to-end bot reply. |
+| Email/company detection logic | 80% | MVP good; unit tests pass; VPS live test verified. |
+| Evidence/report audit | 60% | File-based done dan verified di VPS (15 audit lines). Postgres missing. |
 | Slack production workflow | 25% | Sender exists; alert rules and Block Kit missing. |
 | Next-level enrichment | 20% | Search/scrape primitives exist; enrichment layer missing. |
 | Dashboard | 0% | Designed only. |

@@ -18,7 +18,9 @@ Input
 -> Notify if important
 ```
 
-Versi MVP masih single orchestrator. Multi-agent nanti hanya memecah tahap evidence collection, bukan mengubah keputusan produk dasar.
+Versi MVP saat ini adalah **fully deterministic** — semua keputusan dibuat oleh kode Go, bukan AI. OpenClaw hanya berperan sebagai gateway (terima pesan Telegram → panggil script → return output). Tidak ada `[AI]` step di flow sekarang.
+
+Phase A (next step) akan menambahkan AI reasoning loop di dalam tahap evidence collection, sehingga AI bisa pivot query, iterasi dari temuan, dan memilih tool berikutnya berdasarkan hipotesis. Multi-agent (Phase C) baru masuk setelah volume atau kompleksitas evidence meningkat.
 
 ## 2. Current MVP Flow
 
@@ -173,7 +175,9 @@ otherwise -> unknown_needs_more_evidence
 Current MVP:
 
 ```text
-Telegram `/check` uses `--send-slack`. The Go CLI only posts when the result routes company-associated and Slack env is configured.
+Telegram `/check` uses `--send-slack`. Go posts to Slack for all results regardless of classification,
+as long as Slack env is configured. After a database is available, routing will be split:
+personal/unknown saved to DB only, company-associated to both Telegram and Slack.
 ```
 
 Future production:

@@ -68,7 +68,7 @@ func main() {
 		result.Storage = paths
 	}
 
-	if *sendSlack && result.AutomationAction == model.ActionRouteCompany {
+	if *sendSlack {
 		response := slack.Send(ctx, result.TelegramReport, slack.Options{})
 		result.Delivery = response
 		if !response.OK {

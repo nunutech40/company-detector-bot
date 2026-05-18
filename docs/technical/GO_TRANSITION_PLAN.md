@@ -22,10 +22,12 @@ cd go-service
 env GOCACHE=/private/tmp/company-detector-go-cache go test ./...
 ```
 
-- Manual real network smoke test for `contact@komerce.id` succeeded for DNS/domain/crawler/scraper.
-- DuckDuckGo HTML search is still fragile in some networks; the latest smoke test was blocked by local filtering/certificate interception. This should be treated as a provider risk and replaced by a proper provider adapter when budget/API is ready.
-- Local OpenClaw workspace docs/prompts have been cut over to Go via `openclaw_workspace/scripts/company_check_go.sh`.
-- VPS binary deployment and Telegram live restart/test are still pending.
+- VPS binary deployment done: Go binaries deployed at `/home/nunuopc/.openclaw/go-service/bin/`.
+- VPS live test `contact@komerce.id` passed: `possible_company_affiliated`, confidence 100/100, Slack delivery `ok=true`.
+- OpenClaw workspace command/prompt has been cut over to Go via `openclaw_workspace/scripts/company_check_go.sh`.
+- DuckDuckGo HTML search is still fragile in some networks (blocked by ISP certificate interception). This is the primary bottleneck for Phase A (AI Reasoning Loop) and should be replaced by Brave Search API.
+- Report format has been updated: now uses step-by-step investigation format with `[ALGO]`/`[TOOL]`/`[AI]` labels, hypothesis tracking, and score delta per step.
+- Slack now sends for all classification results (not only company-associated). After DB is available, routing will be split.
 
 Alasan utama pindah ke Go bukan performa mentah. Bottleneck sistem tetap network, AI request, search/scrape, dan rate limit. Alasan utama Go adalah maintainability production: typed contract, unit test standar, single binary deploy, worker/service yang lebih rapi, dan kemungkinan lebih mudah diteruskan oleh tim yang familiar dengan Go.
 

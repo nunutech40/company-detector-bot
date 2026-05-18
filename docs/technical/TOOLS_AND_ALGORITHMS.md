@@ -80,7 +80,7 @@ Current runtime note:
 
 - OpenClaw workspace now points to the Go wrapper.
 - Node.js scripts remain as rollback/reference helpers.
-- Telegram `/check` includes `--send-slack`; Go posts Slack only for company-associated routing plus `SLACK_BOT_TOKEN` and `SLACK_REPORT_CHANNEL`.
+- Telegram `/check` includes `--send-slack`; Go posts Slack for **all results** regardless of classification, as long as Slack env is configured.
 
 Algorithm:
 
@@ -429,28 +429,30 @@ Change impact:
 
 ## 7. Reporting And Storage Tools
 
-### `report_formatter.js`
+### `report_formatter` (Go `internal/report`)
 
 Role:
 
 - Convert JSON result into Telegram-safe text.
 
-Sections:
+Sections (format aktual):
 
+- Kesimpulan (headline + alasan + gaps)
+- Classification, Confidence, Automation
 - Input
-- Kesimpulan final sementara
-- Classification
-- Confidence
-- Proses berhasil
-- Proses gagal
-- Proses dilewati / belum tersedia
-- Evidence
+- Proses investigasi — setiap step berlabel `[ALGO]`, `[TOOL — ...]`, atau `[AI]` (AI belum aktif)
+  - Tindakan, Hasil, Hipotesis, Delta, Status per step
 - Rekomendasi automation
+
+Step labels:
+- `[ALGO]` — keputusan deterministik dari kode
+- `[TOOL — ...]` — keputusan dari network/external call
+- `[AI]` — keputusan AI orchestrator (direncanakan di Phase A, belum aktif)
 
 Rule:
 
-- `tool_errors` appear under failed process.
-- `tools_skipped` appear under skipped process.
+- `tool_errors` dan `tools_skipped` muncul di Status baris tiap step yang relevan.
+- Setiap step menampilkan score delta dan running score sementara.
 
 ### `evidence_store.js`
 
@@ -508,7 +510,8 @@ Role:
 Important:
 
 - Not automatic.
-- `company_check` only calls it when `--send-slack` is present and the result routes company-associated.
+- `company_check` calls it when `--send-slack` is present, for **all classification results** — personal, company, unknown, suspicious.
+- After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
 
 ## 8. Config Files
 

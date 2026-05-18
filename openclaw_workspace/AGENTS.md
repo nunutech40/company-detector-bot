@@ -31,7 +31,11 @@ scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<
 
 Do not treat platform `username` as a trusted identity signal because it may contain an email or phone number.
 
-Return the generated report to Telegram. The `--send-slack` flag is also required, but the Go CLI only posts Slack when `automation_action` is `route_company_associated` and Slack env is configured. Do not invent evidence beyond the tool output. If the script fails, say the check failed technically and include the failure reason.
+Return the generated report to Telegram. The `--send-slack` flag is also required. Go posts to Slack for **all results** regardless of classification — personal, company, unknown, suspicious. After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack. Do not invent evidence beyond the tool output. If the script fails, say the check failed technically and include the failure reason.
+
+## Current Architecture Note
+
+The current flow is **fully deterministic** — OpenClaw acts only as a gateway (receives Telegram message, calls the Go script, returns the output). All investigation decisions are made by Go code, not by AI reasoning. There is no `[AI]` step in the current flow. Phase A (Single Agent + Reasoning Loop) is the planned next step, which will introduce AI-driven iterative evidence gathering.
 
 ## MVP Flow
 
@@ -91,34 +95,64 @@ Flag as suspicious if the domain includes:
 
 ## Telegram Report Format
 
-Use this shape:
+Report dihasilkan oleh Go `internal/report` package. Format aktual yang dipakai:
 
 ```text
-Company Detection MVP Report
+Company Detection Report
+
+Kesimpulan:
+[headline]
+Alasannya: [reasons]
+Yang masih kurang: [gaps]
+Classification: [classification]
+Confidence: [label] ([score]/100)
+Automation: [action]
 
 Input:
 - Email: ...
+- Nama lengkap: ... (jika ada)
+- Brand/company: ... (jika ada)
+- No HP: ***masked*** (jika ada, internal only)
 
-Kesimpulan sementara:
-...
-Classification: ...
-Confidence: low/medium/high
+Proses investigasi:
+[1] Email Intelligence  [ALGO]
+  Tindakan : ...
+  Hasil    : ...
+  Hipotesis: ...
+  Delta    : [+/-N] → score sementara N/100
+  Status   : OK / PERLU IMPROVE — [keterangan]
 
-Proses berhasil:
-- ...
+[2] Routing Decision  [ALGO]
+  ...
 
-Proses gagal:
-- ...
+[3] Domain Checker  [TOOL — DNS + HTTP]  (custom domain only)
+  ...
 
-Proses dilewati / belum tersedia:
-- ...
+[4] Website Crawler  [TOOL — HTTP + ALGO]  (custom domain only)
+  ...
 
-Evidence:
-- ...
+[3 or 5] Query Builder  [ALGO]  +  Search Publik  [TOOL — DDG HTML]
+  ...
 
-Rekomendasi:
-...
+[4 or 6] Free Scraper  [TOOL — HTTP + ALGO]  (jika ada URL aktif)
+  ...
+
+[SCORING] Kesimpulan Akhir
+  Base score     : 35
+  Total delta    : [+/-N]
+  Final score    : N/100 (low/medium/high)
+  Classification : ...
+  Action         : ...
+  Bisa improve   : aktifkan [tools] untuk evidence lebih kuat
+
+Rekomendasi automation:
+[action text]
 ```
+
+Label tipe per step:
+- `[ALGO]` — keputusan dari kode deterministik (rules, regex, scoring formula)
+- `[TOOL — ...]` — keputusan dari network/external call
+- `[AI]` — keputusan dari AI orchestrator (belum aktif di fase ini; direncanakan di Phase A)
 
 Avoid markdown tables in Telegram.
 
@@ -148,7 +182,7 @@ Fallback/error rules:
 - If `ddg_search` or `free_scraper` fails, include it in `tool_errors`, not evidence.
 - If `free_scraper` has no active URL to scrape, include it in `tools_skipped`.
 - Treat DDG/free scraper evidence as low reliability.
-- Slack delivery runs from `/check` through `--send-slack`, but Go only posts when the result routes company-associated and Slack env is configured.
+- Slack delivery runs from `/check` through `--send-slack`. Go posts to Slack for **all results** regardless of classification. After a database is available, routing will be split: personal/unknown results will only be saved to DB, while company-associated results will go to both Telegram and Slack.
 
 ## Automation Output Rule
 
@@ -169,39 +203,54 @@ Avoid wording like:
 User:
 
 ```text
-/check r.fajarnugraha@gmail.com
+/check nawaystore@yahoo.com
 ```
 
-Assistant:
+A (output aktual dari Go report formatter):
 
 ```text
-Company Detection MVP Report
+Company Detection Report
+
+Kesimpulan:
+Akun ini lebih terlihat sebagai akun personal — belum ada sinyal bisnis yang cukup kuat dari investigasi yang bisa dijalankan saat ini.
+Alasannya: email memakai provider gratis `yahoo.com`, bukan custom domain perusahaan.
+Yang masih kurang: pencarian publik tidak menemukan profil bisnis; tidak ada brand/company name dari data register; untuk menaikkan confidence: butuh profil publik yang menyebut peran bisnis, atau brand name yang bisa dikonfirmasi ke domain perusahaan.
+Classification: likely_personal_email
+Confidence: low (5/100)
+Automation: continue_as_personal_or_unknown
 
 Input:
-- Email: r.fajarnugraha@gmail.com
+- Email: nawaystore@yahoo.com
 
-Kesimpulan sementara:
-Email ini memakai Gmail, jadi belum ada sinyal perusahaan dari domain email saja.
-Classification: likely_personal_email
-Confidence: medium
+Proses investigasi:
+[1] Email Intelligence  [ALGO]
+  Tindakan : parse dan klasifikasi email `nawaystore@yahoo.com`
+  Hasil    : local=`nawaystore`, domain=`yahoo.com`, tipe=free email provider
+  Hipotesis: free email, perlu pencarian publik untuk cari sinyal bisnis
+  Delta    : -30 → score sementara 5/100
+  Status   : OK — free domain list sudah cukup luas
 
-Proses berhasil:
-- Email berhasil diparse.
-- Domain `gmail.com` berhasil diekstrak.
-- Domain dikenali sebagai free email provider.
+[2] Routing Decision  [ALGO]
+  Hasil    : free email → domain checker dan website crawler DILEWATI
+  Jalur    : investigasi dialihkan ke pencarian publik (nama: `nawaystore`)
+  Delta    : 0 (routing tidak mengubah score)
 
-Proses gagal:
-- Tidak ada.
+[3] Query Builder  [ALGO]  +  Search Publik  [TOOL — DDG HTML]
+  Strategi : prioritas: local part `nawaystore` karena tidak ada nama
+  Query    : `"nawaystore" GitHub OR Product Hunt OR LinkedIn`
+  Hasil    : search berjalan tapi tidak ada hasil yang bisa diparse
+  Hipotesis: TIDAK BERUBAH — tidak ada bukti publik yang mendukung atau menolak
+  Status   : PERLU IMPROVE — DDG HTML sering diblokir ISP; improve dengan Brave/Tavily API
+  Delta    : 0
 
-Proses dilewati / belum tersedia:
-- Web search belum dipakai karena MVP belum punya search provider aktif.
-- Enrichment API dilewati: disabled_waiting_budget.
-- Firecrawl dilewati: disabled_waiting_budget.
-
-Evidence:
-- Domain email adalah `gmail.com`, provider email umum/personal.
-- Tidak ada bukti company/founder dari input tunggal ini.
+[SCORING] Kesimpulan Akhir
+  Base score     : 35
+  Total delta    : -30
+  Final score    : 5/100 (low)
+  Classification : likely_personal_email
+  Action         : continue_as_personal_or_unknown
+  Bisa improve   : aktifkan Firecrawl, Tavily/SerpAPI, Paid enrichment untuk evidence lebih kuat
 
 Rekomendasi automation:
-Simpan sebagai personal/unknown. Automation register boleh lanjut tanpa segmentasi B2B sampai metadata tambahan tersedia dari form/platform.
+Lanjutkan sebagai akun personal/unknown dan tetap simpan hasil pengecekan.
 ```

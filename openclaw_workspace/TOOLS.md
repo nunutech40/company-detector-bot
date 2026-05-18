@@ -33,7 +33,7 @@ This workspace is for the Company Detection Telegram MVP.
 - `tavily_search`: disabled_waiting_budget.
 - `enrichment_api`: disabled_waiting_budget.
 - `browser`: optional, skipped for Telegram MVP unless needed.
-- `slack_reporter`: enabled for company-associated checks; Go sends when `--send-slack` is passed, `automation_action=route_company_associated`, and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured.
+- `slack_reporter`: enabled for all checks; Go sends when `--send-slack` is passed and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured, regardless of classification. After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
 
 ## Operational Rule
 
