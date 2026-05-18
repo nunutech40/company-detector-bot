@@ -35,6 +35,7 @@ Yang belum production:
 - [PRD Deteksi Perusahaan v6](PRD_Deteksi_Perusahaan_v6_AI_OpenClaw_Serious_With_Theory.md): product goal, principles, classifications, tool philosophy, reporting expectations.
 - [TRD AI Company Detection Agent](TRD_Deteksi_Perusahaan_AI_OpenClaw_v1.md): technical architecture, custom tools, data model, multi-agent design, deployment notes.
 - [Building Plan OpenClaw Telegram MVP](BUILDING_PLAN_OpenClaw_Telegram_MVP_From_VPS.md): implementation plan from VPS setup to Telegram MVP.
+- [High Level Business Flow](HIGH_LEVEL_BUSINESS_FLOW.md): simple current vs level-2 flowcharts and sequence diagrams from input to output.
 - [Flow Map](FLOW_MAP.md): top-down readable flow, decision points, and future multi-agent map.
 - [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md): detailed map of every tool, skill, algorithm, scoring rule, and change impact.
 - [Project Implementation Review](PROJECT_IMPLEMENTATION_REVIEW.md): status review comparing current implementation against PRD, TRD, building plan, next-level enrichment, and storage/dashboard plans.
