@@ -23,7 +23,7 @@ Important rule:
 
 ```text
 For every valid email check, run:
-scripts/company_check_go.sh --email <email> --save
+scripts/company_check_go.sh --email <email> --save --send-slack
 ```
 
 ### Company Detection Skill
@@ -80,7 +80,7 @@ Current runtime note:
 
 - OpenClaw workspace now points to the Go wrapper.
 - Node.js scripts remain as rollback/reference helpers.
-- Go Slack send is explicit only through `--send-slack` plus `SLACK_BOT_TOKEN` and `SLACK_REPORT_CHANNEL`.
+- Telegram `/check` includes `--send-slack`; Go posts Slack only for company-associated routing plus `SLACK_BOT_TOKEN` and `SLACK_REPORT_CHANNEL`.
 
 Algorithm:
 
@@ -102,7 +102,7 @@ Algorithm:
 9. Run `scoring_engine`.
 10. Run `report_formatter`.
 11. If `--save`, run `evidence_store`.
-12. If `--send-slack` or env enabled, run `slack_reporter`.
+12. If `--send-slack` is present and action routes company-associated, run Go Slack reporter.
 
 Important input rule:
 
@@ -479,14 +479,14 @@ Environment overrides:
 - `COMPANY_DETECTION_MAX_REPORT_FILES`
 - `COMPANY_DETECTION_MAX_AUDIT_LINES`
 
-### `last_report.js`
+### Go `last-report`
 
 Role:
 
 - Reads `evidence/audit.jsonl`.
 - Returns latest report, optionally filtered by email.
 
-### `tool_status.js`
+### Go `tool-status`
 
 Role:
 
@@ -498,7 +498,7 @@ Limit:
 - YAML parser is simple line-based parser.
 - Keep catalog indentation simple.
 
-### `slack_reporter.js`
+### Go Slack reporter
 
 Role:
 
@@ -508,7 +508,7 @@ Role:
 Important:
 
 - Not automatic.
-- `company_check` only calls it when `--send-slack` or `COMPANY_DETECTION_SEND_SLACK=true`.
+- `company_check` only calls it when `--send-slack` is present and the result routes company-associated.
 
 ## 8. Config Files
 

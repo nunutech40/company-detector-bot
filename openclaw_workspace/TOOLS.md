@@ -13,11 +13,11 @@ This workspace is for the Company Detection Telegram MVP.
 
 ## Tool Availability
 
-- `company_check`: enabled, `scripts/company_check_go.sh --email <email> --save`.
-- `company_check` register package: enabled, `scripts/company_check_go.sh --email <email> --full-name "..." --no-hp "..." --brand-name "..." --save`.
+- `company_check`: enabled, `scripts/company_check_go.sh --email <email> --save --send-slack`.
+- `company_check` register package: enabled, `scripts/company_check_go.sh --email <email> --full-name "..." --no-hp "..." --brand-name "..." --save --send-slack`.
 - `email_intelligence`: implemented in Go package `../go-service/internal/emailintel`.
 - `domain_checker`: implemented in Go package `../go-service/internal/domaincheck`.
-- `batch_csv_check`: enabled, `node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]`; processes rows sequentially.
+- `batch_csv_check`: legacy JS reference only; not used by Telegram runtime.
 - `scoring_engine`: implemented in Go package `../go-service/internal/scoring`.
 - `website_crawler_router`: implemented in Go package `../go-service/internal/crawler`.
 - `serp_query_builder`: implemented in Go package `../go-service/internal/query`.
@@ -25,15 +25,15 @@ This workspace is for the Company Detection Telegram MVP.
 - `free_scraper`: implemented in Go package `../go-service/internal/scraper`; source reliability is low.
 - `report_formatter`: implemented in Go package `../go-service/internal/report`.
 - `evidence_store`: enabled via `company_check --save`; Go writes JSON to `evidence/` and report text to `reports/`.
-- `tool_status`: enabled, `node scripts/tool_status.js`.
-- `last_report`: enabled, `node scripts/last_report.js [email]`.
+- `tool_status`: enabled, `scripts/tool_status_go.sh`.
+- `last_report`: enabled, `scripts/last_report_go.sh [email]`.
 - `web_search`: enabled via `ddg_search` fallback; dedicated provider not configured yet.
 - `web_fetch`: check_runtime.
 - `firecrawl_scrape`: disabled_waiting_budget.
 - `tavily_search`: disabled_waiting_budget.
 - `enrichment_api`: disabled_waiting_budget.
 - `browser`: optional, skipped for Telegram MVP unless needed.
-- `slack_reporter`: optional; Go only sends when `--send-slack` is passed and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured.
+- `slack_reporter`: enabled for company-associated checks; Go sends when `--send-slack` is passed, `automation_action=route_company_associated`, and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured.
 
 ## Operational Rule
 

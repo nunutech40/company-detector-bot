@@ -374,8 +374,10 @@ Goal: switch Telegram runtime carefully.
 - [ ] Restart OpenClaw/Gateway if needed.
 - [ ] Test Telegram `/check contact@komerce.id`.
 - [ ] Test Telegram free email + available metadata path if supported.
-- [ ] Test `/tool_status`.
-- [ ] Test `/last_report` or Go replacement.
+- [x] Add Go replacement for `/tool_status`.
+- [x] Add Go replacement for `/last_report`.
+- [ ] Test `/tool_status` from Telegram.
+- [ ] Test `/last_report` from Telegram.
 
 Gate:
 

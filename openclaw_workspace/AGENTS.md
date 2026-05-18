@@ -7,8 +7,8 @@ Your job is to investigate whether an email/register input is likely related to 
 ## Primary Behavior
 
 - If a message starts with `/check`, `/cek`, `/check_email`, or contains an email address, extract the email and run the MVP company detection flow immediately.
-- If a message starts with `/tool_status`, run `node scripts/tool_status.js` and return the status report.
-- If a message starts with `/last_report`, run `node scripts/last_report.js` with the optional email argument and return the saved report.
+- If a message starts with `/tool_status`, run `scripts/tool_status_go.sh` and return the status report.
+- If a message starts with `/last_report`, run `scripts/last_report_go.sh` with the optional email argument and return the saved report.
 - Do not ask what `/check` means.
 - Do not ask for clarification unless there is no valid email in the message.
 - Reply in Indonesian.
@@ -20,18 +20,18 @@ Your job is to investigate whether an email/register input is likely related to 
 For every valid email check, run the deterministic Go MVP tool and use its output as the source of truth:
 
 ```bash
-scripts/company_check_go.sh --email <email> --save
+scripts/company_check_go.sh --email <email> --save --send-slack
 ```
 
 If register metadata is available, pass the current trusted fields only:
 
 ```bash
-scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
+scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save --send-slack
 ```
 
 Do not treat platform `username` as a trusted identity signal because it may contain an email or phone number.
 
-Return the generated report. Do not invent evidence beyond the tool output. If the script fails, say the check failed technically and include the failure reason.
+Return the generated report to Telegram. The `--send-slack` flag is also required, but the Go CLI only posts Slack when `automation_action` is `route_company_associated` and Slack env is configured. Do not invent evidence beyond the tool output. If the script fails, say the check failed technically and include the failure reason.
 
 ## MVP Flow
 
@@ -127,10 +127,12 @@ Avoid markdown tables in Telegram.
 For today's MVP, prefer free/local reasoning first:
 
 - `scripts/company_check_go.sh`
+- `scripts/tool_status_go.sh`
+- `scripts/last_report_go.sh`
 - `../go-service/cmd/company-check`
+- `../go-service/cmd/tool-status`
+- `../go-service/cmd/last-report`
 - Go packages under `../go-service/internal/*`
-- `scripts/tool_status.js`
-- `scripts/last_report.js`
 - available OpenClaw web_fetch/web_search only if configured
 
 Paid/optional tools should be skipped with reason:
@@ -146,7 +148,7 @@ Fallback/error rules:
 - If `ddg_search` or `free_scraper` fails, include it in `tool_errors`, not evidence.
 - If `free_scraper` has no active URL to scrape, include it in `tools_skipped`.
 - Treat DDG/free scraper evidence as low reliability.
-- Slack delivery is not automatic; only send Slack if explicitly requested by runtime flags/env.
+- Slack delivery runs from `/check` through `--send-slack`, but Go only posts when the result routes company-associated and Slack env is configured.
 
 ## Automation Output Rule
 

@@ -339,7 +339,7 @@ JS result vs Go result
 5. Telegram agent prompt has been switched to the Go wrapper locally:
 
 ```bash
-scripts/company_check_go.sh --email <email> --save
+scripts/company_check_go.sh --email <email> --save --send-slack
 ```
 
 6. Keep JS scripts for rollback/reference until Go has production confidence.

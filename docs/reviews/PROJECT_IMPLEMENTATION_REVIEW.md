@@ -70,9 +70,9 @@ Implemented files:
 - `openclaw_workspace/scripts/scoring_engine.js`
 - `openclaw_workspace/scripts/report_formatter.js`
 - `openclaw_workspace/scripts/evidence_store.js`
-- `openclaw_workspace/scripts/last_report.js`
-- `openclaw_workspace/scripts/tool_status.js`
-- `openclaw_workspace/scripts/slack_reporter.js`
+- `openclaw_workspace/scripts/last_report_go.sh`
+- `openclaw_workspace/scripts/tool_status_go.sh`
+- Go Slack reporter via `go-service/internal/slack`
 
 Important docs already created:
 
@@ -157,8 +157,8 @@ Building Plan target awal: VPS siap, OpenClaw jalan, Telegram bot aktif, `/check
 | Email parser | Done | `email_intelligence.js`. |
 | Free/corporate detection | Done | Free domains/custom domain logic. |
 | Domain/website check | Done | DNS + HTTP fetch. |
-| Tool status command | Done | `tool_status.js`. |
-| Last report command | Done | `last_report.js`. |
+| Tool status command | Done | Go wrapper `tool_status_go.sh`. |
+| Last report command | Done | Go wrapper `last_report_go.sh`. |
 | Evidence JSON | Done | File-based snapshots. |
 | Report format | Done | Telegram-safe text. |
 | Tool skipped reasons | Done | Paid/optional tools have reasons. |

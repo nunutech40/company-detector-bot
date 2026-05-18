@@ -46,14 +46,14 @@ Current active runtime is the Go wrapper from the OpenClaw workspace:
 
 ```bash
 cd openclaw_workspace
-scripts/company_check_go.sh --email contact@komerce.id --save
+scripts/company_check_go.sh --email contact@komerce.id --save --send-slack
 ```
 
 Run with the current register input package:
 
 ```bash
 cd openclaw_workspace
-scripts/company_check_go.sh --email person@gmail.com --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+scripts/company_check_go.sh --email person@gmail.com --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save --send-slack
 ```
 
 Or pass JSON:
@@ -63,7 +63,7 @@ cd openclaw_workspace
 scripts/company_check_go.sh --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --json
 ```
 
-Process CSV rows sequentially:
+Process CSV rows sequentially, legacy JS reference only:
 
 ```bash
 cd openclaw_workspace
@@ -81,21 +81,21 @@ Tool status:
 
 ```bash
 cd openclaw_workspace
-node scripts/tool_status.js
+scripts/tool_status_go.sh
 ```
 
 Last saved report:
 
 ```bash
 cd openclaw_workspace
-node scripts/last_report.js contact@komerce.id
+scripts/last_report_go.sh contact@komerce.id
 ```
 
 Optional Slack send:
 
 ```bash
 cd openclaw_workspace
-SLACK_BOT_TOKEN='xoxb-...' SLACK_REPORT_CHANNEL='C0B3JEYN1HV' scripts/company_check_go.sh --email contact@komerce.id --send-slack
+SLACK_BOT_TOKEN='xoxb-...' SLACK_REPORT_CHANNEL='C0B3JEYN1HV' scripts/company_check_go.sh --email contact@komerce.id --save --send-slack
 ```
 
 Go CLI MVP:
@@ -121,7 +121,7 @@ For every valid `/check <email>` request, OpenClaw should run:
 
 ```bash
 cd ~/.openclaw/workspace
-scripts/company_check_go.sh --email <email> --save
+scripts/company_check_go.sh --email <email> --save --send-slack
 ```
 
 The final result must stand on its own for automation. It must not ask the user for feedback or clarification when a valid email exists.
@@ -140,7 +140,7 @@ Fallback policy:
 - A tool enters `tools_used` only when it actually runs successfully.
 - Failed DDG/free scraper calls go to `tool_errors`, not evidence.
 - Skipped paid/unavailable tools go to `tools_skipped`.
-- Slack delivery is explicit only via `--send-slack` or `COMPANY_DETECTION_SEND_SLACK=true`.
+- Slack delivery is part of the Telegram `/check` command through `--send-slack`, but Go only posts when the result routes company-associated and Slack env is configured.
 
 Current register input contract:
 

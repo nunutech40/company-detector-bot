@@ -55,13 +55,13 @@ scripts/company_check_go.sh / Go company-check
 Current entry command:
 
 ```bash
-scripts/company_check_go.sh --email <email> --save
+scripts/company_check_go.sh --email <email> --save --send-slack
 ```
 
 Current register-package command:
 
 ```bash
-scripts/company_check_go.sh --email <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+scripts/company_check_go.sh --email <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save --send-slack
 ```
 
 ## 3. Decision Points
@@ -173,7 +173,7 @@ otherwise -> unknown_needs_more_evidence
 Current MVP:
 
 ```text
-Only if explicitly enabled with --send-slack or COMPANY_DETECTION_SEND_SLACK=true.
+Telegram `/check` uses `--send-slack`. The Go CLI only posts when the result routes company-associated and Slack env is configured.
 ```
 
 Future production:

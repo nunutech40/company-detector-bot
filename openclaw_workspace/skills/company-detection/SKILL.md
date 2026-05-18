@@ -9,13 +9,13 @@ Use this skill when a Telegram/user message asks to check, classify, inspect, or
 3. Run:
 
    ```bash
-   scripts/company_check_go.sh --email <email> --save
+   scripts/company_check_go.sh --email <email> --save --send-slack
    ```
 
    If trusted register metadata is present, pass only:
 
    ```bash
-   scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
+   scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save --send-slack
    ```
 
 4. Return the generated report to the user.
@@ -24,7 +24,7 @@ Use this skill when a Telegram/user message asks to check, classify, inspect, or
 For `/tool_status`, run:
 
 ```bash
-node scripts/tool_status.js
+scripts/tool_status_go.sh
 ```
 
 Return the tool status report.
@@ -32,7 +32,7 @@ Return the tool status report.
 For `/last_report [email]`, run:
 
 ```bash
-node scripts/last_report.js [email]
+scripts/last_report_go.sh [email]
 ```
 
 Return the saved report.

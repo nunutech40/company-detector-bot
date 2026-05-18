@@ -16,7 +16,7 @@ tools:
   company_check:
     status: enabled
     type: go_cli
-    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>] --save"
+    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>] --save --send-slack"
     cost: free_or_low
     priority: mvp
 
@@ -28,8 +28,8 @@ tools:
     priority: mvp
 
   batch_csv_check:
-    status: enabled
-    type: custom_script
+    status: legacy_reference
+    type: legacy_js_script
     command: "node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]"
     cost: free_or_low
     priority: mvp
@@ -64,15 +64,15 @@ tools:
 
   last_report:
     status: enabled
-    type: custom_script
-    command: "node scripts/last_report.js [email]"
+    type: go_cli
+    command: "scripts/last_report_go.sh [email]"
     cost: free
     priority: mvp
 
   tool_status:
     status: enabled
-    type: custom_script
-    command: "node scripts/tool_status.js"
+    type: go_cli
+    command: "scripts/tool_status_go.sh"
     cost: free
     priority: mvp
 
@@ -127,8 +127,8 @@ tools:
     priority: mvp
 
   slack_reporter:
-    status: optional
+    status: enabled_for_company_alerts
     type: go_cli
-    command: "scripts/company_check_go.sh --email <email> --send-slack"
+    command: "scripts/company_check_go.sh --email <email> --save --send-slack"
     cost: free
     priority: phase_2
