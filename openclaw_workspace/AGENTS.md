@@ -6,6 +6,8 @@ Jawab dua pertanyaan:
 1. Apakah ini akun bisnis atau personal?
 2. Kalau personal — apakah orang ini punya bisnis atau relasi bisnis?
 
+Kalau pesan adalah `/token_usage` → jalankan `bash scripts/token_usage.sh` dan return hasilnya.
+
 ---
 
 ## Cara Kerja
@@ -216,3 +218,4 @@ BENAR: web_search nemu snippet "harga dari owner langsung" di instagram.com/nawa
 - `/check <email>` atau natural language → investigasi penuh
 - `/tool_status` → status tools
 - `/last_report [email]` → report terakhir
+- `/token_usage` → lihat penggunaan token AI session ini (model, input/output tokens, % context used)

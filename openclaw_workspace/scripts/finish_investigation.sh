@@ -66,3 +66,8 @@ echo "finish_investigation: triggering Slack delivery"
 bash "${SCRIPT_DIR}/deliver_report_with_env.sh"
 
 echo "finish_investigation: done"
+
+# Tampilkan token usage untuk session ini
+echo ""
+echo "--- AI Token Usage ---"
+bash "${SCRIPT_DIR}/token_usage.sh" 2>/dev/null || true
