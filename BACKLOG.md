@@ -93,6 +93,7 @@ Status per 2026-05-18. Urutan dari yang paling prioritas.
 - [ ] Firecrawl ($16/bulan): deep scrape, JS-heavy pages
 - [ ] Tavily ($20/bulan): AI-friendly search
 - [ ] Enrichment API ($99+/bulan): direct company/role lookup
+- [ ] LinkedIn Enrichment API (~$9-50/bulan): full LinkedIn profile data (name, role, company, experience). Options: LinkdAPI, Bright Data, Scrapin.io. **Note:** direct scraping LinkedIn tidak bisa — LinkedIn block bot dan ban IP. SERP dorking (`site:linkedin.com/in/ "nama"`) sudah dipakai sebagai alternatif gratis untuk dapat snippet.
 
 ### Multi-Agent (Phase D, setelah volume naik)
 - [ ] Sub-agents paralel via `sessions_spawn`

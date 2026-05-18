@@ -635,6 +635,7 @@ Tools yang belum diimplementasi:
 - **Brave Search API** (~$5/month): Reliable search, structured results. Setup: `BRAVE_SEARCH_API_KEY`.
 - **Firecrawl** ($16/month): Scrape JS-heavy pages, structured extraction.
 - **Tavily** ($20/month): AI-friendly search dengan domain filter.
+- **LinkedIn Enrichment API** (~$9-50/month): Full LinkedIn profile data (name, role, company, experience). Options: LinkdAPI, Bright Data, Scrapin.io. **Catatan:** Direct scraping LinkedIn tidak bisa — LinkedIn block bot dan ban IP. SERP dorking (`site:linkedin.com/in/ "nama"`) adalah alternatif gratis yang aman untuk dapat snippet role/company.
 
 Rule untuk setiap tool baru:
 
