@@ -30,10 +30,12 @@ type RegisterInput struct {
 type EvidenceItem struct {
 	SourceType      string      `json:"source_type"`
 	SourceURL       string      `json:"source_url,omitempty"`
+	ToolCall        string      `json:"tool_call,omitempty"` // e.g. "web_fetch(https://...)" — required for ai_* source types
 	Reliability     string      `json:"reliability"`
 	Claim           string      `json:"claim"`
 	Value           interface{} `json:"value,omitempty"`
 	ConfidenceDelta int         `json:"confidence_delta"`
+	Verified        bool        `json:"verified"` // true only if source_url or tool_call is present
 }
 
 type ToolSkipped struct {
@@ -151,9 +153,10 @@ type QueryPlan struct {
 }
 
 type ScoreBreakdown struct {
-	BaseScore     int `json:"base_score"`
-	EvidenceDelta int `json:"evidence_delta"`
-	FinalScore    int `json:"final_score"`
+	BaseScore        int `json:"base_score"`
+	EvidenceDelta    int `json:"evidence_delta"`
+	FinalScore       int `json:"final_score"`
+	RejectedEvidence int `json:"rejected_evidence,omitempty"` // AI evidence rejected due to missing source
 }
 
 type ScoreResult struct {

@@ -1,11 +1,25 @@
 package scoring
 
-import "company-detector/go-service/internal/model"
+import (
+	"strings"
 
+	"company-detector/go-service/internal/model"
+)
+
+// Score calculates classification and confidence from evidence.
+// Evidence items from AI (source_type starting with "ai_") are only counted
+// if they have a source_url or tool_call — this prevents hallucinated claims
+// from affecting the score.
 func Score(evidence []model.EvidenceItem, email model.EmailIntelligence, domain *model.DomainCheck, input model.RegisterInput) model.ScoreResult {
 	base := 35
 	delta := 0
+	rejected := 0
 	for _, item := range evidence {
+		if isAIEvidence(item) && !hasVerifiableSource(item) {
+			// AI-sourced evidence without a verifiable source is rejected
+			rejected++
+			continue
+		}
 		delta += item.ConfidenceDelta
 	}
 	final := clamp(base + delta)
@@ -15,8 +29,26 @@ func Score(evidence []model.EvidenceItem, email model.EmailIntelligence, domain 
 		OK: true, Classification: classification, CompanyDetected: classification == model.ClassificationPossibleCompany,
 		ConfidenceScore: final, ConfidenceLabel: label(final), AutomationAction: action,
 		OwnerClaimAllowed: false,
-		ScoreBreakdown:    model.ScoreBreakdown{BaseScore: base, EvidenceDelta: delta, FinalScore: final},
+		ScoreBreakdown:    model.ScoreBreakdown{BaseScore: base, EvidenceDelta: delta, FinalScore: final, RejectedEvidence: rejected},
 	}
+}
+
+// isAIEvidence returns true for evidence items that came from AI reasoning
+// rather than deterministic Go tools. These require extra verification.
+func isAIEvidence(item model.EvidenceItem) bool {
+	aiPrefixes := []string{"ai_", "ai_reasoning", "ai_claim"}
+	for _, prefix := range aiPrefixes {
+		if strings.HasPrefix(item.SourceType, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasVerifiableSource returns true if the evidence has a source URL or tool call
+// that can be audited. This is the enforcement mechanism against hallucination.
+func hasVerifiableSource(item model.EvidenceItem) bool {
+	return strings.TrimSpace(item.SourceURL) != "" || strings.TrimSpace(item.ToolCall) != ""
 }
 
 func classify(email model.EmailIntelligence, domain *model.DomainCheck, score int, input model.RegisterInput) model.Classification {

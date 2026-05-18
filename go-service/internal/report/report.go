@@ -513,9 +513,13 @@ func looksLikeBrand(local string) bool {
 func scoringSummary(result model.CompanyCheckResult) string {
 	var sb strings.Builder
 	sb.WriteString("[Deterministik] Scoring Engine — Kesimpulan Akhir\n")
-	sb.WriteString("  Algoritma : base_score + sum(evidence_delta), clamp 0–100\n")
+	sb.WriteString("  Algoritma : base_score + sum(verified_evidence_delta), clamp 0–100\n")
 	sb.WriteString(fmt.Sprintf("  Base score : 35\n"))
 	sb.WriteString(fmt.Sprintf("  Total delta: %+d\n", result.Scoring.EvidenceDelta))
+	if result.Scoring.RejectedEvidence > 0 {
+		sb.WriteString(fmt.Sprintf("  Ditolak    : %d evidence AI tanpa source URL/tool call — tidak dihitung ke score\n", result.Scoring.RejectedEvidence))
+		sb.WriteString("  Alasan     : klaim tanpa verifiable source dianggap tidak valid (anti-hallucination)\n")
+	}
 	sb.WriteString(fmt.Sprintf("  Final score: %d/100 (%s)\n", result.ConfidenceScore, result.ConfidenceLabel))
 	sb.WriteString(fmt.Sprintf("  Artinya    : classification `%s`, action `%s`\n", result.Classification, result.AutomationAction))
 	skippedBudget := []string{}
