@@ -73,6 +73,27 @@ tools:
     cost: free
     priority: mvp
 
+  brandhint:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Deteksi apakah local part email adalah brand/toko atau nama orang. Output: IsBrandHint, Confidence, Signals, Suggestion. Dipanggil internal oleh company_check pipeline."
+
+  sociallinks:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Extract social media links dari HTML/text content. Mendukung Instagram, LinkedIn, Facebook, Twitter/X, TikTok, YouTube, Tokopedia, Shopee, Bukalapak, Lazada, WhatsApp. Deduplicate otomatis."
+
+  rolesignal:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Deteksi sinyal role bisnis (founder, owner, CEO, direktur, employee, freelancer) dari teks snippet. Mendukung pola bahasa Indonesia dan Inggris. Output: Signals, StrongestRole, HasOwnerSignal."
+
   batch_csv_check:
     status: legacy_reference
     type: legacy_js_script

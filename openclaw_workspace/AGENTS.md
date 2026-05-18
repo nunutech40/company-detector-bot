@@ -54,6 +54,28 @@ brand_name — opsional, sinyal bisnis terkuat
 scripts/company_check_go.sh --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "..."] --save
 ```
 
+**Go helper tools (bisa dipanggil via exec):**
+```bash
+# Cek apakah local part email adalah brand hint
+# Output: IsBrandHint, Confidence, Suggestion
+go run ./cmd/company-check --email <email> --json | jq .email_intelligence
+
+# Untuk extract social links dari HTML yang sudah di-fetch:
+# Gunakan package internal/sociallinks (dipanggil via company_check pipeline)
+
+# Untuk detect role signals dari teks:
+# Gunakan package internal/rolesignal (dipanggil via company_check pipeline)
+```
+
+**Go Analysis Tools (bisa dipanggil via exec):**
+- `brandhint` — deteksi apakah local part email adalah brand/toko atau nama orang
+  ```bash
+  # Contoh penggunaan via Go (dipanggil internal oleh company_check)
+  # Output: {"is_brand": true, "confidence": "high", "signals": ["store"], "suggestion": "search sebagai brand/toko"}
+  ```
+- `sociallinks` — extract social media links dari HTML/text
+- `rolesignal` — deteksi sinyal founder/owner/CEO dari teks snippet
+
 **Untuk investigasi lebih dalam:**
 - `web_search("query")` — cari di internet
 - `web_fetch("url")` — baca isi halaman
