@@ -15,6 +15,8 @@ Status per 2026-05-18. Urutan dari yang paling prioritas.
 - [x] Search cascade: Google CSE → Brave → Bing → DDG (automatic fallback)
 - [x] Slack sends untuk semua classification (bukan hanya company)
 - [x] File-based evidence store dengan retention
+- [x] deploy.sh: satu command untuk sync semua ke VPS
+- [x] deliver_report.sh: kirim AI report ke Slack (prioritas ai_report_latest.txt)
 
 ### Arsitektur & Refactoring
 - [x] Query package dihapus — AI yang handle query selection
@@ -61,6 +63,10 @@ Status per 2026-05-18. Urutan dari yang paling prioritas.
 - [ ] **social_link_extractor**: extract social links dari HTML (Instagram, LinkedIn, TikTok, Facebook, YouTube)
 - [ ] **role_signal_extractor**: deteksi CEO/founder/owner/direktur dari teks snippet
 - [ ] **marketplace_url_detector**: deteksi URL Tokopedia/Shopee/Bukalapak dari teks
+
+### 4. Otomasi Slack Delivery
+- [ ] Slack delivery otomatis tanpa perlu AI jalankan deliver_report_with_env.sh secara manual
+- [ ] Trigger otomatis setelah investigation selesai
 
 ---
 

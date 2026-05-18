@@ -1,3 +1,5 @@
+> ⚠️ ARCHIVED — Go transition selesai. Lihat README.md untuk status aktual.
+
 # Go Transition Execution Checklist
 
 Checklist ini dipakai untuk mengerjakan transisi Go satu langkah kecil per satu langkah kecil. Jangan centang item sebelum code/docs/test terkait benar-benar selesai.

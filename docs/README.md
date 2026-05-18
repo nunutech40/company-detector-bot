@@ -15,16 +15,10 @@ Untuk paham project dari nol:
 3. [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
    Baca kalau mau tahu tool/algoritma mana melakukan apa, dan mana yang bisa dipanggil AI vs yang selalu deterministik.
 
-4. [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
-   Baca kalau mau memahami status transisi dari Node.js prototype ke Go production — Go sudah deployed di VPS.
-
-4b. [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md)
-   Checklist granular status transisi Go.
-
-5. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
+4. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
    Baca kalau mau tahu project sudah sampai mana, gap yang masih ada, dan next priority.
 
-6. [Backlog](../BACKLOG.md)
+5. [Backlog](../BACKLOG.md)
    Baca kalau mau menentukan kerja berikutnya.
 
 ## Product Docs
@@ -52,16 +46,16 @@ Untuk paham project dari nol:
 - [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
   Kamus tool/script, algoritma, scoring behavior, config, dan change impact map.
 
-- [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
-  Building plan transisi dari Node.js reference prototype menuju Go production implementation.
+- [Go Transition Plan](technical/GO_TRANSITION_PLAN.md) ⚠️ ARCHIVED
+  Rencana transisi dari Node.js ke Go — sudah selesai. Disimpan sebagai referensi historis.
 
-- [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md)
-  Checklist granular supaya transisi Go bisa dikerjakan agent step-by-step sampai testing/cutover selesai.
+- [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md) ⚠️ ARCHIVED
+  Checklist granular transisi Go — sudah selesai. Disimpan sebagai referensi historis.
 
 ## Operations Docs
 
-- [Building Plan OpenClaw Telegram MVP](operations/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md)
-  Catatan build dari VPS setup, OpenClaw install, Telegram setup, pairing, sampai testing.
+- [Building Plan OpenClaw Telegram MVP](operations/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md) ⚠️ ARCHIVED
+  Catatan build awal dari VPS setup sampai Telegram MVP — sudah selesai. Disimpan sebagai referensi historis.
 
 ## Reviews
 
@@ -87,7 +81,6 @@ Untuk paham project dari nol:
 - Gambar besar bisnis/logika utama ada di `product/HIGH_LEVEL_BUSINESS_FLOW.md`.
 - Detail runtime dan branching ada di `technical/FLOW_MAP.md`.
 - Detail algoritma/script ada di `technical/TOOLS_AND_ALGORITHMS.md`.
-- Rencana porting production Go ada di `technical/GO_TRANSITION_PLAN.md`.
 - Rencana masa depan produk ada di `product/NEXT_LEVEL_ENRICHMENT_PLAN.md`.
 - Rencana storage/Slack/dashboard ada di `product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`.
 - Status gap terhadap plan ada di `reviews/PROJECT_IMPLEMENTATION_REVIEW.md`.

@@ -13,18 +13,23 @@ Yang sudah aktif:
 - Telegram bot command flow via OpenClaw.
 - Deterministic Go `company-check` orchestrator via `openclaw_workspace/scripts/company_check_go.sh`.
 - Email intelligence, DNS/domain check, lightweight website crawler.
-- DuckDuckGo HTML search fallback dan lightweight scraper fallback.
-- Rules-first scoring engine.
+- Search cascade: Google CSE → Brave → Bing → DDG (automatic fallback).
+- Rules-first scoring engine dengan anti-hallucination enforcement.
+- AI reasoning loop (AGENTS.md Phase A): two-phase investigation, structured findings, evidence chain.
 - Telegram report formatter.
 - File-based evidence store dengan retention.
 - `/tool_status` dan `/last_report`.
 - Go CLI MVP under `go-service/` with unit tests and network smoke-tested DNS/crawler/scraper.
+- `deploy.sh`: satu command untuk sync semua ke VPS.
+- `deliver_report.sh`: kirim AI report ke Slack (prioritas ai_report_latest.txt).
 
 Yang belum production:
 
-- **Phase A (next)**: AI Reasoning Loop — rewrite AGENTS.md jadi reasoning loop, Brave Search API, expose Go tools sebagai callable functions.
-- **Tool Catalog Expansion**: brand_hint_detector, social_link_extractor, role_signal_extractor, marketplace_search, LinkedIn/Instagram SERP.
-- Next-level company/social enrichment dan personal-to-business relationship discovery.
+- **Google CSE API key belum dikonfigurasi** (gratis, 100/hari) — set `GOOGLE_CSE_KEY` + `GOOGLE_CSE_ID` di VPS.
+- **Brave Search API belum dikonfigurasi** (~$5/bulan) — set `BRAVE_SEARCH_API_KEY` di VPS.
+- **Phase A belum ditest end-to-end dari Telegram** — AI reasoning loop siap, perlu verifikasi live.
+- **Tool Catalog Expansion**: brand_hint_detector, social_link_extractor, role_signal_extractor, marketplace_search belum jadi Go package.
+- **Slack delivery otomatis**: deliver_report.sh masih perlu dijalankan manual oleh AI.
 - Postgres, queue, dashboard, dan platform register API.
 - Multi-agent parallel investigation (setelah Phase A terbukti).
 
@@ -37,9 +42,8 @@ Urutan baca paling enak:
 1. [High Level Business Flow](docs/product/HIGH_LEVEL_BUSINESS_FLOW.md) - gambar besar input sampai output, current vs level 2.
 2. [Flow Map](docs/technical/FLOW_MAP.md) - alur runtime dan decision point yang lebih teknis.
 3. [Tools and Algorithms Reference](docs/technical/TOOLS_AND_ALGORITHMS.md) - kamus semua script/tool dan algoritmanya.
-4. [Go Transition Plan](docs/technical/GO_TRANSITION_PLAN.md) - rencana port dari Node.js prototype ke Go production implementation.
-5. [Go Transition Checklist](docs/technical/GO_TRANSITION_CHECKLIST.md) - checklist granular sampai testing/cutover selesai.
-6. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
+4. [Project Implementation Review](docs/reviews/PROJECT_IMPLEMENTATION_REVIEW.md) - status aktual, gap, dan next priority.
+5. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
 
 ## Run Locally
 

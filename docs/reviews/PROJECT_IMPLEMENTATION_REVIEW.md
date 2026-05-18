@@ -20,6 +20,8 @@ Go MVP Deterministik (Phase 1): DONE
   - Anti-hallucination: scoring engine reject AI evidence tanpa source URL
   - no_hp sebagai confirmation tool
   - Report fallback mode only
+  - deploy.sh: satu command sync ke VPS
+  - deliver_report.sh: kirim AI report ke Slack (prioritas ai_report_latest.txt)
 
 Phase A (AI Reasoning Loop): READY TO TEST
   - AGENTS.md sudah Phase A: two-phase investigation, reasoning rounds, structured findings
@@ -29,6 +31,11 @@ Phase A (AI Reasoning Loop): READY TO TEST
 
 Query package: DIHAPUS — AI yang handle query selection
 Report formatter: DISEDERHANAKAN ke fallback mode only
+
+Google CSE API key: BELUM DIKONFIGURASI (gratis, 100/hari)
+Brave Search API: BELUM DIKONFIGURASI (~$5/bulan)
+brand_hint_detector, social_link_extractor, role_signal_extractor: BELUM JADI GO PACKAGE
+Slack delivery: MASIH MANUAL (AI perlu jalankan deliver_report_with_env.sh)
 
 Postgres/queue/dashboard: DESIGNED, NOT IMPLEMENTED
 Slack alert routing: DESIGNED (setelah DB)
@@ -377,14 +384,14 @@ Approximate completion by layer:
 
 | Layer | Completion | Comment |
 |---|---:|---|
-| VPS/OpenClaw/Telegram MVP | 95% | Go binary deployed, live test passed, Slack ok. |
+| VPS/OpenClaw/Telegram MVP | 95% | Go binary deployed, live test passed, Slack ok. deploy.sh dan deliver_report.sh aktif. |
 | Go deterministik tool catalog | 90% | emailintel, domaincheck, crawler, scraper, search cascade, scoring, evidence. |
 | Phase A — AI Reasoning Loop | 80% | AGENTS.md siap, belum ditest end-to-end dari Telegram. |
 | Anti-hallucination enforcement | 90% | Scoring engine reject AI evidence tanpa source URL. |
 | Search providers | 40% | Bing+DDG aktif; Google CSE dan Brave belum dikonfigurasi. |
 | Tool catalog expansion | 10% | `looksLikeBrand()` ada tapi belum jadi package; social/role extractor belum. |
 | Evidence/report audit | 60% | File-based done. Postgres missing. |
-| Slack production workflow | 30% | Sender exists, all-classification; alert rules dan DB routing belum. |
+| Slack production workflow | 35% | Sender exists, all-classification; deliver_report.sh ada tapi masih manual; alert rules dan DB routing belum. |
 | Dashboard | 0% | Designed only. |
 | Queue/worker/platform integration | 0% | Designed only. |
 | Multi-agent | 0% | Designed only. |

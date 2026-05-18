@@ -1,3 +1,5 @@
+> ⚠️ ARCHIVED — MVP sudah selesai. Lihat README.md untuk status aktual.
+
 # Building Plan — AI Company Detection Agent
 
 **Target hari ini:** jalankan MVP paling kecil dari VPS: user kirim email lewat Telegram → OpenClaw/agent menerima pesan → agent mengecek tool mana yang bisa dipakai → menjalankan investigasi semampunya → mengirim balik laporan ke Telegram berisi proses yang berhasil, gagal, skipped, dan ongoing/waiting.

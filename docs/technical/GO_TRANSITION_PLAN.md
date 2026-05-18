@@ -1,3 +1,5 @@
+> ⚠️ ARCHIVED — Go transition selesai. Lihat README.md untuk status aktual.
+
 # Go Transition Plan
 
 Dokumen ini adalah building plan untuk memindahkan Company Detector dari Node.js script prototype menuju Go production service/worker.
