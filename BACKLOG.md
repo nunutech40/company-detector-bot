@@ -15,6 +15,10 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [x] Selaraskan input contract ke field realistis `email`, `full_name`, `no_hp`, `brand_name` dan hilangkan dependency trusted pada `username`.
 
 ## 1. Database & Asynchronous Queue
+- [ ] **Go Transition Spec Freeze**: finalkan input/output/evidence/scoring contract sebelum rewrite.
+- [ ] **Go Service Skeleton**: buat `go-service/` dengan CLI parity untuk `company-check`.
+- [ ] **Go Unit Tests**: port pure logic dengan unit test dan golden fixtures.
+- [ ] **Go Integration Tests**: test DNS/fetch/search/Slack dengan mock dan real opt-in tests.
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
 - [ ] **Buat Skema Tabel**: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`.
 - [ ] **Migrasi Evidence Store**: Ubah `evidence_store.js` yang tadinya menyimpan file JSON fisik menjadi operasi `INSERT` ke tabel Postgres.

@@ -15,10 +15,13 @@ Untuk paham project dari nol:
 3. [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
    Baca kalau mau tahu script/tool mana melakukan apa, algoritmanya gimana, dan impact kalau satu bagian diubah.
 
-4. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
+4. [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
+   Baca kalau mau memahami rencana transisi dari Node.js prototype ke Go production worker/service.
+
+5. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
    Baca kalau mau tahu project sudah sampai mana dibanding PRD/TRD/plan, dan gap yang masih ada.
 
-5. [Backlog](../BACKLOG.md)
+6. [Backlog](../BACKLOG.md)
    Baca kalau mau menentukan kerja berikutnya.
 
 ## Product Docs
@@ -45,6 +48,9 @@ Untuk paham project dari nol:
 
 - [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
   Kamus tool/script, algoritma, scoring behavior, config, dan change impact map.
+
+- [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
+  Building plan transisi dari Node.js reference prototype menuju Go production implementation.
 
 ## Operations Docs
 
@@ -75,6 +81,7 @@ Untuk paham project dari nol:
 - Gambar besar bisnis/logika utama ada di `product/HIGH_LEVEL_BUSINESS_FLOW.md`.
 - Detail runtime dan branching ada di `technical/FLOW_MAP.md`.
 - Detail algoritma/script ada di `technical/TOOLS_AND_ALGORITHMS.md`.
+- Rencana porting production Go ada di `technical/GO_TRANSITION_PLAN.md`.
 - Rencana masa depan produk ada di `product/NEXT_LEVEL_ENRICHMENT_PLAN.md`.
 - Rencana storage/Slack/dashboard ada di `product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`.
 - Status gap terhadap plan ada di `reviews/PROJECT_IMPLEMENTATION_REVIEW.md`.

@@ -19,6 +19,7 @@ Yang sudah aktif:
 
 Yang belum production:
 
+- Go production worker/service.
 - Next-level company/social enrichment.
 - Personal-to-business relationship discovery.
 - Postgres, queue, dashboard, dan platform register API.
@@ -34,7 +35,8 @@ Urutan baca paling enak:
 1. [High Level Business Flow](docs/product/HIGH_LEVEL_BUSINESS_FLOW.md) - gambar besar input sampai output, current vs level 2.
 2. [Flow Map](docs/technical/FLOW_MAP.md) - alur runtime dan decision point yang lebih teknis.
 3. [Tools and Algorithms Reference](docs/technical/TOOLS_AND_ALGORITHMS.md) - kamus semua script/tool dan algoritmanya.
-4. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
+4. [Go Transition Plan](docs/technical/GO_TRANSITION_PLAN.md) - rencana port dari Node.js prototype ke Go production implementation.
+5. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
 
 ## Run Locally
 
