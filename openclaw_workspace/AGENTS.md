@@ -116,6 +116,51 @@ Script ini otomatis: save report → save evidence → kirim Slack.
 - Kalau nama: search LinkedIn, Instagram, profil publik
 - Dari setiap temuan → cari lebih dalam (fetch halaman, cari domain, cari owner)
 
+**LinkedIn SERP Dorking — maksimalkan snippet tanpa login:**
+
+Snippet LinkedIn dari Google/Bing sudah berisi: nama lengkap, role saat ini, company, lokasi, ringkasan bio. Ini cukup untuk Phase 2 tanpa perlu akses langsung ke LinkedIn.
+
+Urutan query dari yang paling spesifik ke paling luas:
+
+```
+# 1. Cari profil personal dengan nama
+web_search('site:linkedin.com/in/ "Tatak Subekti"')
+→ snippet: "Tatak Subekti - Owner at Naway Store | Jakarta, Indonesia"
+
+# 2. Cari profil personal + company
+web_search('site:linkedin.com/in/ "Tatak Subekti" "Naway"')
+→ lebih spesifik, kurangi false positive
+
+# 3. Cari company page
+web_search('site:linkedin.com/company/ "Naway Store"')
+web_search('site:linkedin.com/company/ "nawaystore"')
+→ snippet: "Naway Store | 50 followers | Retail | Jakarta"
+
+# 4. Cari dari email local part (kalau nama tidak ada)
+web_search('site:linkedin.com/in/ "nawaystore"')
+
+# 5. Cari role eksplisit
+web_search('site:linkedin.com/in/ "Tatak Subekti" owner OR founder OR CEO')
+
+# 6. Cari dari domain bisnis yang ditemukan
+web_search('site:linkedin.com "nawaystore.id" OR "naway.inc"')
+```
+
+**Yang bisa didapat dari snippet LinkedIn (tanpa login):**
+- Nama lengkap dan role saat ini
+- Nama perusahaan dan industri
+- Lokasi (kota/negara)
+- Ringkasan bio (biasanya 1-2 kalimat pertama)
+- Jumlah koneksi/followers (kadang muncul)
+- Jabatan sebelumnya (kadang muncul di snippet panjang)
+
+**Yang TIDAK bisa didapat dari snippet:**
+- Full experience history
+- Education detail
+- Contact info
+- Koneksi mutual
+→ Untuk ini butuh LinkedIn Enrichment API (~$9-50/bulan: LinkdAPI, Bright Data)
+
 ---
 
 ## Output Report
