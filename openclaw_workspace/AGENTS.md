@@ -8,6 +8,46 @@ You work like an investigator: form a hypothesis, choose the most informative to
 
 ---
 
+## WAJIB DILAKUKAN UNTUK SETIAP /check REQUEST
+
+**Langkah 1 — Ekstrak semua parameter dari pesan:**
+
+Dari pesan natural language, ekstrak:
+- Email: pola `xxx@xxx.xxx`
+- Nama: setelah kata "nama:", "name:", atau nama yang disebutkan
+- No HP: angka 10-13 digit, bisa diawali 08, +62, atau 62 — **WAJIB dipass ke script**
+- Brand: setelah kata "brand:", "toko:", "bisnis:"
+
+Contoh:
+```
+Input: "Cek email ini: nawaystore@yahoo.com, nama: Tatak Subekti, hp: 085281336302"
+→ email: nawaystore@yahoo.com
+→ full_name: Tatak Subekti
+→ no_hp: 085281336302
+```
+
+**Langkah 2 — Jalankan baseline DULU (WAJIB, sebelum reasoning apapun):**
+```bash
+scripts/company_check_go.sh --email <email> [--full-name "<name>"] [--no-hp "<phone>"] [--brand-name "<brand>"] --save
+```
+Ini WAJIB dijalankan pertama. Hasilnya jadi baseline + save evidence ke `evidence/latest.json`.
+
+**Langkah 3 — AI reasoning loop:**
+Setelah baseline, lakukan investigasi lebih dalam dengan `web_search`, `web_fetch`, dll.
+
+**Langkah 4 — Save hasil akhir (WAJIB):**
+Setelah reasoning selesai, jalankan lagi untuk save evidence terbaru:
+```bash
+scripts/company_check_go.sh --email <email> [--full-name "<name>"] [--no-hp "<phone>"] [--brand-name "<brand_dari_temuan_jika_ada>"] --save
+```
+Kalau AI menemukan brand name dari investigasi (misal: "Naway.inc"), pass sebagai `--brand-name`.
+
+**Delivery ke Slack dan Telegram ditangani otomatis oleh hook `agentStop`.**
+Kamu tidak perlu menjalankan `--send-slack` — hook akan trigger `deliver_report.sh` setelah kamu selesai.
+Fokus kamu: investigasi yang baik + save evidence. Delivery bukan urusanmu.
+
+---
+
 ## ATURAN PALING PENTING: ANTI-HALLUCINATION
 
 **Kamu DILARANG membuat klaim apapun tanpa menjalankan tool terlebih dahulu.**
@@ -702,11 +742,16 @@ Kalau jawaban salah satu adalah TIDAK → hapus klaim itu dari report.
 Ganti dengan: "Tidak diverifikasi — [tool] tidak dijalankan / gagal / tidak tersedia"
 ```
 
-Setelah self-check, jalankan Go scoring untuk finalisasi:
+**WAJIB sebelum submit report — jalankan company_check untuk save + Slack:**
 ```bash
-scripts/company_check_go.sh --email <email> [--full-name "..."] [--brand-name "..."] --json --save --send-slack
+scripts/company_check_go.sh --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "<brand_dari_temuan_jika_ada>"] --save --send-slack
 ```
+
+Kalau AI menemukan brand name dari investigasi (misal: "Naway.inc"), pass sebagai `--brand-name`.
+Kalau no_hp ada di input → WAJIB dipass ke `--no-hp`.
+
 Go scoring engine hanya menghitung dari evidence yang benar-benar ada. Ini adalah ground truth.
+Report yang tidak diakhiri dengan command ini tidak akan tersimpan dan tidak akan terkirim ke Slack.
 
 ---
 
