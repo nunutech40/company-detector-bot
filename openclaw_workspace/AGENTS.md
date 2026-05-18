@@ -449,30 +449,38 @@ Examples of high information gain (run these):
 Each finding should unlock a more specific next step. This is not circular — it's convergent:
 
 ```
-Round 1 — from input:
-  email: nawaystore@yahoo.com
-  → local part "nawaystore" → brand hint
-  → search: "nawaystore tokopedia OR shopee OR instagram"
-  → FOUND: instagram.com/nawaystore
+Round 1 — dari input awal:
+  email: nawaystore@yahoo.com, full_name: Tatak Subekti
+  Hipotesis    : "nawaystore" → brand hint → kemungkinan punya toko/bisnis
+  Tool         : web_search("nawaystore tokopedia OR shopee OR instagram")
+  Status       : OK — 3 hasil ditemukan
+  Hasil        : instagram.com/nawaystore muncul di hasil
+  Artinya      : ada profil publik dengan nama ini → hipotesis MENGUAT
+  Membuka jalur: instagram.com/nawaystore → perlu di-fetch
 
-Round 2 — from Round 1 finding:
-  instagram.com/nawaystore
-  → fetch Instagram page
-  → FOUND: bio says "Naway Store | WA: 08123456789 | nawaystore.id"
-  → phone match with no_hp → +25 confidence
-  → new lead: nawaystore.id domain
+Round 2 — dari temuan Round 1:
+  Hipotesis    : ada Instagram nawaystore, kemungkinan toko
+  Dari Round 1 : instagram.com/nawaystore ditemukan di search
+  Tool         : web_fetch("https://instagram.com/nawaystore")
+  Status       : OK
+  Hasil        : bio = "Naway Store | Fashion Muslim | WA: 08123456789 | nawaystore.id"
+  Artinya      : ini toko fashion, ada website nawaystore.id, ada nomor WA
+                 → phone match dengan no_hp: 08123456789 = MATCH → +25 confidence
+  Membuka jalur: nawaystore.id → perlu dicek domain dan /about
 
-Round 3 — from Round 2 finding:
-  nawaystore.id
-  → domain_checker: website active, MX present
-  → fetch /about: "Tatak Subekti — Founder"
-  → FOUND: explicit role evidence
-  → confidence >= 75 → STOP
+Round 3 — dari temuan Round 2:
+  Hipotesis    : Tatak Subekti kemungkinan owner Naway Store
+  Dari Round 2 : domain nawaystore.id ditemukan di bio Instagram
+  Tool         : web_fetch("https://nawaystore.id/about")
+  Status       : OK
+  Hasil        : "Tatak Subekti — Founder & Owner, Naway Store"
+  Artinya      : explicit role evidence → hipotesis TERKONFIRMASI
+  Membuka jalur: tidak ada jalur baru yang lebih informatif → STOP
 
-Total: 3 rounds, ~6 tool calls, clear conclusion
+[Stop karena: confidence >= 75, explicit role evidence dari 2 sumber independen]
 ```
 
-**Key principle:** Each round uses findings from the previous round as input. If a round produces no new leads → stop.
+**Key principle:** Setiap round menggunakan temuan dari round sebelumnya sebagai input. Kalau satu round tidak menghasilkan jalur baru → stop.
 
 ---
 
@@ -547,10 +555,31 @@ Business Relationship: [found / not_found / inconclusive]
 Role: [founder / CEO / owner / direktur / employee / freelancer / unknown]
 Confidence: N/100
 
-[AI Reasoning — Round 2]
-  Hipotesis    : [updated hypothesis]
-  Strategi     : [why you're investigating this angle]
-  Tool dipilih : [tool + query]
+--- Proses investigasi (setiap round harus ditampilkan) ---
+
+[Round 1 — dari input awal]
+  Hipotesis    : [hipotesis awal berdasarkan email/nama/brand]
+  Tool         : [tool yang dipilih + query/url]
+  Status       : OK / GAGAL
+  Hasil        : [apa yang ditemukan]
+  Artinya      : [apa dampaknya ke hipotesis]
+  Membuka jalur: [URL/nama/domain baru yang perlu dicek] ATAU [tidak ada jalur baru]
+
+[Round 2 — dari temuan Round 1]
+  Hipotesis    : [hipotesis yang diupdate]
+  Dari Round 1 : [apa yang ditemukan di Round 1 yang memicu Round 2]
+  Tool         : [tool yang dipilih + query/url]
+  Status       : OK / GAGAL
+  Hasil        : [apa yang ditemukan]
+  Artinya      : [apa dampaknya ke hipotesis]
+  Membuka jalur: [URL/nama/domain baru] ATAU [tidak ada jalur baru → stop]
+
+[Round 3 — dari temuan Round 2]
+  ...
+
+[Stop karena: confidence >= 75 / tidak ada jalur baru / budget habis]
+
+--- Temuan terstruktur ---
 
 Profil Bisnis (jika ditemukan):
   Nama bisnis  : [company/store/brand name]
