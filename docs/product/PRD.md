@@ -29,7 +29,7 @@ Dokumen ini sengaja memasukkan tools yang mungkin belum langsung dapat diakses k
 
 # 2. Problem Statement
 
-Data register sering tidak cukup untuk memahami nilai bisnis sebuah akun. Email Gmail bisa saja milik founder, corporate email bisa saja milik employee biasa, dan nama/username bisa memiliki banyak identity collision. Tanpa investigasi terstruktur, sistem mudah salah mengklasifikasikan user.
+Data register sering tidak cukup untuk memahami nilai bisnis sebuah akun. Email Gmail bisa saja milik founder, corporate email bisa saja milik employee biasa, dan nama lengkap bisa memiliki banyak identity collision. Untuk input saat ini, field yang trusted adalah `email`, `full_name`, `no_hp`, dan `brand_name`; username register tidak dipakai sebagai sinyal karena sering berisi email/nomor HP. Tanpa investigasi terstruktur, sistem mudah salah mengklasifikasikan user.
 
 Masalah utama yang ingin diselesaikan:
 
@@ -181,7 +181,7 @@ Berikut tool catalog yang disiapkan. Saat implementasi awal, semua tools tidak w
 | **Tool**           | **Jenis**        | **Fungsi**                                                                                                          | **Prioritas**                    |
 |--------------------|------------------|---------------------------------------------------------------------------------------------------------------------|----------------------------------|
 | web_search         | Built-in         | Mencari kandidat company/profile/personal site/LinkedIn via SERP. Provider bisa Brave, Tavily, Exa, Firecrawl, dll. | MVP wajib                        |
-| x_search           | Built-in         | Mencari sinyal dari X/Twitter terutama jika signup_source dari X campaign atau username kuat.                       | MVP opsional tapi sangat relevan |
+| x_search           | Built-in         | Mencari sinyal dari X/Twitter jika ada kandidat public profile dari full_name/brand_name/local-part.                | Phase 2 opsional                 |
 | web_fetch          | Built-in         | Fetch URL ringan dan extract readable content untuk homepage/about/team/profile page.                               | MVP wajib                        |
 | browser            | Built-in         | Render halaman JS-heavy, klik, screenshot, validasi visual evidence.                                                | Phase 2                          |
 | firecrawl_search   | Plugin/provider  | Search dengan kontrol Firecrawl. Berguna untuk discovery dan scrape results.                                        | Phase 2 / budget                 |
@@ -199,11 +199,11 @@ Berikut tool catalog yang disiapkan. Saat implementasi awal, semua tools tidak w
 
 | **Custom Tool**          | **Input**                     | **Output**                                                                                              | **Catatan**                                                               |
 |--------------------------|-------------------------------|---------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| email_intelligence       | email, name                   | domain, is_free_email, is_disposable, is_role_email, mx_status, suspicion_tags                          | Tool pertama yang murah untuk mayoritas kasus.                            |
+| email_intelligence       | email                         | domain, is_free_email, is_disposable, is_role_email, mx_status, suspicion_tags                          | Tool pertama yang murah untuk mayoritas kasus.                            |
 | domain_checker           | domain                        | website_active, redirects, title, meta, mx, organization_schema, confidence_signal                      | Validasi apakah domain terlihat seperti company domain.                   |
 | website_crawler_router   | domain/url + target intent    | candidate_pages: /about, /team, /founders, /contact, /pricing, /careers, /privacy, /terms               | Menentukan halaman mana yang layak di-scrape.                             |
-| public_profile_search    | name, username, email prefix  | candidate_profiles dari GitHub, Product Hunt, Indie Hackers, Crunchbase/Wellfound, X, LinkedIn via SERP | Mencari sumber non-email untuk Gmail/free email.                          |
-| linkedin_via_serp_signal | name/company/username queries | LinkedIn URL/title/snippet dari SERP, bukan direct scraping LinkedIn page                               | Sinyal pendukung, wajib cross-check.                                      |
+| public_profile_search    | full_name, brand_name, email prefix | candidate_profiles dari GitHub, Product Hunt, Indie Hackers, Crunchbase/Wellfound, X, LinkedIn via SERP | Mencari sumber non-email untuk Gmail/free email.                          |
+| linkedin_via_serp_signal | full_name/brand/company queries | LinkedIn URL/title/snippet dari SERP, bukan direct scraping LinkedIn page                               | Sinyal pendukung, wajib cross-check.                                      |
 | enrichment_api_adapter   | person/company identifiers    | PDL/Apollo/Clearbit-like result jika API tersedia                                                       | Fallback mahal; dipakai jika evidence publik belum cukup.                 |
 | evidence_store           | evidence object               | persist evidence + query + source + tool result + timestamp + reliability                               | Wajib untuk audit.                                                        |
 | scoring_engine           | evidence graph                | classification_scores, confidence, conflicts, recommended_action                                        | Rules-first; LLM bisa membantu reasoning tapi tidak satu-satunya penentu. |
@@ -294,11 +294,11 @@ AI tidak menjalankan tools A -> B -> C secara tetap. AI membentuk hipotesis awal
 
 | **Kecurigaan AI**          | **Trigger**                                                            | **Tools yang mungkin dipilih**                                                           | **Output potensial**                                |
 |----------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| Corporate email            | email domain bukan free provider, domain terlihat valid                | email_intelligence, domain_checker, web_fetch/firecrawl_scrape, search same name+company | company_affiliated atau founder jika role ditemukan |
-| Free email + username kuat | Gmail/iCloud tapi username unik, signup source dari X/GitHub           | web_search, x_search, public_profile_search, personal website scrape, LinkedIn via SERP  | business_owner_candidate / unknown                  |
-| Company field/website ada  | User mengisi company atau website saat register                        | domain_checker, website_scraper, company enrichment, role extraction                     | company_detected / company_affiliated               |
+| Corporate email            | email domain bukan free provider, domain terlihat valid                | email_intelligence, domain_checker, web_fetch/firecrawl_scrape, search full_name+brand/company | company_affiliated atau founder jika role ditemukan |
+| Free email + brand/full_name kuat | Gmail/iCloud tapi ada brand_name atau full_name yang cukup spesifik | web_search, x_search, public_profile_search, personal website scrape, LinkedIn via SERP  | business_owner_candidate / unknown                  |
+| Brand field/website ada    | User/register punya brand_name atau website saat register              | domain_checker, website_scraper, company enrichment, role extraction                     | company_detected / company_affiliated               |
 | Agency/freelancer signal   | kata kunci agency, studio, consultant, clients, portfolio              | personal website scrape, X/GitHub, search product/client pages                           | agency_business_candidate                           |
-| Low signal                 | email free, nama umum, username tidak unik                             | broad SERP, enrichment if budget, then manual review/unknown                             | unknown / inconclusive                              |
+| Low signal                 | email free, nama umum, brand_name kosong                               | broad SERP, enrichment if budget, then manual review/unknown                             | unknown / inconclusive                              |
 | Suspicious                 | disposable email, domain mati, inconsistent identity, spam-like source | email/disposable checker, domain_checker, minimal search                                 | suspicious_spam                                     |
 
 # 11. Classification Model
@@ -373,13 +373,13 @@ Report ke Slack harus text naratif, bukan JSON mentah. Gaya bahasa: seperti asis
 >
 > Saya sudah memeriksa akun baru berikut:
 >
-> Nama: Alex Rivera
+> Full name: Alex Rivera
 >
 > Email: alex@acme.ai
 >
-> Username: alexbuilds
+> Brand name: Acme AI
 >
-> Signup source: X campaign
+> Phone: stored for internal matching only
 >
 > Kesimpulan:
 >
@@ -529,13 +529,13 @@ Report ke Slack harus text naratif, bukan JSON mentah. Gaya bahasa: seperti asis
 
 6.  Slack report menyebut tools yang dipakai dan tools yang dilewati.
 
-## 16.2 Gmail, Username Kuat dari X Campaign
+## 16.2 Gmail, Brand Name / Full Name Kuat
 
-7.  AI melihat email Gmail, tetapi username alexbuilds dan signup_source X campaign.
+7.  AI melihat email Gmail, tetapi ada `full_name` dan `brand_name` dari register.
 
 8.  AI membentuk hipotesis founder_candidate_from_public_identity.
 
-9.  AI memanggil web_search dan x_search dengan query berbasis username.
+9.  AI memanggil web_search dan x_search dengan query berbasis `full_name`, `brand_name`, dan local-part email.
 
 10. Jika ditemukan personal site atau product page, AI memakai web_fetch/firecrawl_scrape.
 

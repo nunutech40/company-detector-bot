@@ -15,11 +15,14 @@ function confidenceLabel(score) {
   return "low";
 }
 
-function classify({ email_intelligence, domain_checker, confidence_score }) {
+function classify({ email_intelligence, domain_checker, confidence_score, register_input }) {
   if (!email_intelligence || !email_intelligence.ok || email_intelligence.is_disposable) {
     return "suspicious_or_invalid";
   }
   if (email_intelligence.is_free_email) {
+    if (register_input && register_input.brand_name) {
+      return "unknown_needs_more_evidence";
+    }
     return confidence_score >= 45 ? "unknown_needs_more_evidence" : "likely_personal_email";
   }
   if (domain_checker && domain_checker.website_active) {
@@ -49,6 +52,7 @@ function scoreCompanyEvidence(input) {
     email_intelligence: input.email_intelligence,
     domain_checker: input.domain_checker,
     confidence_score: confidenceScore,
+    register_input: input.register_input,
   });
 
   return {

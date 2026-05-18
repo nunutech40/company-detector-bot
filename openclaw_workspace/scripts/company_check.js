@@ -11,6 +11,7 @@ const { renderTelegramReport } = require("./report_formatter");
 const { sendToSlack } = require("./slack_reporter");
 const { searchDuckDuckGo } = require("./ddg_search");
 const { scrapeUrl } = require("./free_scraper");
+const { normalizeRegisterInput } = require("./input_normalizer");
 
 function nowIso() {
   return new Date().toISOString();
@@ -32,12 +33,15 @@ function buildSummary(classification, emailIntel, domainCheck) {
   return "Evidence belum cukup kuat untuk klaim perusahaan yang aman.";
 }
 
-function buildRecommendation(classification, emailIntel) {
+function buildRecommendation(classification, emailIntel, input) {
   if (classification === "possible_company_affiliated") {
     return "Route sebagai lead/company-associated untuk automation ringan. Jangan route sebagai founder/owner sampai ada evidence role eksplisit.";
   }
   if (classification === "likely_personal_email") {
-    return "Simpan sebagai personal/unknown. Automation register boleh lanjut tanpa segmentasi B2B sampai ada metadata tambahan seperti company, website, atau username publik.";
+    if (input && (input.full_name || input.brand_name)) {
+      return "Simpan sebagai personal/unknown sementara. Gunakan full_name dan brand_name sebagai hint enrichment, tapi jangan klaim relasi bisnis tanpa evidence publik eksplisit.";
+    }
+    return "Simpan sebagai personal/unknown. Automation register boleh lanjut tanpa segmentasi B2B sampai ada brand_name, website, atau evidence publik tambahan.";
   }
   if (classification === "suspicious_or_invalid") {
     return "Flag untuk validasi format/risk check sebelum automation lanjutan.";
@@ -45,8 +49,41 @@ function buildRecommendation(classification, emailIntel) {
   return "Simpan sebagai unknown dan retry enrichment/search saat provider tersedia atau saat metadata tambahan masuk.";
 }
 
-async function runCompanyCheck(emailInput) {
-  const emailIntel = analyzeEmail(emailInput);
+function buildInputEvidence(input) {
+  const evidence = [];
+  if (input.full_name) {
+    evidence.push({
+      source_type: "register_input",
+      reliability: "medium",
+      claim: "Register input includes a full name that can support identity matching.",
+      value: input.full_name,
+      confidence_delta: 0,
+    });
+  }
+  if (input.brand_name) {
+    evidence.push({
+      source_type: "register_input",
+      reliability: "medium",
+      claim: "Register input includes a brand name/business hint.",
+      value: input.brand_name,
+      confidence_delta: 10,
+    });
+  }
+  if (input.no_hp) {
+    evidence.push({
+      source_type: "register_input",
+      reliability: "medium",
+      claim: "Register input includes phone data for internal matching only.",
+      value: input.phone_masked,
+      confidence_delta: 0,
+    });
+  }
+  return evidence;
+}
+
+async function runCompanyCheck(inputPackage) {
+  const normalizedInput = normalizeRegisterInput(inputPackage);
+  const emailIntel = analyzeEmail(normalizedInput.email);
   const toolsUsed = ["email_intelligence"];
   const toolsSkipped = [
     { tool: "firecrawl_scrape", reason: "disabled_waiting_budget" },
@@ -60,7 +97,7 @@ async function runCompanyCheck(emailInput) {
   let serpQueries = null;
   let ddgSearch = null;
   let freeScraper = null;
-  const evidence = [...(emailIntel.evidence || [])];
+  const evidence = [...(emailIntel.evidence || []), ...buildInputEvidence(normalizedInput)];
 
   if (emailIntel.ok && !emailIntel.is_free_email && !emailIntel.is_disposable) {
     domainCheck = await checkDomain(emailIntel.domain);
@@ -77,12 +114,17 @@ async function runCompanyCheck(emailInput) {
       email: emailIntel.email,
       domain: emailIntel.domain,
       local: emailIntel.local,
+      full_name: normalizedInput.full_name,
+      brand_name: normalizedInput.brand_name,
+      include_domain_queries: !emailIntel.is_free_email,
     });
     toolsUsed.push("serp_query_builder");
 
     const primaryQuery =
       emailIntel.is_free_email
-        ? (serpQueries.queries || []).find((query) => query.includes(`"${emailIntel.local}"`))
+        ? (serpQueries.queries || []).find((query) => normalizedInput.brand_name && query.includes(`"${normalizedInput.brand_name}"`)) ||
+          (serpQueries.queries || []).find((query) => normalizedInput.full_name && query.includes(`"${normalizedInput.full_name}"`)) ||
+          (serpQueries.queries || []).find((query) => query.includes(`"${emailIntel.local}"`))
         : serpQueries.queries && serpQueries.queries[0];
     if (primaryQuery) {
       ddgSearch = await searchDuckDuckGo(primaryQuery, { limit: 5 });
@@ -149,6 +191,7 @@ async function runCompanyCheck(emailInput) {
     domain_checker: domainCheck,
     website_crawler: websiteCrawler,
     evidence,
+    register_input: normalizedInput,
   });
   toolsUsed.push("scoring_engine");
 
@@ -157,7 +200,12 @@ async function runCompanyCheck(emailInput) {
     job_type: "company_detection_mvp",
     observed_at: nowIso(),
     input: {
-      email: emailInput,
+      email: normalizedInput.email,
+      full_name: normalizedInput.full_name || null,
+      no_hp: normalizedInput.no_hp || null,
+      phone_masked: normalizedInput.phone_masked || null,
+      brand_name: normalizedInput.brand_name || null,
+      ignored_fields: normalizedInput.ignored_fields,
     },
     classification: scoreResult.classification,
     company_detected: scoreResult.company_detected,
@@ -177,7 +225,7 @@ async function runCompanyCheck(emailInput) {
     tool_errors: toolErrors,
     evidence,
     summary: buildSummary(scoreResult.classification, emailIntel, domainCheck),
-    recommendation: buildRecommendation(scoreResult.classification, emailIntel),
+    recommendation: buildRecommendation(scoreResult.classification, emailIntel, normalizedInput),
   };
   result.telegram_report = renderTelegramReport(result);
   return result;
@@ -188,8 +236,8 @@ async function main() {
   const asJson = args.includes("--json");
   const shouldSave = args.includes("--save");
   const shouldSendSlack = args.includes("--send-slack") || process.env.COMPANY_DETECTION_SEND_SLACK === "true";
-  const email = args.find((arg) => !arg.startsWith("--"));
-  const result = await runCompanyCheck(email);
+  const input = parseInputArgs(args);
+  const result = await runCompanyCheck(input);
   if (shouldSave) {
     result.storage = storeResult(result);
   }
@@ -204,6 +252,37 @@ async function main() {
   process.exit(result.ok ? 0 : 1);
 }
 
+function getFlagValue(args, flag) {
+  const index = args.indexOf(flag);
+  if (index === -1) return "";
+  return args[index + 1] && !args[index + 1].startsWith("--") ? args[index + 1] : "";
+}
+
+function parseInputArgs(args) {
+  const inputJson = getFlagValue(args, "--input-json");
+  if (inputJson) return JSON.parse(inputJson);
+
+  const valueFlags = new Set(["--input-json", "--full-name", "--no-hp", "--brand-name"]);
+  let positional = "";
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (valueFlags.has(arg)) {
+      index += 1;
+      continue;
+    }
+    if (!arg.startsWith("--")) {
+      positional = arg;
+      break;
+    }
+  }
+  return {
+    email: positional,
+    full_name: getFlagValue(args, "--full-name"),
+    no_hp: getFlagValue(args, "--no-hp"),
+    brand_name: getFlagValue(args, "--brand-name"),
+  };
+}
+
 if (require.main === module) {
   main().catch((error) => {
     console.error(JSON.stringify({ ok: false, error: error.message }, null, 2));
@@ -214,4 +293,5 @@ if (require.main === module) {
 module.exports = {
   runCompanyCheck,
   renderReport: renderTelegramReport,
+  parseInputArgs,
 };

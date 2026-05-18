@@ -68,6 +68,9 @@ function renderTelegramReport(result) {
     "",
     "Input:",
     `- Email: ${result.input.email}`,
+    result.input.full_name ? `- Full name: ${result.input.full_name}` : null,
+    result.input.brand_name ? `- Brand name: ${result.input.brand_name}` : null,
+    result.input.phone_masked ? `- No HP: ${result.input.phone_masked} (internal matching only)` : null,
     "",
     "Kesimpulan final sementara:",
     result.summary,
@@ -88,7 +91,7 @@ function renderTelegramReport(result) {
     "",
     "Rekomendasi automation:",
     result.recommendation,
-  ].join("\n");
+  ].filter((line) => line !== null && line !== undefined).join("\n");
 }
 
 function readStdin() {

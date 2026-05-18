@@ -14,6 +14,8 @@ This workspace is for the Company Detection Telegram MVP.
 - `email_intelligence`: enabled, `node scripts/email_intelligence.js <email>`.
 - `domain_checker`: enabled, `node scripts/domain_checker.js <domain>`.
 - `company_check`: enabled, `node scripts/company_check.js <email> --save`.
+- `company_check` register package: enabled, `node scripts/company_check.js <email> --full-name "..." --no-hp "..." --brand-name "..." --save`.
+- `batch_csv_check`: enabled, `node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]`; processes rows sequentially.
 - `scoring_engine`: enabled, called by `company_check`; standalone accepts JSON on stdin via `node scripts/scoring_engine.js`.
 - `website_crawler_router`: enabled, called by `company_check`; standalone `node scripts/website_crawler_router.js <domain>`.
 - `serp_query_builder`: enabled, called by `company_check`; builds search queries for lightweight/free search.

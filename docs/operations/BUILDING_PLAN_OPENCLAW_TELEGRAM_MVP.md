@@ -790,7 +790,7 @@ Telegram:
 ```text
 /check alexbuilder@gmail.com
 
-Gunakan mode MVP. Karena email free provider, coba cari company signal dari username/local-part jika web_search tersedia. Kalau tidak tersedia, laporkan skipped.
+Gunakan mode MVP. Karena email free provider, coba cari company signal dari local-part email. Jika input platform punya full_name atau brand_name, pakai itu sebagai hint tambahan. Kalau web_search tidak tersedia, laporkan skipped.
 ```
 
 Expected report:

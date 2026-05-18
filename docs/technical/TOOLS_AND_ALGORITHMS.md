@@ -63,12 +63,14 @@ Role:
 Inputs:
 
 ```bash
-node scripts/company_check.js <email> [--json] [--save] [--send-slack]
+node scripts/company_check.js <email> [--full-name "..."] [--no-hp "..."] [--brand-name "..."] [--json] [--save] [--send-slack]
+node scripts/company_check.js --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' [--json] [--save]
 ```
 
 Algorithm:
 
-1. Run `email_intelligence`.
+1. Normalize current input package: `email`, `full_name`, `no_hp`, `brand_name`.
+2. Run `email_intelligence`.
 2. If email custom domain and not disposable:
    - run `domain_checker`
    - run `website_crawler_router`
@@ -86,6 +88,36 @@ Algorithm:
 10. Run `report_formatter`.
 11. If `--save`, run `evidence_store`.
 12. If `--send-slack` or env enabled, run `slack_reporter`.
+
+Important input rule:
+
+- `brand_name` may add a business hint and search query.
+- `full_name` may add identity/profile queries.
+- `no_hp` is retained/masked for internal matching only and is not used for public search.
+- `username` is intentionally not part of the trusted algorithm because platform username is not reliable.
+
+### `batch_csv_check.js`
+
+Role:
+
+- Sequential CSV runner for platform exports.
+- Expects headers: `email`, `full_name`, `no_hp`, `brand_name`.
+- Processes one row at a time; no parallelism by default.
+- Emits one JSON line summary per row.
+
+Inputs:
+
+```bash
+node scripts/batch_csv_check.js <csv_file> [--limit N] [--save] [--send-slack]
+```
+
+Algorithm:
+
+1. Parse CSV locally.
+2. Convert each row into the current register input contract.
+3. Run `company_check` for each row sequentially.
+4. Optionally save evidence/report.
+5. Optionally send Slack if explicitly enabled.
 
 Failure behavior:
 
@@ -229,7 +261,7 @@ Change impact:
 
 Role:
 
-- Build query variants from email/domain/local/name/username.
+- Build query variants from email/domain/local/full_name/brand_name.
 - Does not search by itself.
 
 Algorithm:
@@ -241,12 +273,18 @@ domain query:
   "<root>" startup OR company OR platform
   "<domain>" LinkedIn
 
-name query if name exists:
-  "<name>" "<domain>"
-  "<name>" founder OR company OR LinkedIn
+full_name query if full_name exists:
+  "<full_name>" "<domain-or-brand>"
+  "<full_name>" founder OR owner OR company OR LinkedIn
 
-local/username query:
-  "<local-or-username>" GitHub OR Product Hunt OR LinkedIn
+brand_name query if brand_name exists:
+  "<brand_name>" company OR business OR official
+  "<full_name>" "<brand_name>"
+
+local-part query:
+  "<local>" GitHub OR Product Hunt OR LinkedIn
+
+`no_hp` is not used for public search by default.
 ```
 
 Decision rule in `company_check`:

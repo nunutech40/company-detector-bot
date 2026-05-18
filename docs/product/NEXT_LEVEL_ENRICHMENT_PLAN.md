@@ -93,12 +93,12 @@ Dipakai saat email memakai free/personal provider, misalnya:
 r.fajarnugraha@gmail.com
 ```
 
-Untuk sekarang sistem tetap mulai dari email saja. Kalau belum ada name/username dari platform, sistem dapat memakai local-part sebagai low-confidence identity hint.
+Untuk sekarang sistem memakai field register yang realistis tersedia dari platform: `email`, `full_name`, `no_hp`, dan `brand_name`. Jika `full_name` atau `brand_name` kosong, sistem tetap dapat memakai local-part email sebagai low-confidence identity hint.
 
 Target output:
 
 - possible person identity hints
-- possible usernames from email local-part
+- possible identity hints from email local-part
 - public profile candidates
 - possible business/company affiliation
 - role signal, seperti founder, CEO, owner, director, freelancer, agency, consultant
@@ -153,10 +153,9 @@ These should not replace the primary classification immediately. Safer structure
   "job_type": "company_detection_enrichment",
   "input": {
     "email": "contact@komerce.id",
-    "name": null,
-    "username": null,
-    "company_field": null,
-    "signup_source": null
+    "full_name": null,
+    "no_hp": null,
+    "brand_name": null
   },
   "classification": "possible_company_affiliated",
   "business_relationship": null,
@@ -274,7 +273,7 @@ Combines domain checker, crawler, scraper, and SERP evidence into a normalized `
 
 #### `public_profile_search`
 
-Uses email local-part, name, username, and optional future platform fields to search:
+Uses email local-part, `full_name`, and `brand_name` to search:
 
 - LinkedIn via SERP snippets
 - X profile snippets
@@ -330,7 +329,8 @@ Company enrichment confidence:
 Personal-business confidence:
 
 - email local-part only: very low
-- exact username match across profile and email: low-medium
+- full name match only: low
+- full name + brand name co-occurrence: medium
 - profile snippet says founder/CEO/owner: medium
 - profile links to company domain: high
 - company website mentions the person: high
@@ -393,8 +393,8 @@ For platform integration:
 ### Phase 2: Personal-To-Business Discovery
 
 - Improve local-part parsing.
-- Search public profile snippets from local-part.
-- Add optional input fields when platform provides them: name, username, company field, signup source, country.
+- Search public profile snippets from local-part, full_name, and brand_name.
+- Normalize current platform fields: email, full_name, no_hp, brand_name.
 - Add role signal extraction.
 - Add `business_relationship` classification.
 
@@ -418,7 +418,7 @@ For platform integration:
 ## 12. Open Questions
 
 - How much personal data should be retained for free-email users?
-- Should platform registration ask for name/username before enrichment, or enrich from email first and retry later?
+- Should platform registration make `brand_name` required or keep it optional?
 - What threshold routes a lead into B2B automation?
 - Should Google Maps use SERP only first, or official Places API once budget exists?
 - What should happen when social profile candidates conflict?

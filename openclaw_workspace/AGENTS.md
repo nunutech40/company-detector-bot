@@ -23,6 +23,14 @@ For every valid email check, run the deterministic MVP tool and use its output a
 node scripts/company_check.js <email> --save
 ```
 
+If register metadata is available, pass the current trusted fields only:
+
+```bash
+node scripts/company_check.js <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
+```
+
+Do not treat platform `username` as a trusted identity signal because it may contain an email or phone number.
+
 Return the generated report. Do not invent evidence beyond the tool output. If the script fails, say the check failed technically and include the failure reason.
 
 ## MVP Flow
@@ -75,7 +83,8 @@ Flag as suspicious if the domain includes:
 - `+30` domain is not a free email provider
 - `+20` website/domain appears active, if checked
 - `+20` title/meta looks like company, if checked
-- `+25` user's name appears on website/company page, if checked
+- `+25` user's full_name appears on website/company page, if checked
+- `brand_name` can support business investigation, but it is not enough to claim founder/owner by itself
 - `-40` disposable email
 - `-20` website dead, if checked
 - `-30` free email without extra evidence

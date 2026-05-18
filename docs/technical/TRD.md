@@ -62,7 +62,7 @@ OpenClaw digunakan sebagai orchestration layer karena tools di OpenClaw memang b
 
 - Menerima job investigasi dari backend platform saat user register.
 
-- Melakukan normalisasi identitas: email, domain, name, username, signup source, dan metadata lain.
+- Melakukan normalisasi identitas dari field register yang tersedia: email, full_name, no_hp, brand_name.
 
 - Memberikan AI goal, aturan, batas tools, retry budget, dan stop condition.
 
@@ -126,7 +126,7 @@ Tools di bawah dipetakan berdasarkan kebutuhan produk. Tidak semua harus aktif d
 | **Tool**                 | **Type**            | **Dipakai untuk**                                                    | **Prioritas** | **Catatan**                            |
 |--------------------------|---------------------|----------------------------------------------------------------------|---------------|----------------------------------------|
 | web_search               | Built-in            | Cari kandidat company/person/profile lewat web dan SERP-like result. | MVP: wajib    | Low-medium cost                        |
-| x_search                 | Built-in            | Cari sinyal dari X/Twitter, terutama signup dari X campaign.         | MVP: optional | Gunakan jika data username/handle kuat |
+| x_search                 | Built-in            | Cari sinyal dari X/Twitter jika ditemukan kandidat public profile dari full_name/brand_name. | Phase 2 optional | Jangan bergantung pada username register karena tidak trusted |
 | web_fetch                | Built-in            | Fetch konten URL spesifik untuk halaman ringan/static.               | MVP: wajib    | Tidak untuk JS-heavy                   |
 | browser                  | Built-in UI         | Render halaman JS-heavy, klik, screenshot, validasi visual.          | Phase 2       | Lebih mahal dan lebih lambat           |
 | code_execution           | Built-in runtime    | Normalisasi data, scoring, dedup, validation script.                 | MVP: wajib    | Sandboxed                              |
@@ -149,9 +149,9 @@ Tools di bawah dipetakan berdasarkan kebutuhan produk. Tidak semua harus aktif d
 | evidence_store.write                 | Input: evidence item. Output: evidence_id.                                                 | MVP          |
 | scoring_engine.score                 | Input: evidence graph. Output: classification, confidence, reasons.                        | MVP          |
 | slack_report_formatter               | Input: internal JSON. Output: human narrative Slack text.                                  | MVP          |
-| enrichment_api.lookup_person/company | Input: email/name/domain. Output: vendor signals.                                          | Phase 2/paid |
-| github_public_checker                | Input: username/name. Output: profile/company/blog/org evidence.                           | Phase 2      |
-| producthunt_checker                  | Input: username/name/company. Output: maker/product evidence.                              | Phase 2      |
+| enrichment_api.lookup_person/company | Input: email/full_name/domain/brand_name. Output: vendor signals.                          | Phase 2/paid |
+| github_public_checker                | Input: full_name/email local-part/brand_name. Output: profile/company/blog/org evidence.   | Phase 2      |
+| producthunt_checker                  | Input: full_name/email local-part/brand_name. Output: maker/product evidence.              | Phase 2      |
 
 ## 6.2 Alternatif Tools Gratis (Workaround MVP)
 
@@ -169,7 +169,7 @@ MVP dapat berjalan dengan single orchestrator agent. Multi-agent digunakan saat 
 | Orchestrator Agent    | Menetapkan goal, suspicion, tool selection, stop/continue decision.  | Selalu                                        |
 | Web Research Agent    | Search SERP, LinkedIn via SERP signal, source discovery.             | Jika email tidak cukup atau butuh cross-check |
 | Company Website Agent | Scrape company domain, about/team/contact/pricing/legal pages.       | Jika ada domain kandidat                      |
-| Public Profile Agent  | Cek X/GitHub/Product Hunt/Crunchbase/Wellfound signal.               | Jika username/handle kuat                     |
+| Public Profile Agent  | Cek X/GitHub/Product Hunt/Crunchbase/Wellfound signal.               | Jika full_name + brand_name atau local-part cukup spesifik |
 | Scoring Agent         | Membaca evidence graph dan menghasilkan classification + confidence. | Setiap job                                    |
 | Report Agent          | Membuat Slack report naratif dan internal JSON final.                | Setiap job                                    |
 
@@ -186,7 +186,7 @@ Evidence store adalah pusat audit. Semua tool run harus menghasilkan record yang
 | **Tabel**          | **Fungsi**                                         | **Kolom Kunci**                                                                           |
 |--------------------|----------------------------------------------------|-------------------------------------------------------------------------------------------|
 | investigation_jobs | Menyimpan status job per user register.            | job_id, user_id, status, started_at, finished_at, final_classification, confidence        |
-| register_snapshots | Menyimpan snapshot data register saat investigasi. | job_id, email, name, username, signup_source, metadata_json                               |
+| register_snapshots | Menyimpan snapshot data register saat investigasi. | job_id, email, full_name, no_hp/phone_hash, brand_name, metadata_json                     |
 | tool_runs          | Log setiap tool call.                              | tool_run_id, job_id, tool_name, status, started_at, latency_ms, cost_estimate, error      |
 | evidence_items     | Unit bukti yang sudah diekstrak.                   | evidence_id, job_id, source_type, source_url, claim, value, reliability, confidence_delta |
 | entity_candidates  | Kandidat company/person yang ditemukan.            | candidate_id, job_id, entity_type, name, domain, match_score                              |
@@ -231,10 +231,9 @@ POST /internal/company-detection/jobs
 {  
 "user_id": "u_123",  
 "email": "alex@acme.ai",  
-"name": "Alex Rivera",  
-"username": "alexbuilds",  
-"signup_source": "x_campaign",  
-"country": "US",  
+"full_name": "Alex Rivera",
+"no_hp": "08123456789",
+"brand_name": "Acme AI",
 "metadata": {  
 "plan": "free",  
 "utm_campaign": "x_launch"  
@@ -367,7 +366,7 @@ pgdata:
 | **Risiko**                                    | **Dampak**             | **Mitigasi**                                                                |
 |-----------------------------------------------|------------------------|-----------------------------------------------------------------------------|
 | Provider belum bisa diakses/belum ada dana    | Coverage rendah        | Tool availability matrix; skipped reason; start dengan free/built-in tools. |
-| Data register minim                           | Banyak inconclusive    | Gunakan search based on username/name; tambahkan metadata signup source.    |
+| Data register minim                           | Banyak inconclusive    | Gunakan email, full_name, dan brand_name; jangan bergantung pada username register. |
 | False positive company owner                  | Salah segmentasi lead  | Pisahkan affiliation vs ownership; require founder evidence.                |
 | Scrape gagal karena JS-heavy                  | Evidence tidak terbaca | Fallback dari web_fetch ke browser/Firecrawl.                               |
 | Report terlalu panjang di Slack               | Sulit dibaca           | Gunakan summary + evidence bullets + link ke full JSON/internal report.     |

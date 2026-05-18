@@ -12,6 +12,7 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [x] Buat flow map dan tools/algorithms reference supaya alur tetap gampang dibaca.
 - [x] Buat high-level business flow dengan 2 flowchart dan 2 sequence diagram untuk current MVP vs level 2.
 - [x] Rapikan dokumentasi ke folder `docs/product`, `docs/technical`, `docs/operations`, `docs/reviews`, dan tambahkan docs index/cara baca.
+- [x] Selaraskan input contract ke field realistis `email`, `full_name`, `no_hp`, `brand_name` dan hilangkan dependency trusted pada `username`.
 
 ## 1. Database & Asynchronous Queue
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.

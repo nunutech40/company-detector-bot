@@ -43,6 +43,27 @@ cd openclaw_workspace
 node scripts/company_check.js contact@komerce.id --save
 ```
 
+Run with the current register input package:
+
+```bash
+cd openclaw_workspace
+node scripts/company_check.js person@gmail.com --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+```
+
+Or pass JSON:
+
+```bash
+cd openclaw_workspace
+node scripts/company_check.js --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --json
+```
+
+Process CSV rows sequentially:
+
+```bash
+cd openclaw_workspace
+node scripts/batch_csv_check.js ../data/all_partner_user.csv --limit 10
+```
+
 JSON output:
 
 ```bash
@@ -95,6 +116,13 @@ Fallback policy:
 - Failed DDG/free scraper calls go to `tool_errors`, not evidence.
 - Skipped paid/unavailable tools go to `tools_skipped`.
 - Slack delivery is explicit only via `--send-slack` or `COMPANY_DETECTION_SEND_SLACK=true`.
+
+Current register input contract:
+
+- `email`: required, primary routing signal.
+- `full_name`: optional identity hint.
+- `brand_name`: optional business hint.
+- `no_hp`: optional internal matching/dedup field; not used for public search by default.
 
 ## Repo Map
 

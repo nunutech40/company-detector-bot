@@ -176,7 +176,7 @@ flowchart TD
     H --> I[Company Profile JSON]
 
     D -- Free email --> J[Personal-to-Business Route]
-    J --> K[Identity Hint dari email/name/username]
+    J --> K[Identity Hint dari email/full_name/brand_name]
     K --> L[Public Profile Discovery]
     L --> M[Role + Business Relationship Detection]
     M --> N[Person/Relationship JSON]
@@ -196,12 +196,12 @@ flowchart TD
 
 | Layer | Apa yang terjadi | Teknologi target | Output antar-layer |
 |---|---|---|---|
-| Input | Data register masuk, minimal email; nanti bisa ada name, username, company field, source. | Platform backend / Telegram | Register payload |
+| Input | Data register masuk dengan `email`, `full_name`, `no_hp`, dan `brand_name`. Minimal tetap `email`. | Platform backend / Telegram | Register payload |
 | Job API / Worker | Membuat job investigasi dan mengatur lifecycle. | Node.js worker/API + queue | `investigation_job` |
 | Email Baseline | Validasi email, route custom vs free. | Existing email intelligence | Identity baseline |
 | Company Route | Kalau custom domain, cari profil perusahaan. | Domain tools + crawler + profile builder | `company_profile` |
 | Social Footprint | Cari LinkedIn, Instagram, X, TikTok, Facebook, YouTube, Maps/local signal. | Search provider + scraper + social extractor | Social/entity candidates |
-| Personal Route | Kalau free email, cari apakah orang punya hubungan bisnis. | Local-part/name/username search + public profile checker | `person_profile` |
+| Personal Route | Kalau free email, cari apakah orang punya hubungan bisnis. | Local-part/full_name/brand_name search + public profile checker | `person_profile` |
 | Role Detection | Cari sinyal CEO/founder/owner/agency/freelancer. | Role signal extractor + relationship scorer | `business_relationship` |
 | Central Scoring | Menentukan final classification dan confidence. | Scoring engine + guardrails | Final result |
 | Storage | Semua data masuk DB. | Postgres | Full audit trail |
@@ -279,7 +279,7 @@ Secara garis besar, output level 2 harus menjawab:
 | Area | Sekarang | Level 2 |
 |---|---|---|
 | Main question | Apakah email ini perusahaan/personal? | Siapa perusahaan/orangnya dan apa relasi bisnisnya? |
-| Input | Email dari Telegram/CLI | Register payload: email + optional name/username/company/source |
+| Input | Email dari Telegram/CLI | Register payload: email + optional full_name/no_hp/brand_name |
 | Orchestration | Single script orchestrator | Worker/job system, later multi-agent |
 | Storage | File JSON/TXT | Postgres |
 | Company domain | Classify + basic evidence | Company profile + social footprint |

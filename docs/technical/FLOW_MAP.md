@@ -58,6 +58,12 @@ Current entry command:
 node scripts/company_check.js <email> --save
 ```
 
+Current register-package command:
+
+```bash
+node scripts/company_check.js <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+```
+
 ## 3. Decision Points
 
 ### D1: Is the input a valid email?
@@ -178,27 +184,35 @@ Use alert decision rules from [Product Workflow and Storage Plan](../product/PRO
 
 ### Input
 
-MVP input:
+Current MVP input:
 
 ```json
 {
-  "email": "contact@komerce.id"
+  "email": "contact@komerce.id",
+  "full_name": "Nurul Hida",
+  "no_hp": "081393707778",
+  "brand_name": "Montclair"
 }
 ```
 
-Future platform input:
+Current platform input contract:
 
 ```json
 {
   "email": "person@gmail.com",
-  "name": "Person Name",
-  "username": "personhandle",
-  "company_field": "Acme Studio",
-  "signup_source": "x_campaign",
-  "referrer": "...",
-  "country": "ID"
+  "full_name": "Person Name",
+  "no_hp": "08123456789",
+  "brand_name": "Acme Studio"
 }
 ```
+
+Field rules:
+
+- `email` is required and remains the primary routing signal.
+- `full_name` is optional and can help personal-to-business discovery.
+- `brand_name` is optional and is the strongest non-email business hint.
+- `no_hp` is optional and privacy-sensitive; use it for internal matching/dedup only, not public web search by default.
+- `username`, `signup_source`, `referrer`, and `country/ip_country` are not trusted inputs in the current contract because platform registration cannot provide them reliably.
 
 ### Evidence
 
@@ -284,7 +298,7 @@ Orchestrator Agent
 Agent responsibilities:
 
 - Orchestrator: owns job state and stop/continue decision.
-- Email/Identity Agent: parses email, name, username, identity hints.
+- Email/Identity Agent: parses email, full_name, brand_name, no_hp-safe metadata, and identity hints.
 - Company Website Agent: checks domain, website pages, schema, social links.
 - Web Research Agent: performs SERP/search discovery.
 - Public Profile Agent: checks LinkedIn via SERP, X, GitHub, Product Hunt, personal sites.

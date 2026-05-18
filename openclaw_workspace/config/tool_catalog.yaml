@@ -16,7 +16,21 @@ tools:
   company_check:
     status: enabled
     type: custom_script
-    command: "node scripts/company_check.js <email>"
+    command: "node scripts/company_check.js <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>]"
+    cost: free_or_low
+    priority: mvp
+
+  input_normalizer:
+    status: enabled
+    type: custom_script
+    command: "node scripts/input_normalizer.js '<email-or-json>'"
+    cost: free
+    priority: mvp
+
+  batch_csv_check:
+    status: enabled
+    type: custom_script
+    command: "node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]"
     cost: free_or_low
     priority: mvp
 
@@ -37,7 +51,7 @@ tools:
   serp_query_builder:
     status: enabled
     type: custom_script
-    command: "node scripts/serp_query_builder.js <email>"
+    command: "node scripts/serp_query_builder.js <email> [full_name] [brand_name]"
     cost: free
     priority: mvp
 

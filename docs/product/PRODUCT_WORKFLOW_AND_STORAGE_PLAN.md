@@ -66,7 +66,7 @@ Data yang wajib disimpan:
 
 - job id
 - input email
-- optional future fields: name, username, phone hash, company field, signup source, referrer, country/IP-derived country jika legal
+- current register fields: full_name, no_hp/phone hash, brand_name
 - normalized domain
 - primary classification
 - business relationship classification
@@ -84,7 +84,7 @@ Data yang wajib disimpan:
 - timestamps
 - review status
 
-Important: data personal harus minimal dan punya purpose. Untuk phone/IP, simpan hanya jika legal dan memang dibutuhkan; pertimbangkan hash atau derived fields.
+Important: data personal harus minimal dan punya purpose. Untuk `no_hp`, simpan hanya jika legal dan memang dibutuhkan; pertimbangkan hash atau derived fields. Jangan pakai `no_hp` untuk public web search default.
 
 ## 4. Suggested Postgres Tables
 
@@ -117,12 +117,9 @@ Fields:
 
 - `job_id`
 - `email`
-- `name`
-- `username`
-- `company_field`
-- `signup_source`
-- `referrer`
-- `country`
+- `full_name`
+- `no_hp` or `phone_hash`
+- `brand_name`
 - `metadata_json`
 - `created_at`
 
