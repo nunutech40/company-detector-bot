@@ -10,12 +10,12 @@ export GOCACHE="${GOCACHE:-/private/tmp/company-detector-go-cache}"
 
 if [[ -x "${BINARY}" ]]; then
   cd "${GO_SERVICE_DIR}"
-  exec "${BINARY}" "$@"
+  exec "${BINARY}" --base-dir "${WORKSPACE_DIR}" "$@"
 fi
 
 if command -v go >/dev/null 2>&1; then
   cd "${GO_SERVICE_DIR}"
-  exec go run ./cmd/company-check "$@"
+  exec go run ./cmd/company-check --base-dir "${WORKSPACE_DIR}" "$@"
 fi
 
 echo "company_check_go: Go binary not found and go command is unavailable" >&2

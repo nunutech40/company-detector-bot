@@ -10,12 +10,12 @@ export GOCACHE="${GOCACHE:-/private/tmp/company-detector-go-cache}"
 
 if [[ -x "${BINARY}" ]]; then
   cd "${GO_SERVICE_DIR}"
-  exec "${BINARY}" "$@"
+  exec "${BINARY}" --catalog "${WORKSPACE_DIR}/config/tool_catalog.yaml" "$@"
 fi
 
 if command -v go >/dev/null 2>&1; then
   cd "${GO_SERVICE_DIR}"
-  exec go run ./cmd/tool-status "$@"
+  exec go run ./cmd/tool-status --catalog "${WORKSPACE_DIR}/config/tool_catalog.yaml" "$@"
 fi
 
 echo "tool_status_go: Go binary not found and go command is unavailable" >&2
