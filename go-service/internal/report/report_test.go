@@ -62,18 +62,18 @@ func TestReportUsesConclusionFirstAndHumanFlow(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Proses investigasi:",
-		"[1] Email Intelligence",
-		"Hipotesis:",
-		"Delta    :",
-		"[2] Routing Decision",
-		"[3] Domain Checker",
+		"[1] Email Intelligence  [Deterministik]",
+		"Algoritma :",
+		"Artinya   :",
+		"[2] Routing Decision  [Deterministik]",
+		"[3] Domain Checker  [Tools — DNS + HTTP]",
 		"MENGUAT",
-		"[4] Website Crawler",
+		"[4] Website Crawler  [Tools — HTTP + Deterministik]",
 		"SEMAKIN KUAT",
-		"[SCORING] Kesimpulan Akhir",
-		"Base score",
-		"Total delta",
-		"Classification : possible_company_affiliated",
+		"[AI Reasoning]",
+		"belum aktif di fase ini",
+		"[Deterministik] Scoring Engine",
+		"Artinya    : classification",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("report missing %q:\n%s", want, text)
