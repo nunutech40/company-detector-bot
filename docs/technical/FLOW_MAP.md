@@ -172,9 +172,7 @@ Only if explicitly enabled with --send-slack or COMPANY_DETECTION_SEND_SLACK=tru
 
 Future production:
 
-```text
-Use alert decision rules from PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md.
-```
+Use alert decision rules from [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 
 ## 4. Data Flow
 
@@ -248,7 +246,7 @@ Next-level output will add:
 
 Before changing a tool:
 
-1. Find the tool in `TOOLS_AND_ALGORITHMS.md`.
+1. Find the tool in [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md).
 2. Check which decision point uses it in this file.
 3. Check whether it affects `tools_used`, `tools_skipped`, `tool_errors`, or `evidence`.
 4. Check whether scoring changes are needed in `scoring_engine.js`.
@@ -303,13 +301,15 @@ That prevents each agent from making conflicting final decisions.
 
 ## 7. Document Map
 
-- `README.md`: project entry point.
-- `FLOW_MAP.md`: readable end-to-end flow and decision points.
-- `TOOLS_AND_ALGORITHMS.md`: detailed tool and algorithm reference.
-- `NEXT_LEVEL_ENRICHMENT_PLAN.md`: future enrichment design.
-- `PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`: Postgres, Slack, dashboard workflow.
-- `BACKLOG.md`: implementation tasks.
-- `openclaw_workspace/AGENTS.md`: runtime behavior contract for OpenClaw agent.
-- `openclaw_workspace/TOOLS.md`: runtime tool notes.
-- `openclaw_workspace/config/tool_catalog.yaml`: tool registry.
-- `openclaw_workspace/config/scoring_rules.yaml`: scoring reference.
+- [Root README](../../README.md): project entry point.
+- [Docs Index](../README.md): reading order and documentation map.
+- [High Level Business Flow](../product/HIGH_LEVEL_BUSINESS_FLOW.md): business-level current vs level-2 flow.
+- [Flow Map](FLOW_MAP.md): readable end-to-end flow and decision points.
+- [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md): detailed tool and algorithm reference.
+- [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md): future enrichment design.
+- [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md): Postgres, Slack, dashboard workflow.
+- [Backlog](../../BACKLOG.md): implementation tasks.
+- [OpenClaw Agent Prompt](../../openclaw_workspace/AGENTS.md): runtime behavior contract for OpenClaw agent.
+- [Tool Notes](../../openclaw_workspace/TOOLS.md): runtime tool notes.
+- [Tool Catalog](../../openclaw_workspace/config/tool_catalog.yaml): tool registry.
+- [Scoring Rules](../../openclaw_workspace/config/scoring_rules.yaml): scoring reference.

@@ -5,8 +5,8 @@ Dokumen ini menjelaskan alur utama dari input sampai output di level abstraksi t
 Cara baca dokumen ini:
 
 - Kalau mau tahu gambaran besar bisnis/logika utama, baca dokumen ini.
-- Kalau mau tahu detail script dan branching teknis, baca [FLOW_MAP.md](FLOW_MAP.md).
-- Kalau mau tahu algoritma setiap tool/agent, baca [TOOLS_AND_ALGORITHMS.md](TOOLS_AND_ALGORITHMS.md).
+- Kalau mau tahu detail script dan branching teknis, baca [FLOW_MAP.md](../technical/FLOW_MAP.md).
+- Kalau mau tahu algoritma setiap tool/agent, baca [TOOLS_AND_ALGORITHMS.md](../technical/TOOLS_AND_ALGORITHMS.md).
 
 Ada dua versi:
 

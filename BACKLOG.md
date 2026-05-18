@@ -11,6 +11,7 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [x] Test ulang DDG/free scraper dari VPS setelah deploy.
 - [x] Buat flow map dan tools/algorithms reference supaya alur tetap gampang dibaca.
 - [x] Buat high-level business flow dengan 2 flowchart dan 2 sequence diagram untuk current MVP vs level 2.
+- [x] Rapikan dokumentasi ke folder `docs/product`, `docs/technical`, `docs/operations`, `docs/reviews`, dan tambahkan docs index/cara baca.
 
 ## 1. Database & Asynchronous Queue
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
@@ -29,7 +30,7 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 - [ ] **Relationship Scorer**: Tambah `business_relationship` seperti `personal_with_business_affiliation`, `founder_or_owner_candidate`, atau `business_relationship_unknown`.
 - [ ] **Maps/Local Signal**: Mulai dari SERP snippet untuk Google Maps/local business; official Places API bisa menyusul jika budget dan legal jelas.
 
-Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](NEXT_LEVEL_ENRICHMENT_PLAN.md).
+Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](docs/product/NEXT_LEVEL_ENRICHMENT_PLAN.md).
 
 ## 3. Delivery ke Slack
 - [ ] **Buat Slack App** di workspace perusahaan.
@@ -43,7 +44,7 @@ Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](NEXT_LEVEL_ENRICHMENT_PLAN.md)
 - [ ] **Search**: Cari by email, domain, company, person identity hint, dan social URL.
 - [ ] **Review Actions**: Mark reviewed, false positive, high-value lead, needs retry, dan internal note.
 
-Referensi detail DB/Slack/dashboard: [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+Referensi detail DB/Slack/dashboard: [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](docs/product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
 
 ## 5. Implementasi Tools & Scraping (Prioritas Berikutnya)
 - [ ] **Web Search Provider Resmi**: Free fallback `ddg_search` sudah aktif, tapi dedicated provider seperti Brave/Tavily/Exa belum dikonfigurasi.

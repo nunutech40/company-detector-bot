@@ -72,12 +72,14 @@ Implemented files:
 
 Important docs already created:
 
-- `README.md`
-- `FLOW_MAP.md`
-- `TOOLS_AND_ALGORITHMS.md`
-- `NEXT_LEVEL_ENRICHMENT_PLAN.md`
-- `PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`
-- `BACKLOG.md`
+- [Root README](../../README.md)
+- [Docs Index](../README.md)
+- [High Level Business Flow](../product/HIGH_LEVEL_BUSINESS_FLOW.md)
+- [Flow Map](../technical/FLOW_MAP.md)
+- [Tools and Algorithms Reference](../technical/TOOLS_AND_ALGORITHMS.md)
+- [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md)
+- [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md)
+- [Backlog](../../BACKLOG.md)
 
 ## 3. Comparison Against PRD
 
@@ -206,25 +208,27 @@ Target plan: Postgres stores everything, Slack only important alerts, dashboard 
 
 Recent documentation improved maintainability:
 
-- `FLOW_MAP.md` explains top-level flow and decision points.
-- `TOOLS_AND_ALGORITHMS.md` explains each tool and change impact.
-- `NEXT_LEVEL_ENRICHMENT_PLAN.md` explains enrichment direction.
-- `PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md` explains DB/Slack/dashboard lifecycle.
-- `BACKLOG.md` groups remaining work.
-- `README.md` now acts as the entry point.
+- [High Level Business Flow](../product/HIGH_LEVEL_BUSINESS_FLOW.md) explains the business-level input-to-output model.
+- [Flow Map](../technical/FLOW_MAP.md) explains runtime flow and decision points.
+- [Tools and Algorithms Reference](../technical/TOOLS_AND_ALGORITHMS.md) explains each tool and change impact.
+- [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md) explains enrichment direction.
+- [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md) explains DB/Slack/dashboard lifecycle.
+- [Backlog](../../BACKLOG.md) groups remaining work.
+- [Docs Index](../README.md) defines the reading order.
+- [Root README](../../README.md) now acts as the entry point.
 
 Remaining documentation risk:
 
 - PRD/TRD still describe the broader target and may look more advanced than current runtime.
 - Some older doc sections mention Slack as primary report channel, while actual MVP uses Telegram.
-- Future multi-agent can make flow harder to follow unless every new agent is mapped back to `FLOW_MAP.md`.
+- Future multi-agent can make flow harder to follow unless every new agent is mapped back to [Flow Map](../technical/FLOW_MAP.md).
 
 Recommended documentation rule:
 
 ```text
 Any new tool or agent must update:
-- FLOW_MAP.md
-- TOOLS_AND_ALGORITHMS.md
+- docs/technical/FLOW_MAP.md
+- docs/technical/TOOLS_AND_ALGORITHMS.md
 - tool_catalog.yaml
 - BACKLOG.md if it changes roadmap/status
 ```
@@ -300,7 +304,7 @@ Sub-agents collect evidence. Final scoring and claims stay centralized.
 
 ### Risk: Flow becomes too hard to read
 
-Status: mitigated by `FLOW_MAP.md` and `TOOLS_AND_ALGORITHMS.md`, but must be maintained.
+Status: mitigated by [Flow Map](../technical/FLOW_MAP.md), [Tools and Algorithms Reference](../technical/TOOLS_AND_ALGORITHMS.md), and [Docs Index](../README.md), but must be maintained.
 
 Mitigation:
 

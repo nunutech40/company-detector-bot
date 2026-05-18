@@ -1,6 +1,6 @@
 # Tools And Algorithms Reference
 
-Dokumen ini adalah kamus semua tool, skill, dan algoritma yang dipakai agent. Baca dokumen ini setelah melihat [FLOW_MAP.md](FLOW_MAP.md).
+Dokumen ini adalah kamus semua tool, skill, dan algoritma yang dipakai agent. Baca dokumen ini setelah melihat [Flow Map](FLOW_MAP.md).
 
 ## 1. Agent And Skill Layer
 
@@ -515,6 +515,6 @@ If changing:
 - search behavior -> check `serp_query_builder`, `ddg_search`, evidence reliability.
 - scoring -> check `scoring_engine`, `scoring_rules.yaml`, report examples.
 - report wording -> check `report_formatter`, `AGENTS.md`, Telegram screenshots/results.
-- storage -> check `evidence_store`, `PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`.
-- Slack -> check `slack_reporter`, alert decision rules, `PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`.
-- multi-agent -> check `FLOW_MAP.md`, `NEXT_LEVEL_ENRICHMENT_PLAN.md`, `TRD`.
+- storage -> check `evidence_store` and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+- Slack -> check `slack_reporter`, alert decision rules, and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+- multi-agent -> check [Flow Map](FLOW_MAP.md), [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md), and [TRD](TRD.md).
