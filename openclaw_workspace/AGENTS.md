@@ -137,28 +137,67 @@ Tanya diri sendiri: *"Apakah tool ini akan memberi informasi yang belum saya pun
 
 ### Phase 1: Business or Personal?
 
-**Goal:** Determine the primary classification.
+**Goal:** Determine the primary classification AND collect all available business data.
 
 **For custom domain email (e.g., contact@komerce.id):**
 1. Run `company_check` — baseline: domain, website, crawler, search
-2. If website active → `web_fetch` /about or /team for role signals
-3. Search company social profiles: `web_search("komerce.id linkedin OR instagram OR facebook")`
-4. If founder/CEO name found → cross-check with `web_fetch`
-5. **Stop Phase 1 when:** company confirmed with 2+ evidence sources
+2. `web_fetch` homepage → extract: title, description, social links
+3. `web_fetch` /about or /team → extract: founder/CEO names, company description
+4. `web_fetch` /contact → extract: address, phone, email
+5. Search social footprint: `web_search("komerce.id linkedin OR instagram OR facebook OR twitter")`
+6. For each social URL found → `web_fetch` to extract profile details
+7. Search Google Maps: `web_search("Komerce alamat OR lokasi OR Google Maps")`
+8. If phone found anywhere → cross-check with `no_hp`
+9. **Stop Phase 1 when:** company confirmed with 2+ evidence sources AND social/location data collected
+
+**Phase 1 structured output (company):**
+```
+═══════════════════════════════════════
+PHASE 1: Identifikasi Bisnis
+═══════════════════════════════════════
+Classification: possible_company_affiliated
+Confidence: N/100
+
+Profil Bisnis:
+  Nama perusahaan : [company name from website/title]
+  Domain          : [domain]
+  Website         : [url] — [active/inactive]
+  Deskripsi       : [business description from homepage/about]
+  Industri        : [industry/category if found]
+
+Sosial Media:
+  LinkedIn (company) : [url] — [company name, followers if visible]
+  Instagram          : [url] — [bio, follower count if visible]
+  Facebook           : [url] — [page name]
+  Twitter/X          : [url]
+  TikTok             : [url]
+  YouTube            : [url]
+  [platform lain]    : [url]
+  → Tidak ditemukan  : [list platform yang dicari tapi tidak nemu]
+
+Lokasi & Kontak:
+  Alamat    : [address from website/maps]
+  Kota      : [city]
+  No HP/WA  : [phone from website] — match no_hp: [yes/no/not_checked]
+  Email     : [contact email from website]
+  Maps      : [Google Maps URL if found]
+
+Tim / Founder:
+  [name] — [role] — [source URL]
+  [name] — [role] — [source URL]
+
+Phone Confirmation:
+  no_hp match: [yes/no/not_checked]
+  Ditemukan di: [source]
+  WA Business: [yes/no] — nama: [if found]
+```
 
 **For free email (e.g., nawaystore@yahoo.com):**
 1. Run `company_check` — baseline
-2. Analyze local part: brand hint or person name? (see Brand Hint Detection below)
+2. Analyze local part: brand hint or person name?
 3. If brand hint → search as brand/store
 4. If person name → search as person
 5. **Stop Phase 1 when:** classification is clear (business confirmed OR clearly personal)
-
-**Phase 1 output:**
-```
-Classification: [possible_company_affiliated / likely_personal_email / unknown / suspicious]
-Confidence: N/100
-Evidence: [list of findings]
-```
 
 ---
 
@@ -224,37 +263,49 @@ web_fetch("https://wa.me/62<no_hp_without_leading_zero>")
 
 **Phase 2 output — structured findings:**
 ```
+═══════════════════════════════════════
+PHASE 2: Relasi Bisnis
+═══════════════════════════════════════
 Business Relationship: [found / not_found / inconclusive]
-Role: [founder / CEO / owner / employee / unknown]
+Role: [founder / CEO / owner / direktur / employee / freelancer / unknown]
 Confidence: N/100
 
-Findings:
-  Social Media:
-    - Instagram: [url] — bio: "..." — business: [yes/no]
-    - LinkedIn: [url] — role: "..." — company: "..."
-    - Tokopedia: [url] — store: "..." — category: "..."
-  
-  Business:
-    - Company name: ...
-    - Domain: ...
-    - Website: [url] — active: yes/no
-    - Description: ...
-  
-  Location:
-    - Address: ...
-    - Maps: [url]
-    - City: ...
-  
-  Role Evidence:
-    - Source: [url]
-    - Claim: "Tatak Subekti — Owner at Naway Store"
-    - Reliability: medium/high
-  
-  Phone Confirmation:
-    - no_hp match: [yes/no/not_checked]
-    - Found in: [source where phone was found]
-    - WA Business: [yes/no/not_checked]
-    - WA Business name: [if found]
+Profil Bisnis (jika ditemukan):
+  Nama bisnis  : [company/store/brand name]
+  Domain       : [domain if found]
+  Website      : [url] — [active/inactive]
+  Deskripsi    : [business description]
+  Kategori     : [industry/category]
+  Marketplace  : [Tokopedia/Shopee/Bukalapak URL if found]
+
+Sosial Media:
+  LinkedIn (personal) : [url] — role: "[current role]" — company: "[company name]"
+  LinkedIn (company)  : [url] — [company name]
+  Instagram           : [url] — bio: "[bio text]" — business: [yes/no]
+  Facebook            : [url]
+  Twitter/X           : [url]
+  TikTok              : [url]
+  YouTube             : [url]
+  → Tidak ditemukan   : [list platform yang dicari tapi tidak nemu]
+
+Lokasi & Kontak:
+  Alamat    : [address]
+  Kota      : [city]
+  No HP/WA  : [phone found in tool results] — match no_hp: [yes/no/not_checked]
+  Maps      : [Google Maps URL if found]
+  Jam buka  : [business hours if found]
+
+Role Evidence:
+  "[exact quote from source]"
+  Source: [url] — reliability: [low/medium/high]
+
+Phone Confirmation:
+  no_hp match: [yes/no/not_checked]
+  Ditemukan di: [source — website/marketplace/WA Business]
+  WA Business: [yes/no] — nama bisnis: [if found]
+
+Yang tidak bisa diverifikasi:
+  [list klaim yang tidak bisa dikonfirmasi karena tool gagal/tidak tersedia]
 ```
 
 ---
@@ -431,7 +482,7 @@ Total: 3 rounds, ~6 tool calls, clear conclusion
 Company Detection Report
 
 ═══════════════════════════════════════
-PHASE 1: Business or Personal?
+PHASE 1: Identifikasi Bisnis
 ═══════════════════════════════════════
 
 Classification: [classification]
@@ -445,43 +496,98 @@ Alasannya: [key reasons]
   Artinya   : what this means for the hypothesis
   Fallback  : what you tried instead (if failed)
 
-[2] ...
-
 [AI Reasoning — Round 1]
-  Hipotesis : [current hypothesis]
-  Observasi : [what you just learned]
-  Keputusan : [why you chose the next tool]
-  Tool dipilih: [tool name + query]
-  Alternatif: [what you'd try if this fails]
+  Hipotesis    : [current hypothesis]
+  Observasi    : [what you just learned]
+  Keputusan    : [why you chose the next tool]
+  Tool dipilih : [tool name + query/url]
+  Alternatif   : [what you'd try if this fails]
+
+--- (jika company terdeteksi, isi semua yang bisa ditemukan) ---
+
+Profil Bisnis:
+  Nama perusahaan : [dari website title/about/schema]
+  Domain          : [domain]
+  Website         : [url] — aktif/tidak aktif
+  Deskripsi       : [dari homepage/about page]
+  Industri        : [kategori bisnis jika ditemukan]
+
+Sosial Media:
+  LinkedIn (company) : [url] — [nama company, deskripsi singkat]
+  Instagram          : [url] — [bio, follower count jika visible]
+  Facebook           : [url] — [nama page]
+  Twitter/X          : [url]
+  TikTok             : [url]
+  YouTube            : [url]
+  Marketplace        : [Tokopedia/Shopee/dll url jika ada]
+  → Tidak ditemukan  : [list platform yang dicari tapi tidak nemu]
+
+Lokasi & Kontak:
+  Alamat    : [dari website/maps]
+  Kota      : [city/region]
+  No HP/WA  : [nomor yang ditemukan di tool results] — match no_hp: yes/no/not_checked
+  Email     : [contact email dari website]
+  Maps      : [Google Maps URL jika ditemukan]
+  Jam buka  : [business hours jika ditemukan]
+
+Tim / Founder:
+  [nama] — [role] — [source URL]
+  [nama] — [role] — [source URL]
+
+Phone Confirmation:
+  no_hp match    : yes/no/not_checked
+  Ditemukan di   : [source — website/marketplace/WA Business]
+  WA Business    : yes/no — nama bisnis: [jika ada]
 
 ═══════════════════════════════════════
-PHASE 2: Business Relationship?
+PHASE 2: Relasi Bisnis (jika Phase 1 = personal/unknown)
 ═══════════════════════════════════════
 
 Business Relationship: [found / not_found / inconclusive]
-Role: [founder / CEO / owner / employee / unknown]
+Role: [founder / CEO / owner / direktur / employee / freelancer / unknown]
 Confidence: N/100
 
 [AI Reasoning — Round 2]
-  Hipotesis : [updated hypothesis after Phase 1]
-  Strategi  : [why you're investigating this angle]
-  ...
+  Hipotesis    : [updated hypothesis]
+  Strategi     : [why you're investigating this angle]
+  Tool dipilih : [tool + query]
 
-Temuan:
-  Sosial Media:
-    - [platform]: [url] — [what was found]
-  
-  Bisnis:
-    - Nama: ...
-    - Domain: ...
-    - Deskripsi: ...
-  
-  Lokasi:
-    - Alamat: ...
-    - Maps: ...
-  
-  Role Evidence:
-    - "[quote from source]" — [source url] — reliability: [low/medium/high]
+Profil Bisnis (jika ditemukan):
+  Nama bisnis  : [company/store/brand name]
+  Domain       : [domain jika ditemukan]
+  Website      : [url] — aktif/tidak aktif
+  Deskripsi    : [business description]
+  Kategori     : [industry/category]
+  Marketplace  : [Tokopedia/Shopee/Bukalapak URL jika ada]
+
+Sosial Media:
+  LinkedIn (personal) : [url] — role: "[current role]" — company: "[company name]"
+  LinkedIn (company)  : [url] — [company name]
+  Instagram           : [url] — bio: "[bio text]" — business: yes/no
+  Facebook            : [url]
+  Twitter/X           : [url]
+  TikTok              : [url]
+  YouTube             : [url]
+  → Tidak ditemukan   : [list platform yang dicari tapi tidak nemu]
+
+Lokasi & Kontak:
+  Alamat    : [address jika ditemukan]
+  Kota      : [city]
+  No HP/WA  : [nomor dari tool results] — match no_hp: yes/no/not_checked
+  Maps      : [Google Maps URL jika ditemukan]
+  Jam buka  : [business hours jika ditemukan]
+
+Role Evidence:
+  "[exact quote dari source]"
+  Source: [url] — reliability: low/medium/high
+
+Phone Confirmation:
+  no_hp match    : yes/no/not_checked
+  Ditemukan di   : [source — website/marketplace/WA Business]
+  WA Business    : yes/no — nama bisnis: [jika ada]
+
+Yang tidak bisa diverifikasi:
+  [list klaim yang tidak bisa dikonfirmasi karena tool gagal/tidak tersedia]
 
 ═══════════════════════════════════════
 TOOLS YANG TIDAK BISA DIJALANKAN
