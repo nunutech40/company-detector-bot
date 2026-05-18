@@ -11,6 +11,21 @@ Node.js sekarang = reference prototype
 Go nanti = production implementation
 ```
 
+Current implementation status:
+
+- Go CLI MVP is implemented at `go-service/cmd/company-check`.
+- Packages implemented: `input`, `emailintel`, `query`, `domaincheck`, `crawler`, `search`, `scraper`, `scoring`, `report`, `evidence`, `slack`, and `orchestrator`.
+- Unit tests pass with:
+
+```bash
+cd go-service
+env GOCACHE=/private/tmp/company-detector-go-cache go test ./...
+```
+
+- Manual real network smoke test for `contact@komerce.id` succeeded for DNS/domain/crawler/scraper.
+- DuckDuckGo HTML search is still fragile in some networks; the latest smoke test was blocked by local filtering/certificate interception. This should be treated as a provider risk and replaced by a proper provider adapter when budget/API is ready.
+- OpenClaw has not been cut over to Go yet; Node.js remains the live/reference runtime until VPS and Telegram checks pass.
+
 Alasan utama pindah ke Go bukan performa mentah. Bottleneck sistem tetap network, AI request, search/scrape, dan rate limit. Alasan utama Go adalah maintainability production: typed contract, unit test standar, single binary deploy, worker/service yang lebih rapi, dan kemungkinan lebih mudah diteruskan oleh tim yang familiar dengan Go.
 
 ## 1. Prinsip Transisi
@@ -111,6 +126,7 @@ Awal cukup CLI parity:
 
 ```bash
 go run ./cmd/company-check --email contact@komerce.id --json
+go run ./cmd/company-check --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --skip-network --json
 ```
 
 Setelah stabil baru service/worker:

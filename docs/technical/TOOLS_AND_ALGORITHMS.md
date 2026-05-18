@@ -67,6 +67,20 @@ node scripts/company_check.js <email> [--full-name "..."] [--no-hp "..."] [--bra
 node scripts/company_check.js --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' [--json] [--save]
 ```
 
+Go MVP equivalent:
+
+```bash
+cd go-service
+go run ./cmd/company-check --email contact@komerce.id --brand-name Komerce --json
+go run ./cmd/company-check --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' --json --save
+```
+
+Current runtime note:
+
+- Node.js remains the OpenClaw/Telegram reference runtime until VPS cutover.
+- Go packages now mirror this flow and are covered by unit tests.
+- Go Slack send is explicit only through `--send-slack` plus `SLACK_BOT_TOKEN` and `SLACK_REPORT_CHANNEL`.
+
 Algorithm:
 
 1. Normalize current input package: `email`, `full_name`, `no_hp`, `brand_name`.

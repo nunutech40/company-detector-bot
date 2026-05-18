@@ -16,10 +16,11 @@ Yang sudah aktif:
 - Telegram report formatter.
 - File-based evidence store dengan retention.
 - `/tool_status` dan `/last_report`.
+- Go CLI MVP under `go-service/` with unit tests and network smoke-tested DNS/crawler/scraper.
 
 Yang belum production:
 
-- Go production worker/service.
+- Go VPS/OpenClaw cutover as the primary runtime.
 - Next-level company/social enrichment.
 - Personal-to-business relationship discovery.
 - Postgres, queue, dashboard, dan platform register API.
@@ -40,6 +41,8 @@ Urutan baca paling enak:
 6. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
 
 ## Run Locally
+
+Current active/reference runtime is still Node.js:
 
 ```bash
 cd openclaw_workspace
@@ -95,6 +98,23 @@ cd openclaw_workspace
 COMPANY_DETECTION_SEND_SLACK=true node scripts/company_check.js contact@komerce.id --send-slack
 ```
 
+Go CLI MVP:
+
+```bash
+cd go-service
+go test ./...
+go run ./cmd/company-check --email contact@komerce.id --brand-name Komerce --json
+go run ./cmd/company-check --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --skip-network --json
+```
+
+Go save and explicit Slack send:
+
+```bash
+cd go-service
+go run ./cmd/company-check --email contact@komerce.id --brand-name Komerce --save
+SLACK_BOT_TOKEN='xoxb-...' SLACK_REPORT_CHANNEL='C0B3JEYN1HV' go run ./cmd/company-check --email contact@komerce.id --brand-name Komerce --send-slack
+```
+
 ## Runtime Contract
 
 For every valid `/check <email>` request, OpenClaw should run:
@@ -105,6 +125,8 @@ node scripts/company_check.js <email> --save
 ```
 
 The final result must stand on its own for automation. It must not ask the user for feedback or clarification when a valid email exists.
+
+Go will replace this command only after VPS/OpenClaw cutover is tested. Until then, Node.js is the operational fallback/reference.
 
 Current classifications:
 
@@ -140,11 +162,16 @@ Current register input contract:
 |   +-- operations/
 |   +-- reviews/
 +-- openclaw_workspace/
-    +-- AGENTS.md
-    +-- TOOLS.md
-    +-- config/
-    +-- scripts/
-    +-- skills/
++-- go-service/
+|   +-- cmd/company-check/
+|   +-- internal/
+|   +-- test-fixtures/
++-- openclaw_workspace/
+|   +-- AGENTS.md
+|   +-- TOOLS.md
+|   +-- config/
+|   +-- scripts/
+|   +-- skills/
 ```
 
 Operational VPS details, passwords, tokens, `evidence/`, `reports/`, and `.env` are intentionally not tracked in git.

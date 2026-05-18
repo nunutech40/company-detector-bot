@@ -16,7 +16,10 @@ Untuk paham project dari nol:
    Baca kalau mau tahu script/tool mana melakukan apa, algoritmanya gimana, dan impact kalau satu bagian diubah.
 
 4. [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
-   Baca kalau mau memahami rencana transisi dari Node.js prototype ke Go production worker/service.
+   Baca kalau mau memahami rencana dan status transisi dari Node.js prototype ke Go production worker/service.
+
+4b. [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md)
+   Baca kalau mau tahu checklist mana yang sudah selesai, mana yang belum, dan command test Go terbaru.
 
 5. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
    Baca kalau mau tahu project sudah sampai mana dibanding PRD/TRD/plan, dan gap yang masih ada.
