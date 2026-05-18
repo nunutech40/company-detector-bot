@@ -1,23 +1,69 @@
 tools:
-  email_intelligence:
-    status: enabled
-    type: go_package
-    command: "scripts/company_check_go.sh --email <email> --json"
-    cost: free
-    priority: mvp
 
-  domain_checker:
-    status: enabled
-    type: go_package
-    command: "scripts/company_check_go.sh --email <email> --json"
-    cost: free_or_low
-    priority: mvp
+  # ── Tier 1: Deterministic Go Tools (always available, free) ──────────────────
 
   company_check:
     status: enabled
     type: go_cli
-    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>] --save --send-slack"
-    cost: free_or_low
+    command: "scripts/company_check_go.sh --email <email> [--full-name <name>] [--brand-name <brand>] --save --send-slack"
+    cost: free
+    priority: mvp
+    note: "Full deterministic pipeline: emailintel → domain_checker → crawler → search cascade → scraper → scoring → report. Always run this first."
+
+  email_intelligence:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. Parse email, detect free/custom/disposable/role mailbox."
+
+  domain_checker:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. DNS MX/A lookup + HTTP website probe."
+
+  website_crawler:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. Crawl /about /team /contact /founders for business signals."
+
+  free_scraper:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. HTTP fetch + strip HTML → plain text. Low reliability."
+
+  scoring_engine:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. Deterministic rules-first scoring. Always the final scorer."
+
+  serp_query_builder:
+    status: enabled
+    type: go_package
+    cost: free
+    priority: mvp
+    note: "Included in company_check. Build query variants from email/name/brand."
+
+  tool_status:
+    status: enabled
+    type: go_cli
+    command: "scripts/tool_status_go.sh"
+    cost: free
+    priority: mvp
+
+  last_report:
+    status: enabled
+    type: go_cli
+    command: "scripts/last_report_go.sh [email]"
+    cost: free
     priority: mvp
 
   input_normalizer:
@@ -31,94 +77,100 @@ tools:
     status: legacy_reference
     type: legacy_js_script
     command: "node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]"
-    cost: free_or_low
-    priority: mvp
+    cost: free
+    priority: legacy
 
-  scoring_engine:
+  # ── Tier 2: Search Cascade (multi-provider, automatic fallback) ───────────────
+
+  web_search_cascade:
     status: enabled
     type: go_package
-    command: "scripts/company_check_go.sh --email <email> --json"
     cost: free
     priority: mvp
+    note: "Included in company_check. Tries providers in order: google_cse → brave → bing_html → ddg_html. Returns first success."
 
-  website_crawler_router:
+  web_search_google_cse:
+    status: disabled_not_configured
+    type: go_package
+    cost: free
+    priority: phase_a
+    note: "100 queries/hari gratis. Paling reliable."
+    setup: "Set GOOGLE_CSE_KEY dan GOOGLE_CSE_ID di /home/nunuopc/.openclaw/gateway.systemd.env"
+    setup_url: "https://programmablesearchengine.google.com/"
+
+  web_search_brave:
+    status: disabled_not_configured
+    type: go_package
+    cost: paid_low
+    priority: phase_a
+    note: "~$5 credit/bulan otomatis. Reliable, tidak diblokir ISP."
+    setup: "Set BRAVE_SEARCH_API_KEY di /home/nunuopc/.openclaw/gateway.systemd.env"
+    setup_url: "https://api.search.brave.com/"
+
+  web_search_bing_html:
     status: enabled
     type: go_package
-    command: "scripts/company_check_go.sh --email <email> --json"
-    cost: free_or_low
-    priority: mvp
+    cost: free
+    priority: phase_a
+    note: "HTML scraping Bing. Gratis, lebih toleran dari DDG. Fallback otomatis."
 
-  serp_query_builder:
+  web_search_ddg_html:
     status: enabled
     type: go_package
-    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--brand-name <brand_name>] --json"
     cost: free
     priority: mvp
+    note: "HTML scraping DDG. Gratis, paling fragile — sering diblokir ISP Indonesia."
 
-  report_formatter:
-    status: enabled
-    type: go_package
-    command: "scripts/company_check_go.sh --email <email>"
-    cost: free
-    priority: mvp
-
-  last_report:
-    status: enabled
-    type: go_cli
-    command: "scripts/last_report_go.sh [email]"
-    cost: free
-    priority: mvp
-
-  tool_status:
-    status: enabled
-    type: go_cli
-    command: "scripts/tool_status_go.sh"
-    cost: free
-    priority: mvp
-
-  web_search:
-    status: enabled_with_ddg
-    type: go_package
-    command: "called inside scripts/company_check_go.sh"
-    cost: free
-    priority: mvp
+  # ── Tier 3: OpenClaw Built-in Tools (AI can call directly) ───────────────────
 
   web_fetch:
+    status: enabled
+    type: openclaw_builtin
+    cost: free
+    priority: phase_a
+    note: "AI bisa panggil langsung. Fetch URL + extract readable content. Gunakan untuk /about, /team, social profiles, marketplace pages, LinkedIn snippets."
+
+  openclaw_web_search:
     status: check_runtime
     type: openclaw_builtin
     cost: free_or_low
-    priority: mvp
+    priority: phase_a
+    note: "AI bisa panggil langsung. Provider tergantung config OpenClaw. Gunakan untuk query yang berbeda dari Go cascade."
+
+  browser:
+    status: available
+    type: openclaw_builtin
+    cost: high_runtime
+    priority: phase_a
+    note: "AI bisa panggil langsung. Playwright browser — render JS-heavy pages. Gunakan hanya jika web_fetch gagal. Lebih lambat dan resource-heavy."
+
+  # ── Tier 4: Paid/Not Configured (note in report, don't block) ────────────────
 
   firecrawl_scrape:
     status: disabled_waiting_budget
     type: provider_plugin
     cost: paid
-    priority: phase_2
-
-  free_scraper:
-    status: enabled
-    type: go_package
-    command: "called inside scripts/company_check_go.sh"
-    cost: free
-    priority: mvp
+    price: "$16/month"
+    priority: phase_b
+    note: "Deep scrape, JS-heavy pages, structured extraction. Jauh lebih baik dari free_scraper."
 
   tavily_search:
     status: disabled_waiting_budget
     type: provider_plugin
     cost: paid
-    priority: phase_2
+    price: "$20/month"
+    priority: phase_b
+    note: "AI-friendly search dengan snippet terstruktur. Lebih baik dari DDG/Bing HTML."
 
   enrichment_api:
     status: disabled_waiting_budget
     type: paid_vendor
     cost: paid
-    priority: phase_4
+    price: "$99+/month"
+    priority: phase_d
+    note: "PDL/Apollo/Clearbit — direct company/role lookup dari email. Paling powerful untuk free email."
 
-  browser:
-    status: optional
-    type: openclaw_builtin
-    cost: high_runtime
-    priority: phase_2
+  # ── Delivery ──────────────────────────────────────────────────────────────────
 
   telegram_message:
     status: enabled
@@ -127,8 +179,9 @@ tools:
     priority: mvp
 
   slack_reporter:
-    status: enabled_for_company_alerts
+    status: enabled
     type: go_cli
     command: "scripts/company_check_go.sh --email <email> --save --send-slack"
     cost: free
-    priority: phase_2
+    priority: mvp
+    note: "Sends to Slack for all classifications. After DB: personal → DB only, company → Telegram + Slack."
