@@ -1,241 +1,312 @@
 # Flow Map
 
-Dokumen ini adalah peta alur sistem. Tujuannya supaya flow tetap gampang dibaca walaupun nanti jumlah tool, enrichment, dashboard, dan multi-agent bertambah.
+Dokumen ini adalah peta alur sistem. Tujuannya supaya flow tetap gampang dibaca walaupun nanti jumlah tool, enrichment, dan AI layer bertambah.
 
 Gunakan dokumen ini untuk menjelaskan sistem ke orang lain dan untuk menilai impact sebelum mengubah flow.
 
-## 1. Mental Model
+---
 
-Sistem ini bukan satu script besar yang bebas menebak. Sistem ini adalah investigation pipeline yang punya kontrak jelas:
+## 1. Prinsip Arsitektur: Dua Layer
 
-```text
-Input
--> Normalize
--> Collect evidence
--> Score
--> Decide action
--> Store
--> Notify if important
-```
-
-Versi MVP saat ini adalah **fully deterministic** — semua keputusan dibuat oleh kode Go, bukan AI. OpenClaw hanya berperan sebagai gateway (terima pesan Telegram → panggil script → return output). Tidak ada `[AI]` step di flow sekarang.
-
-Phase A (next step) akan menambahkan AI reasoning loop di dalam tahap evidence collection, sehingga AI bisa pivot query, iterasi dari temuan, dan memilih tool berikutnya berdasarkan hipotesis. Multi-agent (Phase C) baru masuk setelah volume atau kompleksitas evidence meningkat.
-
-## 2. Current MVP Flow
+Sistem ini dibangun di atas dua layer yang bekerja bersama:
 
 ```text
-Telegram / CLI input
-  |
-  v
-scripts/company_check_go.sh / Go company-check
-  |
-  +-> internal/emailintel
-  |
-  +-> if custom domain:
-  |     +-> internal/domaincheck
-  |     +-> internal/crawler
-  |
-  +-> internal/query
-  |
-  +-> internal/search
-  |
-  +-> if active URL exists:
-  |     +-> internal/scraper
-  |
-  +-> internal/scoring
-  |
-  +-> internal/report
-  |
-  +-> if --save:
-  |     +-> internal/evidence
-  |
-  +-> if --send-slack:
-        +-> internal/slack
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 1: DETERMINISTIK                                     │
+│  Kode Go — rules, regex, scoring formula                    │
+│  Cepat, predictable, auditable, tidak butuh token LLM       │
+│  Dipakai untuk: validasi, routing, scoring, storage         │
+└─────────────────────────────────────────────────────────────┘
+         ↕  (AI memanggil tools deterministik,
+              tools mengembalikan evidence ke AI)
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 2: AI REASONING                                      │
+│  OpenClaw Agent — hypothesis, pivot, iterasi                │
+│  Fleksibel, bisa reasoning dari context, tapi lebih mahal   │
+│  Dipakai untuk: query selection, evidence interpretation,   │
+│                 iterative discovery, ambiguity resolution   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Current entry command:
+**Prinsip pemilihan layer:**
 
-```bash
-scripts/company_check_go.sh --email <email> --save --send-slack
-```
+| Pertanyaan | Jawaban | Layer |
+|---|---|---|
+| Apakah hasilnya selalu sama untuk input yang sama? | Ya | Deterministik |
+| Apakah butuh reasoning dari context? | Ya | AI |
+| Apakah ini validasi format/rules? | Ya | Deterministik |
+| Apakah ini memilih strategi investigasi? | Ya | AI |
+| Apakah ini menghitung score dari evidence? | Ya | Deterministik |
+| Apakah ini memutuskan tool mana yang paling informatif? | Ya | AI |
+| Apakah hasilnya harus 100% reproducible dan auditable? | Ya | Deterministik |
 
-Current register-package command:
+**Aturan penting:**
+- AI boleh memanggil tools deterministik kapan saja.
+- AI boleh memanggil tools deterministik berulang kali (iterasi).
+- Scoring final dan classification **selalu** deterministik — AI tidak boleh langsung membuat klaim tanpa evidence dari tools.
+- AI tidak boleh mengarang evidence. Semua klaim harus berasal dari output tool.
 
-```bash
-scripts/company_check_go.sh --email <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save --send-slack
-```
+---
 
-## 3. Decision Points
-
-### D1: Is the input a valid email?
-
-Owner:
+## 2. Flow Keseluruhan
 
 ```text
-email_intelligence.js
+Input (email, full_name, no_hp, brand_name)
+  │
+  ▼
+[DETERMINISTIK] Input Normalization
+  Validasi format, masking phone, ignored fields
+  │
+  ▼
+[DETERMINISTIK] Email Intelligence
+  Parse email → klasifikasi domain → hipotesis awal
+  │
+  ├─ invalid/disposable → [DETERMINISTIK] Scoring → Output
+  │
+  ▼
+[DETERMINISTIK] Routing Decision
+  custom domain → jalur domain/website
+  free email    → jalur pencarian publik
+  │
+  ▼
+┌─────────────────────────────────────────────────────────────┐
+│  EVIDENCE COLLECTION                                        │
+│                                                             │
+│  MVP sekarang: [DETERMINISTIK] — urutan tetap               │
+│  Phase A nanti: [AI] — reasoning loop, iteratif             │
+│                                                             │
+│  Tools yang tersedia (bisa dipanggil deterministik/AI):     │
+│  ┌──────────────────┐  ┌──────────────────┐                │
+│  │ domain_checker   │  │ website_crawler  │                │
+│  │ [TOOL DNS+HTTP]  │  │ [TOOL HTTP+ALGO] │                │
+│  └──────────────────┘  └──────────────────┘                │
+│  ┌──────────────────┐  ┌──────────────────┐                │
+│  │ query_builder    │  │ search (DDG/Brave)│               │
+│  │ [ALGO]           │  │ [TOOL]           │                │
+│  └──────────────────┘  └──────────────────┘                │
+│  ┌──────────────────┐  ┌──────────────────┐                │
+│  │ free_scraper     │  │ web_fetch        │                │
+│  │ [TOOL HTTP+ALGO] │  │ [TOOL]           │                │
+│  └──────────────────┘  └──────────────────┘                │
+│  ┌──────────────────────────────────────────┐              │
+│  │ (Phase A+) social_extractor, role_signal │              │
+│  │ profile_search, enrichment_api           │              │
+│  └──────────────────────────────────────────┘              │
+└─────────────────────────────────────────────────────────────┘
+  │
+  ▼
+[DETERMINISTIK] Scoring Engine
+  Hitung confidence dari semua evidence
+  base_score + sum(evidence_delta) → classification
+  │
+  ▼
+[DETERMINISTIK] Report Formatter
+  Buat laporan dengan step-by-step investigasi
+  Label [ALGO]/[TOOL]/[AI] per step
+  │
+  ├─ [DETERMINISTIK] Evidence Store (--save)
+  │
+  └─ [DETERMINISTIK] Slack Reporter (--send-slack)
 ```
 
-If invalid:
+---
+
+## 3. MVP Sekarang: Deterministik Penuh
+
+Flow saat ini adalah **deterministik penuh** — tidak ada AI di dalam loop investigasi. OpenClaw hanya berperan sebagai gateway.
 
 ```text
-classification = suspicious_or_invalid
-domain/web/search steps should not create business claims
+Telegram input
+  │
+  ▼
+OpenClaw Gateway [AI sebagai gateway saja]
+  │  panggil script
+  ▼
+Go company-check [DETERMINISTIK orchestrator]
+  │
+  ├─ emailintel [ALGO]
+  ├─ domaincheck [TOOL DNS+HTTP]  ← hanya jika custom domain
+  ├─ crawler [TOOL HTTP+ALGO]     ← hanya jika custom domain
+  ├─ query builder [ALGO]
+  ├─ search/DDG [TOOL]
+  ├─ scraper [TOOL HTTP+ALGO]     ← hanya jika ada URL aktif
+  ├─ scoring [ALGO]
+  ├─ report [ALGO]
+  ├─ evidence store [ALGO]        ← jika --save
+  └─ slack [TOOL]                 ← jika --send-slack
 ```
 
-### D2: Is the domain a known free provider?
+**Kelebihan:** cepat, reproducible, auditable, tidak butuh token LLM.
 
-Owner:
+**Keterbatasan:** tidak bisa pivot strategi. Contoh: `nawaystore@yahoo.com` — local part `nawaystore` adalah brand hint yang kuat, tapi sistem deterministik tidak bisa mendeteksi itu dan mengubah strategi pencarian.
+
+---
+
+## 4. Phase A: AI Reasoning Loop (Next Step)
+
+AI masuk ke dalam loop evidence collection. Deterministik tetap dipakai untuk validasi, scoring, dan storage.
 
 ```text
-email_intelligence.js
+Telegram input
+  │
+  ▼
+OpenClaw Gateway
+  │
+  ▼
+[DETERMINISTIK] Input Normalization + Email Intelligence
+  → hasilkan: email facts, hipotesis awal, routing signal
+  │
+  ▼
+[AI] Orchestrator — reasoning loop
+  │
+  │  Observe: baca email facts + hipotesis awal
+  │  Orient:  "nawaystore" → kemungkinan brand, bukan nama orang
+  │  Decide:  query "nawaystore" store OR tokopedia OR instagram
+  │  Act:     panggil search tool
+  │
+  ├─ panggil [DETERMINISTIK] tools sesuai kebutuhan:
+  │    search("nawaystore tokopedia OR instagram")
+  │    web_fetch(url_yang_ditemukan)
+  │    scraper(halaman_about)
+  │    domain_checker(domain_kandidat)
+  │    query_builder(identity_baru_yang_ditemukan)
+  │
+  │  Observe: baca hasil tool
+  │  Orient:  "nemu instagram nawaystore, ada nama owner Tatak Subekti"
+  │  Decide:  cari konfirmasi → search "Tatak Subekti Naway Store"
+  │  Act:     panggil search tool lagi
+  │
+  │  ... loop sampai confidence cukup atau budget habis ...
+  │
+  │  Stop condition:
+  │    - confidence >= threshold
+  │    - evidence sudah cukup kuat
+  │    - retry/cost budget habis
+  │    - tidak ada tool baru yang bisa menambah informasi
+  │
+  ▼
+[DETERMINISTIK] Scoring Engine
+  Hitung dari semua evidence yang dikumpulkan AI
+  │
+  ▼
+[DETERMINISTIK] Report + Storage + Slack
 ```
 
-If free provider:
+**Yang berubah di Phase A:**
+- AI memilih query, bukan template query builder
+- AI bisa iterasi dari temuan (round 2, round 3)
+- AI bisa detect brand hint dari local-part email
+- Scoring dan classification tetap deterministik
+
+**Yang tidak berubah:**
+- Input normalization tetap deterministik
+- Scoring formula tetap deterministik
+- Evidence harus dari tool output, bukan AI reasoning langsung
+- Storage dan delivery tetap deterministik
+
+**Prerequisite Phase A:**
+- Brave Search API aktif (DDG terlalu fragile untuk AI loop)
+- Tools Go di-expose sebagai callable functions terpisah
+
+---
+
+## 5. Decision Points
+
+### D1: Input valid?
+
+Owner: `[DETERMINISTIK]` emailintel
 
 ```text
-skip domain_checker
-skip website_crawler_router
-build public-profile query from email local-part
-classification usually likely_personal_email unless later evidence changes it
+invalid/disposable → suspicious_or_invalid, stop investigasi
+valid → lanjut ke routing
 ```
 
-If custom domain:
+### D2: Free email atau custom domain?
+
+Owner: `[DETERMINISTIK]` emailintel
 
 ```text
-run domain_checker
-run website_crawler_router
-build company/domain queries
+custom domain → jalankan domain_checker + crawler
+free email    → skip domain tools, ke pencarian publik
 ```
 
-### D3: Was lightweight website evidence found?
+### D3: Evidence cukup untuk stop?
 
-Owners:
+Owner MVP: `[DETERMINISTIK]` — tidak ada early stop, semua step selalu jalan
+
+Owner Phase A: `[AI]` — AI decide apakah perlu lanjut atau sudah cukup
 
 ```text
-domain_checker.js
-website_crawler_router.js
-free_scraper.js
+confidence >= threshold AND evidence kuat → stop, ke scoring
+budget habis → stop, ke scoring dengan inconclusive
+ada tool baru yang informatif → lanjut iterasi
 ```
 
-If yes:
+### D4: Tool berhasil atau gagal?
+
+Owner: `[DETERMINISTIK]` orchestrator
 
 ```text
-browser skipped reason = skipped_not_needed_for_mvp
+success → tools_used
+failure → tool_errors (bukan evidence)
+not applicable → tools_skipped
 ```
 
-If no:
+### D5: Classification apa?
+
+Owner: `[DETERMINISTIK]` scoring engine
 
 ```text
-browser skipped reason = optional_fallback_disabled_for_mvp
+invalid/disposable → suspicious_or_invalid
+free email + score < 45 → likely_personal_email
+free email + score >= 45 → unknown_needs_more_evidence
+custom domain + website active → possible_company_affiliated
+custom domain + score >= 45 → possible_company_affiliated
+otherwise → unknown_needs_more_evidence
 ```
 
-Browser is not automatic in MVP.
+### D6: Kirim Slack?
 
-### D4: Did a fallback tool really run?
+Current MVP: kirim untuk semua classification, selama Slack env configured.
 
-Owners:
+Future (setelah DB): personal/unknown → DB only; company/high-value → Telegram + Slack.
 
-```text
-Go company-check orchestrator
-internal/search
-internal/scraper
-```
+---
 
-Rules:
-
-```text
-success -> tools_used
-failure -> tool_errors
-not applicable -> tools_skipped
-```
-
-Never put a failed or not-called tool in `tools_used`.
-
-### D5: What classification should be returned?
-
-Owner:
-
-```text
-scoring_engine.js
-```
-
-Current rules:
-
-```text
-invalid/disposable -> suspicious_or_invalid
-free email + weak evidence -> likely_personal_email
-custom domain + active website -> possible_company_affiliated
-custom domain + enough evidence -> possible_company_affiliated
-otherwise -> unknown_needs_more_evidence
-```
-
-### D6: Should Slack be notified?
-
-Current MVP:
-
-```text
-Telegram `/check` uses `--send-slack`. Go posts to Slack for all results regardless of classification,
-as long as Slack env is configured. After a database is available, routing will be split:
-personal/unknown saved to DB only, company-associated to both Telegram and Slack.
-```
-
-Future production:
-
-Use alert decision rules from [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
-
-## 4. Data Flow
+## 6. Data Flow
 
 ### Input
 
-Current MVP input:
-
 ```json
 {
-  "email": "contact@komerce.id",
-  "full_name": "Nurul Hida",
-  "no_hp": "081393707778",
-  "brand_name": "Montclair"
-}
-```
-
-Current platform input contract:
-
-```json
-{
-  "email": "person@gmail.com",
-  "full_name": "Person Name",
+  "email": "nawaystore@yahoo.com",
+  "full_name": "Tatak Subekti",
   "no_hp": "08123456789",
-  "brand_name": "Acme Studio"
+  "brand_name": ""
 }
 ```
 
 Field rules:
+- `email` — required, primary routing signal
+- `full_name` — optional, identity hint untuk pencarian publik
+- `brand_name` — optional, strongest non-email business hint
+- `no_hp` — optional, internal matching/dedup only, tidak untuk public search
+- `username` — tidak trusted, diabaikan
 
-- `email` is required and remains the primary routing signal.
-- `full_name` is optional and can help personal-to-business discovery.
-- `brand_name` is optional and is the strongest non-email business hint.
-- `no_hp` is optional and privacy-sensitive; use it for internal matching/dedup only, not public web search by default.
-- `username`, `signup_source`, `referrer`, and `country/ip_country` are not trusted inputs in the current contract because platform registration cannot provide them reliably.
-
-### Evidence
-
-Every tool should contribute evidence only when it has a real observation:
+### Evidence item
 
 ```json
 {
   "source_type": "company_website",
-  "source_url": "https://komerce.id/",
-  "claim": "Domain website is active and has a readable title.",
+  "source_url": "https://komerce.id/about",
+  "claim": "Website active with business signals.",
   "value": "Komerce - End-to-end e-commerce enabler",
   "reliability": "medium",
   "confidence_delta": 20
 }
 ```
 
-### Output
-
-MVP output:
+### Output MVP
 
 ```json
 {
@@ -250,84 +321,86 @@ MVP output:
 }
 ```
 
-Next-level output will add:
+### Output Phase A+ (tambahan)
 
 ```json
 {
   "company_profile": {},
   "person_profile": {},
-  "business_relationship": "founder_or_owner_candidate"
+  "business_relationship": "founder_or_owner_candidate",
+  "investigation_rounds": 3,
+  "ai_reasoning_log": []
 }
 ```
 
-## 5. How To Change The Flow Safely
+---
 
-Before changing a tool:
+## 7. Cara Mengubah Flow dengan Aman
 
-1. Find the tool in [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md).
-2. Check which decision point uses it in this file.
-3. Check whether it affects `tools_used`, `tools_skipped`, `tool_errors`, or `evidence`.
-4. Check whether scoring changes are needed in `scoring_engine.js`.
-5. Update docs and tests together.
+Sebelum mengubah tool deterministik:
 
-Safe change examples:
+1. Cek di [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md).
+2. Cek decision point mana yang terpengaruh di dokumen ini.
+3. Cek apakah scoring perlu diupdate.
+4. Update docs dan tests bersamaan.
 
-- Add a new free email domain in `email_intelligence.js`.
-- Add a candidate crawl path in `website_crawler_router.js`.
-- Add a new low-confidence evidence type from DDG snippets.
+Sebelum menambah AI step:
 
-Risky change examples:
+1. Pastikan tool yang akan dipanggil AI sudah punya contract yang jelas (input/output/evidence type).
+2. Pastikan scoring tetap deterministik — AI hanya mengumpulkan evidence, tidak membuat classification sendiri.
+3. Tambahkan stop condition yang eksplisit (confidence threshold, max rounds, budget).
+4. Catat di report step mana yang diputuskan AI vs deterministik.
 
-- Raising confidence deltas.
-- Moving failed tools into evidence.
-- Auto-enabling Slack alerts for every check.
-- Making browser default for all jobs.
-- Claiming founder/owner from one weak snippet.
+Contoh perubahan aman:
+- Tambah free email domain baru di emailintel
+- Tambah candidate crawl path di crawler
+- Tambah evidence type baru dari search results
 
-## 6. Future Multi-Agent Flow
+Contoh perubahan berisiko:
+- Naikkan confidence delta tanpa test
+- Biarkan AI langsung set classification tanpa scoring engine
+- Tidak ada stop condition di AI loop
+- Klaim founder/owner dari satu snippet lemah
 
-Multi-agent should not make the product logic harder to understand. It should map to the same stages:
+---
 
-```text
-Orchestrator Agent
-  |
-  +-> Email/Identity Agent
-  +-> Company Website Agent
-  +-> Web Research Agent
-  +-> Public Profile Agent
-  +-> Scoring Agent
-  +-> Report Agent
-```
-
-Agent responsibilities:
-
-- Orchestrator: owns job state and stop/continue decision.
-- Email/Identity Agent: parses email, full_name, brand_name, no_hp-safe metadata, and identity hints.
-- Company Website Agent: checks domain, website pages, schema, social links.
-- Web Research Agent: performs SERP/search discovery.
-- Public Profile Agent: checks LinkedIn via SERP, X, GitHub, Product Hunt, personal sites.
-- Scoring Agent: converts evidence graph into classification/confidence/action.
-- Report Agent: formats Telegram/Slack/dashboard summaries.
-
-Rule:
+## 8. Roadmap Layer
 
 ```text
-Sub-agents collect evidence. Scoring and final claims stay centralized.
+Sekarang (MVP)
+  Layer 1: Deterministik penuh
+  Layer 2: AI sebagai gateway saja (terima Telegram → panggil script)
+
+Phase A: Single Agent + Reasoning Loop
+  Layer 1: Deterministik (normalization, scoring, storage, delivery)
+  Layer 2: AI reasoning loop di evidence collection
+  Prerequisite: Brave Search API, tools exposed as callable functions
+
+Phase B: Postgres + Queue
+  Masuk setelah AI loop terbukti menghasilkan evidence lebih kaya
+  Layer 1: Deterministik + DB writer
+  Layer 2: AI loop dengan evidence persistence
+
+Phase C: Multi-Agent
+  Masuk setelah volume naik atau investigasi terlalu kompleks untuk satu agent
+  Layer 1: Deterministik (scoring, storage tetap terpusat)
+  Layer 2: Multiple AI agents paralel untuk evidence collection
+  Rule: sub-agents collect evidence, scoring dan final claims tetap terpusat
 ```
 
-That prevents each agent from making conflicting final decisions.
+---
 
-## 7. Document Map
+## 9. Document Map
 
 - [Root README](../../README.md): project entry point.
 - [Docs Index](../README.md): reading order and documentation map.
 - [High Level Business Flow](../product/HIGH_LEVEL_BUSINESS_FLOW.md): business-level current vs level-2 flow.
-- [Flow Map](FLOW_MAP.md): readable end-to-end flow and decision points.
-- [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md): detailed tool and algorithm reference.
-- [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md): future enrichment design.
-- [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md): Postgres, Slack, dashboard workflow.
+- [Flow Map](FLOW_MAP.md): arsitektur dua layer dan roadmap.
+- [Tools and Algorithms Reference](TOOLS_AND_ALGORITHMS.md): kamus tool dan algoritma.
+- [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md): rencana enrichment.
+- [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md): Postgres, Slack, dashboard.
 - [Backlog](../../BACKLOG.md): implementation tasks.
-- [OpenClaw Agent Prompt](../../openclaw_workspace/AGENTS.md): runtime behavior contract for OpenClaw agent.
+- [OpenClaw Agent Prompt](../../openclaw_workspace/AGENTS.md): runtime behavior contract.
 - [Tool Notes](../../openclaw_workspace/TOOLS.md): runtime tool notes.
 - [Tool Catalog](../../openclaw_workspace/config/tool_catalog.yaml): tool registry.
 - [Scoring Rules](../../openclaw_workspace/config/scoring_rules.yaml): scoring reference.
