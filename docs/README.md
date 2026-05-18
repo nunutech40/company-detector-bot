@@ -52,6 +52,9 @@ Untuk paham project dari nol:
 - [Go Transition Plan](technical/GO_TRANSITION_PLAN.md)
   Building plan transisi dari Node.js reference prototype menuju Go production implementation.
 
+- [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md)
+  Checklist granular supaya transisi Go bisa dikerjakan agent step-by-step sampai testing/cutover selesai.
+
 ## Operations Docs
 
 - [Building Plan OpenClaw Telegram MVP](operations/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md)

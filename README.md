@@ -36,7 +36,8 @@ Urutan baca paling enak:
 2. [Flow Map](docs/technical/FLOW_MAP.md) - alur runtime dan decision point yang lebih teknis.
 3. [Tools and Algorithms Reference](docs/technical/TOOLS_AND_ALGORITHMS.md) - kamus semua script/tool dan algoritmanya.
 4. [Go Transition Plan](docs/technical/GO_TRANSITION_PLAN.md) - rencana port dari Node.js prototype ke Go production implementation.
-5. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
+5. [Go Transition Checklist](docs/technical/GO_TRANSITION_CHECKLIST.md) - checklist granular sampai testing/cutover selesai.
+6. [Backlog](BACKLOG.md) - apa yang sudah selesai dan apa yang belum.
 
 ## Run Locally
 

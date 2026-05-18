@@ -16,9 +16,11 @@ Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa siste
 
 ## 1. Database & Asynchronous Queue
 - [ ] **Go Transition Spec Freeze**: finalkan input/output/evidence/scoring contract sebelum rewrite.
+- [ ] **Go Golden Fixtures**: buat fixture input/expected output untuk parity JS vs Go.
 - [ ] **Go Service Skeleton**: buat `go-service/` dengan CLI parity untuk `company-check`.
 - [ ] **Go Unit Tests**: port pure logic dengan unit test dan golden fixtures.
 - [ ] **Go Integration Tests**: test DNS/fetch/search/Slack dengan mock dan real opt-in tests.
+- [ ] **Go Side-by-Side Cutover**: deploy Go di VPS, bandingkan dengan JS, lalu switch OpenClaw jika parity aman.
 - [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
 - [ ] **Buat Skema Tabel**: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`.
 - [ ] **Migrasi Evidence Store**: Ubah `evidence_store.js` yang tadinya menyimpan file JSON fisik menjadi operasi `INSERT` ke tabel Postgres.

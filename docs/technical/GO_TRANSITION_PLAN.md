@@ -2,6 +2,8 @@
 
 Dokumen ini adalah building plan untuk memindahkan Company Detector dari Node.js script prototype menuju Go production service/worker.
 
+Untuk checklist eksekusi yang lebih granular, baca [Go Transition Execution Checklist](GO_TRANSITION_CHECKLIST.md).
+
 Keputusan arah:
 
 ```text
