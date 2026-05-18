@@ -124,10 +124,11 @@ type SearchResult struct {
 }
 
 type SearchResponse struct {
-	OK      bool           `json:"ok"`
-	Error   string         `json:"error,omitempty"`
-	Query   string         `json:"query"`
-	Results []SearchResult `json:"results"`
+	OK       bool           `json:"ok"`
+	Error    string         `json:"error,omitempty"`
+	Query    string         `json:"query"`
+	Provider string         `json:"provider,omitempty"` // which provider actually returned results
+	Results  []SearchResult `json:"results"`
 }
 
 type ScrapeResponse struct {

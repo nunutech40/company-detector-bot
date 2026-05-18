@@ -327,7 +327,23 @@ func stepCrawler(wc *model.WebsiteCrawler, stepNum int, deltaBySource map[string
 
 func stepSearch(result model.CompanyCheckResult, email model.EmailIntelligence, stepNum int, deltaBySource map[string]int, running *int) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[%d] Query Builder  [Deterministik]  +  Search Publik  [Tools — DDG HTML]\n", stepNum))
+
+	// Use Provider field from SearchResponse (set by cascade in search.Search())
+	providerLabel := "DDG HTML"
+	if result.DDGSearch != nil && result.DDGSearch.Provider != "" {
+		switch result.DDGSearch.Provider {
+		case "google_cse":
+			providerLabel = "Google CSE"
+		case "brave_search":
+			providerLabel = "Brave Search API"
+		case "bing_html":
+			providerLabel = "Bing HTML"
+		case "ddg_html":
+			providerLabel = "DDG HTML"
+		}
+	}
+
+	sb.WriteString(fmt.Sprintf("[%d] Query Builder  [Deterministik]  +  Search Publik  [Tools — %s]\n", stepNum, providerLabel))
 
 	primaryQuery := ""
 	if len(result.SerpQueries.Queries) > 0 {
@@ -352,23 +368,33 @@ func stepSearch(result model.CompanyCheckResult, email model.EmailIntelligence, 
 		sb.WriteString("  Evaluasi  : PERLU IMPROVE — search tidak jalan; cek network atau provider config\n")
 		return sb.String()
 	}
-	delta := deltaBySource["ddg_search"] + deltaBySource["free_serp_search"]
+
+	// Show cascade info
+	sb.WriteString("  Cascade   : google_cse → brave_search → bing_html → ddg_html (urutan prioritas)\n")
+	if result.DDGSearch.Provider != "" {
+		sb.WriteString(fmt.Sprintf("  Dipakai   : %s\n", result.DDGSearch.Provider))
+	}
+
+	delta := deltaBySource["web_search"] + deltaBySource["web_search_google_cse"] +
+		deltaBySource["web_search_brave_search"] + deltaBySource["web_search_bing_html"] +
+		deltaBySource["web_search_ddg_html"] + deltaBySource["ddg_search"] + deltaBySource["free_serp_search"]
+
 	if result.DDGSearch.OK {
 		if len(result.DDGSearch.Results) == 0 {
 			*running += delta
 			sb.WriteString("  Hasil     : search berjalan tapi tidak ada hasil yang bisa diparse\n")
 			sb.WriteString("  Artinya   : tidak ada bukti publik yang mendukung atau menolak hipotesis → confidence tidak naik\n")
-			sb.WriteString("  Evaluasi  : PERLU IMPROVE — DDG HTML parsing fragile dan sering diblokir ISP; ganti dengan Brave Search API\n")
+			sb.WriteString("  Evaluasi  : PERLU IMPROVE — coba provider lain atau query yang lebih spesifik\n")
 		} else {
 			*running += delta
-			sb.WriteString(fmt.Sprintf("  Hasil     : %d hasil ditemukan\n", len(result.DDGSearch.Results)))
+			sb.WriteString(fmt.Sprintf("  Hasil     : %d hasil ditemukan via %s\n", len(result.DDGSearch.Results), providerLabel))
 			sb.WriteString("  Artinya   : ada sinyal publik yang mendukung investigasi → hipotesis SEDIKIT MENGUAT\n")
-			sb.WriteString("  Evaluasi  : OK tapi terbatas — DDG snippet tidak bisa extract role/company secara structured; butuh Firecrawl untuk scrape URL hasil\n")
+			sb.WriteString("  Evaluasi  : OK tapi terbatas — snippet tidak bisa extract role/company secara structured; butuh Firecrawl untuk scrape URL hasil\n")
 		}
 	} else {
-		sb.WriteString(fmt.Sprintf("  Hasil     : GAGAL — %s\n", simplifyError(result.DDGSearch.Error)))
+		sb.WriteString(fmt.Sprintf("  Hasil     : SEMUA PROVIDER GAGAL — %s\n", simplifySearchError(result.DDGSearch.Error)))
 		sb.WriteString("  Artinya   : search tidak bisa dijalankan → hipotesis tidak berubah\n")
-		sb.WriteString("  Evaluasi  : PERLU IMPROVE — DDG HTML sering diblokir; ganti dengan Brave Search API (free tier tersedia)\n")
+		sb.WriteString("  Evaluasi  : PERLU IMPROVE — setup GOOGLE_CSE_KEY+GOOGLE_CSE_ID (100/hari gratis) atau BRAVE_SEARCH_API_KEY\n")
 		delta = 0
 	}
 	sb.WriteString(fmt.Sprintf("  Delta     : %+d → score sementara %d/100\n", delta, clamp(*running)))
@@ -523,6 +549,14 @@ func initialHypothesis(email model.EmailIntelligence, input model.RegisterInput)
 		return "kemungkinan akun bisnis — custom domain dengan role mailbox adalah sinyal kuat company affiliation"
 	}
 	return "kemungkinan akun bisnis karena memakai custom domain"
+}
+
+func simplifySearchError(message string) string {
+	// Truncate the all_providers_failed message to be readable
+	if strings.HasPrefix(message, "all_providers_failed:") {
+		return "semua provider gagal — " + strings.TrimPrefix(message, "all_providers_failed: ")
+	}
+	return simplifyError(message)
 }
 
 func simplifyError(message string) string {

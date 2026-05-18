@@ -116,10 +116,14 @@ func Run(ctx context.Context, input model.RegisterInput, options Options) model.
 		searchResult := runSearch(ctx, primaryQuery, options)
 		result.DDGSearch = &searchResult
 		if searchResult.OK {
-			result.ToolsUsed = append(result.ToolsUsed, "ddg_search")
+			toolName := "web_search"
+			if searchResult.Provider != "" {
+				toolName = "web_search(" + searchResult.Provider + ")"
+			}
+			result.ToolsUsed = append(result.ToolsUsed, toolName)
 			result.Evidence = append(result.Evidence, searchEvidence(searchResult)...)
 		} else {
-			result.ToolErrors = append(result.ToolErrors, model.ToolError{Tool: "ddg_search", Error: searchResult.Error})
+			result.ToolErrors = append(result.ToolErrors, model.ToolError{Tool: "web_search", Error: searchResult.Error})
 		}
 	}
 
@@ -190,7 +194,7 @@ func runSearch(ctx context.Context, q string, options Options) model.SearchRespo
 	if limit <= 0 {
 		limit = 5
 	}
-	return search.DuckDuckGo(ctx, q, search.Options{Limit: limit})
+	return search.Search(ctx, q, search.Options{Limit: limit})
 }
 
 func runScrape(ctx context.Context, targetURL string, options Options) model.ScrapeResponse {
@@ -236,14 +240,18 @@ func pickScrapeURL(domain *model.DomainCheck, crawl *model.WebsiteCrawler) strin
 }
 
 func searchEvidence(searchResult model.SearchResponse) []model.EvidenceItem {
+	sourceType := "web_search"
+	if searchResult.Provider != "" {
+		sourceType = "web_search_" + searchResult.Provider
+	}
 	if len(searchResult.Results) == 0 {
-		return []model.EvidenceItem{{SourceType: "ddg_search", Reliability: "low", Claim: "Search ran but returned no parsed public results.", Value: searchResult.Query, ConfidenceDelta: 0}}
+		return []model.EvidenceItem{{SourceType: sourceType, Reliability: "low", Claim: "Search ran but returned no parsed public results.", Value: searchResult.Query, ConfidenceDelta: 0}}
 	}
 	values := []string{}
 	for _, item := range searchResult.Results {
 		values = append(values, item.Title+" - "+item.URL)
 	}
-	return []model.EvidenceItem{{SourceType: "ddg_search", Reliability: "low", Claim: "Public search returned candidate company/social evidence.", Value: values, ConfidenceDelta: min(15, len(values)*5)}}
+	return []model.EvidenceItem{{SourceType: sourceType, Reliability: "low", Claim: "Public search returned candidate company/social evidence.", Value: values, ConfidenceDelta: min(15, len(values)*5)}}
 }
 
 func scrapeEvidence(scrapeResult model.ScrapeResponse) []model.EvidenceItem {
