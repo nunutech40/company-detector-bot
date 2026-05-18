@@ -71,7 +71,8 @@ for script in \
   tool_status_go.sh \
   last_report_go.sh \
   deliver_report.sh \
-  deliver_report_with_env.sh; do
+  deliver_report_with_env.sh \
+  finish_investigation.sh; do
   if [[ -f "${REPO_DIR}/openclaw_workspace/scripts/${script}" ]]; then
     scp_file "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
     ssh_cmd "chmod +x ${VPS_WORKSPACE}/scripts/${script}"

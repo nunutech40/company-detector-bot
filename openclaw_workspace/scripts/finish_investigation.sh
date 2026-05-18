@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# finish_investigation.sh — wajib dijalankan AI di akhir setiap investigasi
+#
+# Usage:
+#   bash scripts/finish_investigation.sh \
+#     --email <email> \
+#     [--full-name "<name>"] \
+#     [--no-hp "<phone>"] \
+#     [--brand-name "<brand>"] \
+#     --report "<report_text>"
+#
+# Yang dilakukan:
+#   1. Save report AI ke reports/ai_report_latest.txt
+#   2. Run company_check --save untuk save evidence JSON
+#   3. Trigger deliver_report_with_env.sh untuk kirim ke Slack
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Parse args
+EMAIL=""
+FULL_NAME=""
+NO_HP=""
+BRAND_NAME=""
+REPORT_TEXT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --email)      EMAIL="$2";      shift 2 ;;
+    --full-name)  FULL_NAME="$2";  shift 2 ;;
+    --no-hp)      NO_HP="$2";      shift 2 ;;
+    --brand-name) BRAND_NAME="$2"; shift 2 ;;
+    --report)     REPORT_TEXT="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+if [[ -z "${EMAIL}" ]]; then
+  echo "finish_investigation: --email is required" >&2
+  exit 1
+fi
+
+echo "finish_investigation: saving for ${EMAIL}"
+
+# Step 1: Save AI report ke file
+if [[ -n "${REPORT_TEXT}" ]]; then
+  echo "${REPORT_TEXT}" > "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+  echo "finish_investigation: AI report saved to reports/ai_report_latest.txt"
+else
+  echo "finish_investigation: no --report provided, skipping AI report save" >&2
+fi
+
+# Step 2: Run company_check --save untuk save evidence JSON
+ARGS="--email ${EMAIL} --save"
+[[ -n "${FULL_NAME}" ]]  && ARGS="${ARGS} --full-name \"${FULL_NAME}\""
+[[ -n "${NO_HP}" ]]      && ARGS="${ARGS} --no-hp \"${NO_HP}\""
+[[ -n "${BRAND_NAME}" ]] && ARGS="${ARGS} --brand-name \"${BRAND_NAME}\""
+
+echo "finish_investigation: running company_check --save"
+eval "bash ${SCRIPT_DIR}/company_check_go.sh ${ARGS}" 2>&1 | tail -3
+
+# Step 3: Deliver ke Slack
+echo "finish_investigation: triggering Slack delivery"
+bash "${SCRIPT_DIR}/deliver_report_with_env.sh"
+
+echo "finish_investigation: done"

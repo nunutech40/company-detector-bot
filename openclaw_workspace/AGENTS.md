@@ -81,25 +81,19 @@ go run ./cmd/company-check --email <email> --json | jq .email_intelligence
 - `web_fetch("url")` — baca isi halaman
 - `browser` — kalau web_fetch gagal (JS-heavy)
 
-**Setelah selesai investigasi, lakukan ini secara berurutan:**
+**Setelah selesai investigasi — WAJIB jalankan ini (satu command):**
 
-1. Tulis report lengkap ke file (WAJIB — ini yang dikirim ke Slack):
-   ```
-   Tulis ke file: reports/ai_report_latest.txt
-   Isi: report lengkap yang sama persis dengan yang kamu kirim ke Telegram
-   ```
+```bash
+bash scripts/finish_investigation.sh \
+  --email <email> \
+  [--full-name "<name>"] \
+  [--no-hp "<phone>"] \
+  [--brand-name "<brand_yang_ditemukan_jika_ada>"] \
+  --report "<isi report lengkap yang kamu tulis>"
+```
 
-2. Save evidence baseline:
-   ```bash
-   scripts/company_check_go.sh --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "<brand_yang_ditemukan>"] --save
-   ```
-
-3. Trigger delivery ke Slack:
-   ```bash
-   bash scripts/deliver_report_with_env.sh
-   ```
-
-Urutan ini penting: tulis report dulu → save → deliver. Kalau tidak tulis ke file, Slack akan dapat report Go fallback yang berbeda.
+Script ini otomatis: save report → save evidence → kirim Slack.
+**Jangan skip.** Tanpa ini, evidence tidak tersimpan dan Slack tidak terkirim.
 
 ---
 
