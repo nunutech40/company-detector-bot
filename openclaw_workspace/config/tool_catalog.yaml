@@ -1,29 +1,29 @@
 tools:
   email_intelligence:
     status: enabled
-    type: custom_script
-    command: "node scripts/email_intelligence.js <email>"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email> --json"
     cost: free
     priority: mvp
 
   domain_checker:
     status: enabled
-    type: custom_script
-    command: "node scripts/domain_checker.js <domain>"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email> --json"
     cost: free_or_low
     priority: mvp
 
   company_check:
     status: enabled
-    type: custom_script
-    command: "node scripts/company_check.js <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>]"
+    type: go_cli
+    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--no-hp <no_hp>] [--brand-name <brand_name>] --save"
     cost: free_or_low
     priority: mvp
 
   input_normalizer:
     status: enabled
-    type: custom_script
-    command: "node scripts/input_normalizer.js '<email-or-json>'"
+    type: go_package
+    command: "scripts/company_check_go.sh --input-json '<json>' --json"
     cost: free
     priority: mvp
 
@@ -36,29 +36,29 @@ tools:
 
   scoring_engine:
     status: enabled
-    type: custom_script
-    command: "node scripts/scoring_engine.js"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email> --json"
     cost: free
     priority: mvp
 
   website_crawler_router:
     status: enabled
-    type: custom_script
-    command: "node scripts/website_crawler_router.js <domain>"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email> --json"
     cost: free_or_low
     priority: mvp
 
   serp_query_builder:
     status: enabled
-    type: custom_script
-    command: "node scripts/serp_query_builder.js <email> [full_name] [brand_name]"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email> [--full-name <full_name>] [--brand-name <brand_name>] --json"
     cost: free
     priority: mvp
 
   report_formatter:
     status: enabled
-    type: custom_script
-    command: "node scripts/report_formatter.js"
+    type: go_package
+    command: "scripts/company_check_go.sh --email <email>"
     cost: free
     priority: mvp
 
@@ -78,8 +78,8 @@ tools:
 
   web_search:
     status: enabled_with_ddg
-    type: custom_script
-    command: "node scripts/ddg_search.js <query>"
+    type: go_package
+    command: "called inside scripts/company_check_go.sh"
     cost: free
     priority: mvp
 
@@ -97,8 +97,8 @@ tools:
 
   free_scraper:
     status: enabled
-    type: custom_script
-    command: "node scripts/free_scraper.js <url>"
+    type: go_package
+    command: "called inside scripts/company_check_go.sh"
     cost: free
     priority: mvp
 
@@ -128,7 +128,7 @@ tools:
 
   slack_reporter:
     status: optional
-    type: custom_script
-    command: "node scripts/company_check.js <email> --send-slack"
+    type: go_cli
+    command: "scripts/company_check_go.sh --email <email> --send-slack"
     cost: free
     priority: phase_2

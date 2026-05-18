@@ -15,7 +15,7 @@ openclaw_workspace/AGENTS.md
 Role:
 
 - Menerima pesan Telegram atau request natural-language.
-- Jika ada email valid, menjalankan `company_check.js`.
+- Jika ada email valid, menjalankan Go wrapper `scripts/company_check_go.sh`.
 - Tidak bertanya ulang untuk `/check <email>`.
 - Mengembalikan report yang dibuat tool, bukan mengarang evidence.
 
@@ -23,7 +23,7 @@ Important rule:
 
 ```text
 For every valid email check, run:
-node scripts/company_check.js <email> --save
+scripts/company_check_go.sh --email <email> --save
 ```
 
 ### Company Detection Skill
@@ -42,12 +42,13 @@ Role:
 
 ## 2. Orchestrator Tool
 
-### `company_check.js`
+### Go `company-check`
 
 File:
 
 ```text
-openclaw_workspace/scripts/company_check.js
+openclaw_workspace/scripts/company_check_go.sh
+go-service/cmd/company-check
 ```
 
 Role:
@@ -63,8 +64,8 @@ Role:
 Inputs:
 
 ```bash
-node scripts/company_check.js <email> [--full-name "..."] [--no-hp "..."] [--brand-name "..."] [--json] [--save] [--send-slack]
-node scripts/company_check.js --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' [--json] [--save]
+scripts/company_check_go.sh --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "..."] [--json] [--save] [--send-slack]
+scripts/company_check_go.sh --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' [--json] [--save]
 ```
 
 Go MVP equivalent:
@@ -77,8 +78,8 @@ go run ./cmd/company-check --input-json '{"email":"...","full_name":"...","no_hp
 
 Current runtime note:
 
-- Node.js remains the OpenClaw/Telegram reference runtime until VPS cutover.
-- Go packages now mirror this flow and are covered by unit tests.
+- OpenClaw workspace now points to the Go wrapper.
+- Node.js scripts remain as rollback/reference helpers.
 - Go Slack send is explicit only through `--send-slack` plus `SLACK_BOT_TOKEN` and `SLACK_REPORT_CHANNEL`.
 
 Algorithm:

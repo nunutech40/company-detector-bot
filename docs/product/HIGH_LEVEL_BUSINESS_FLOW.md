@@ -71,15 +71,15 @@ flowchart TD
 | Layer | Apa yang terjadi | Teknologi sekarang | Output antar-layer |
 |---|---|---|---|
 | Input | User mengirim `/check email` atau email langsung. | Telegram + OpenClaw Gateway | Raw user message |
-| Agent Router | Agent mengenali email dan memanggil command utama. | OpenClaw Agent + `AGENTS.md` | `node scripts/company_check.js <email> --save` |
-| Orchestrator | Mengatur urutan pengecekan dan menggabungkan hasil. | `company_check.js` | Investigation result draft |
-| Email Intelligence | Validasi email, cek free/custom domain, role mailbox, disposable. | `email_intelligence.js` | Email facts + evidence awal |
-| Domain/Web Check | Untuk custom domain: cek DNS, MX, website aktif, title. | `domain_checker.js` | Domain evidence |
-| Website Crawl | Untuk custom domain: cek halaman umum seperti `/about`, `/team`, `/contact`. | `website_crawler_router.js` | Website page evidence |
-| Search/Scrape Fallback | Search ringan dan scrape ringan kalau ada URL aktif. | `ddg_search.js`, `free_scraper.js` | Low-reliability public evidence |
-| Scoring | Hitung confidence dan classification. | `scoring_engine.js` | Classification + score + action |
-| Report | Buat report Bahasa Indonesia untuk Telegram. | `report_formatter.js` | Telegram text |
-| Storage MVP | Simpan JSON/report untuk audit. | `evidence_store.js` file-based | `evidence/*.json`, `reports/*.txt` |
+| Agent Router | Agent mengenali email dan memanggil command utama. | OpenClaw Agent + `AGENTS.md` | `scripts/company_check_go.sh --email <email> --save` |
+| Orchestrator | Mengatur urutan pengecekan dan menggabungkan hasil. | Go `company-check` | Investigation result draft |
+| Email Intelligence | Validasi email, cek free/custom domain, role mailbox, disposable. | Go `internal/emailintel` | Email facts + evidence awal |
+| Domain/Web Check | Untuk custom domain: cek DNS, MX, website aktif, title. | Go `internal/domaincheck` | Domain evidence |
+| Website Crawl | Untuk custom domain: cek halaman umum seperti `/about`, `/team`, `/contact`. | Go `internal/crawler` | Website page evidence |
+| Search/Scrape Fallback | Search ringan dan scrape ringan kalau ada URL aktif. | Go `internal/search`, `internal/scraper` | Low-reliability public evidence |
+| Scoring | Hitung confidence dan classification. | Go `internal/scoring` | Classification + score + action |
+| Report | Buat report Bahasa Indonesia untuk Telegram. | Go `internal/report` | Telegram text |
+| Storage MVP | Simpan JSON/report untuk audit. | Go `internal/evidence` file-based | `evidence/*.json`, `reports/*.txt` |
 | Output | Kirim hasil ke user. | Telegram | Final report |
 
 ### 1.3 Sequence Diagram Sekarang
@@ -89,7 +89,7 @@ sequenceDiagram
     actor User
     participant TG as Telegram Bot
     participant OC as OpenClaw Agent
-    participant OR as company_check.js
+    participant OR as Go company-check
     participant EI as Email Intelligence
     participant DW as Domain/Web Tools
     participant SF as Search/Scrape Fallback

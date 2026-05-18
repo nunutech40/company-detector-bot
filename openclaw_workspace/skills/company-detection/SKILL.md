@@ -9,7 +9,13 @@ Use this skill when a Telegram/user message asks to check, classify, inspect, or
 3. Run:
 
    ```bash
-   node scripts/company_check.js <email> --save
+   scripts/company_check_go.sh --email <email> --save
+   ```
+
+   If trusted register metadata is present, pass only:
+
+   ```bash
+   scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
    ```
 
 4. Return the generated report to the user.

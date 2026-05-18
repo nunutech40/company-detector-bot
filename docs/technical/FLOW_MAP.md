@@ -26,42 +26,42 @@ Versi MVP masih single orchestrator. Multi-agent nanti hanya memecah tahap evide
 Telegram / CLI input
   |
   v
-company_check.js
+scripts/company_check_go.sh / Go company-check
   |
-  +-> email_intelligence.js
+  +-> internal/emailintel
   |
   +-> if custom domain:
-  |     +-> domain_checker.js
-  |     +-> website_crawler_router.js
+  |     +-> internal/domaincheck
+  |     +-> internal/crawler
   |
-  +-> serp_query_builder.js
+  +-> internal/query
   |
-  +-> ddg_search.js
+  +-> internal/search
   |
   +-> if active URL exists:
-  |     +-> free_scraper.js
+  |     +-> internal/scraper
   |
-  +-> scoring_engine.js
+  +-> internal/scoring
   |
-  +-> report_formatter.js
+  +-> internal/report
   |
   +-> if --save:
-  |     +-> evidence_store.js
+  |     +-> internal/evidence
   |
-  +-> if --send-slack or env enabled:
-        +-> slack_reporter.js
+  +-> if --send-slack:
+        +-> internal/slack
 ```
 
 Current entry command:
 
 ```bash
-node scripts/company_check.js <email> --save
+scripts/company_check_go.sh --email <email> --save
 ```
 
 Current register-package command:
 
 ```bash
-node scripts/company_check.js <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+scripts/company_check_go.sh --email <email> --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
 ```
 
 ## 3. Decision Points
@@ -135,9 +135,9 @@ Browser is not automatic in MVP.
 Owners:
 
 ```text
-company_check.js
-ddg_search.js
-free_scraper.js
+Go company-check orchestrator
+internal/search
+internal/scraper
 ```
 
 Rules:

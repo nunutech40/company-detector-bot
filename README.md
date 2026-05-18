@@ -9,7 +9,7 @@ MVP saat ini berjalan lewat Telegram: user mengirim `/check email@domain.com`, a
 Yang sudah aktif:
 
 - Telegram bot command flow via OpenClaw.
-- Deterministic `company_check.js` orchestrator.
+- Deterministic Go `company-check` orchestrator via `openclaw_workspace/scripts/company_check_go.sh`.
 - Email intelligence, DNS/domain check, lightweight website crawler.
 - DuckDuckGo HTML search fallback dan lightweight scraper fallback.
 - Rules-first scoring engine.
@@ -20,7 +20,7 @@ Yang sudah aktif:
 
 Yang belum production:
 
-- Go VPS/OpenClaw cutover as the primary runtime.
+- VPS deployment of the Go binary; local/OpenClaw workspace command has been cut over to Go wrapper.
 - Next-level company/social enrichment.
 - Personal-to-business relationship discovery.
 - Postgres, queue, dashboard, dan platform register API.
@@ -42,25 +42,25 @@ Urutan baca paling enak:
 
 ## Run Locally
 
-Current active/reference runtime is still Node.js:
+Current active runtime is the Go wrapper from the OpenClaw workspace:
 
 ```bash
 cd openclaw_workspace
-node scripts/company_check.js contact@komerce.id --save
+scripts/company_check_go.sh --email contact@komerce.id --save
 ```
 
 Run with the current register input package:
 
 ```bash
 cd openclaw_workspace
-node scripts/company_check.js person@gmail.com --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
+scripts/company_check_go.sh --email person@gmail.com --full-name "Person Name" --no-hp "08123456789" --brand-name "Acme Studio" --save
 ```
 
 Or pass JSON:
 
 ```bash
 cd openclaw_workspace
-node scripts/company_check.js --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --json
+scripts/company_check_go.sh --input-json '{"email":"person@gmail.com","full_name":"Person Name","no_hp":"08123456789","brand_name":"Acme Studio"}' --json
 ```
 
 Process CSV rows sequentially:
@@ -74,7 +74,7 @@ JSON output:
 
 ```bash
 cd openclaw_workspace
-node scripts/company_check.js contact@komerce.id --json
+scripts/company_check_go.sh --email contact@komerce.id --json
 ```
 
 Tool status:
@@ -95,7 +95,7 @@ Optional Slack send:
 
 ```bash
 cd openclaw_workspace
-COMPANY_DETECTION_SEND_SLACK=true node scripts/company_check.js contact@komerce.id --send-slack
+SLACK_BOT_TOKEN='xoxb-...' SLACK_REPORT_CHANNEL='C0B3JEYN1HV' scripts/company_check_go.sh --email contact@komerce.id --send-slack
 ```
 
 Go CLI MVP:
@@ -121,12 +121,12 @@ For every valid `/check <email>` request, OpenClaw should run:
 
 ```bash
 cd ~/.openclaw/workspace
-node scripts/company_check.js <email> --save
+scripts/company_check_go.sh --email <email> --save
 ```
 
 The final result must stand on its own for automation. It must not ask the user for feedback or clarification when a valid email exists.
 
-Go will replace this command only after VPS/OpenClaw cutover is tested. Until then, Node.js is the operational fallback/reference.
+Node.js scripts remain as rollback/reference helpers, but the OpenClaw workspace command is now the Go wrapper.
 
 Current classifications:
 

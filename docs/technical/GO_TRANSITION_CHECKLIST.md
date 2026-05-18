@@ -8,7 +8,8 @@ Current status as of 2026-05-18:
 - Pure logic, network adapters, orchestrator, Slack adapter, and file evidence writer are implemented.
 - `cd go-service && env GOCACHE=/private/tmp/company-detector-go-cache go test ./...` passes locally.
 - Real network smoke test against `contact@komerce.id` succeeded for DNS/domain/crawler/scraper; DuckDuckGo HTML search was blocked by local network filtering (`internetpositif.id` certificate), so search provider replacement remains future work.
-- OpenClaw runtime has not been cut over to Go yet. Node.js remains the active/reference implementation until VPS/OpenClaw cutover is done.
+- Local OpenClaw workspace command/prompt has been cut over to Go through `openclaw_workspace/scripts/company_check_go.sh`.
+- VPS binary deployment and Telegram restart/live test remain pending.
 
 Legend:
 
@@ -341,7 +342,7 @@ Gate:
 Goal: deploy Go without breaking current bot.
 
 - [ ] Confirm Go version on VPS or build binary locally for VPS target.
-- [ ] Build binary:
+- [x] Build binary locally:
 
 ```bash
 cd go-service
@@ -354,22 +355,22 @@ go build -o bin/company-check ./cmd/company-check
   - `SLACK_BOT_TOKEN`
   - `SLACK_REPORT_CHANNEL`
   - model/AI env if needed later
-- [ ] Add Go command note to OpenClaw docs.
-- [ ] Keep Node command available for rollback.
+- [x] Add Go command note to OpenClaw docs.
+- [x] Keep Node command available for rollback.
 
 Gate:
 
 - [ ] VPS manual Go check succeeds.
 - [ ] VPS Slack test succeeds if enabled.
-- [ ] Node fallback still works.
+- [x] Node fallback still exists in repo.
 
 ## Phase 9: OpenClaw Cutover
 
 Goal: switch Telegram runtime carefully.
 
-- [ ] Update `openclaw_workspace/AGENTS.md` command from Node to Go only after parity.
-- [ ] Update `openclaw_workspace/TOOLS.md`.
-- [ ] Update `tool_catalog.yaml`.
+- [x] Update `openclaw_workspace/AGENTS.md` command from Node to Go after local parity.
+- [x] Update `openclaw_workspace/TOOLS.md`.
+- [x] Update `tool_catalog.yaml`.
 - [ ] Restart OpenClaw/Gateway if needed.
 - [ ] Test Telegram `/check contact@komerce.id`.
 - [ ] Test Telegram free email + available metadata path if supported.

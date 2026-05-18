@@ -17,16 +17,16 @@ Your job is to investigate whether an email/register input is likely related to 
 
 ## Required Tool-Backed Flow
 
-For every valid email check, run the deterministic MVP tool and use its output as the source of truth:
+For every valid email check, run the deterministic Go MVP tool and use its output as the source of truth:
 
 ```bash
-node scripts/company_check.js <email> --save
+scripts/company_check_go.sh --email <email> --save
 ```
 
 If register metadata is available, pass the current trusted fields only:
 
 ```bash
-node scripts/company_check.js <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
+scripts/company_check_go.sh --email <email> --full-name "<full_name>" --no-hp "<no_hp>" --brand-name "<brand_name>" --save
 ```
 
 Do not treat platform `username` as a trusted identity signal because it may contain an email or phone number.
@@ -126,16 +126,9 @@ Avoid markdown tables in Telegram.
 
 For today's MVP, prefer free/local reasoning first:
 
-- `scripts/email_intelligence.js`
-- `scripts/domain_checker.js`
-- `scripts/company_check.js`
-- `scripts/scoring_engine.js`
-- `scripts/website_crawler_router.js`
-- `scripts/serp_query_builder.js`
-- `scripts/ddg_search.js`
-- `scripts/free_scraper.js`
-- `scripts/report_formatter.js`
-- `scripts/evidence_store.js`
+- `scripts/company_check_go.sh`
+- `../go-service/cmd/company-check`
+- Go packages under `../go-service/internal/*`
 - `scripts/tool_status.js`
 - `scripts/last_report.js`
 - available OpenClaw web_fetch/web_search only if configured

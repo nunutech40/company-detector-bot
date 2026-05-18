@@ -24,7 +24,8 @@ env GOCACHE=/private/tmp/company-detector-go-cache go test ./...
 
 - Manual real network smoke test for `contact@komerce.id` succeeded for DNS/domain/crawler/scraper.
 - DuckDuckGo HTML search is still fragile in some networks; the latest smoke test was blocked by local filtering/certificate interception. This should be treated as a provider risk and replaced by a proper provider adapter when budget/API is ready.
-- OpenClaw has not been cut over to Go yet; Node.js remains the live/reference runtime until VPS and Telegram checks pass.
+- Local OpenClaw workspace docs/prompts have been cut over to Go via `openclaw_workspace/scripts/company_check_go.sh`.
+- VPS binary deployment and Telegram live restart/test are still pending.
 
 Alasan utama pindah ke Go bukan performa mentah. Bottleneck sistem tetap network, AI request, search/scrape, dan rate limit. Alasan utama Go adalah maintainability production: typed contract, unit test standar, single binary deploy, worker/service yang lebih rapi, dan kemungkinan lebih mudah diteruskan oleh tim yang familiar dengan Go.
 
@@ -228,7 +229,7 @@ Tasks:
 
 Exit criteria:
 
-- Go CLI bisa menggantikan `node scripts/company_check.js`.
+- Go CLI bisa menggantikan Node runtime lewat `scripts/company_check_go.sh`.
 - Golden test cases pass.
 - Telegram report tetap readable.
 
@@ -335,7 +336,11 @@ go build -o bin/company-check ./cmd/company-check
 JS result vs Go result
 ```
 
-5. Switch Telegram agent prompt from Node command to Go command only after parity is good.
+5. Telegram agent prompt has been switched to the Go wrapper locally:
+
+```bash
+scripts/company_check_go.sh --email <email> --save
+```
 
 6. Keep JS scripts for rollback/reference until Go has production confidence.
 

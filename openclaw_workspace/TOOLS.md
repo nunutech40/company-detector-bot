@@ -8,21 +8,23 @@ This workspace is for the Company Detection Telegram MVP.
 - Default model: `minimax/MiniMax-M2.7`.
 - Telegram bot: `@company_detector_bot`.
 - Delivery channel: Telegram DM.
+- Primary company detection runtime: Go CLI via `scripts/company_check_go.sh`.
+- Node.js scripts remain available only as rollback/reference helpers.
 
 ## Tool Availability
 
-- `email_intelligence`: enabled, `node scripts/email_intelligence.js <email>`.
-- `domain_checker`: enabled, `node scripts/domain_checker.js <domain>`.
-- `company_check`: enabled, `node scripts/company_check.js <email> --save`.
-- `company_check` register package: enabled, `node scripts/company_check.js <email> --full-name "..." --no-hp "..." --brand-name "..." --save`.
+- `company_check`: enabled, `scripts/company_check_go.sh --email <email> --save`.
+- `company_check` register package: enabled, `scripts/company_check_go.sh --email <email> --full-name "..." --no-hp "..." --brand-name "..." --save`.
+- `email_intelligence`: implemented in Go package `../go-service/internal/emailintel`.
+- `domain_checker`: implemented in Go package `../go-service/internal/domaincheck`.
 - `batch_csv_check`: enabled, `node scripts/batch_csv_check.js <csv_file> [--limit N] [--save]`; processes rows sequentially.
-- `scoring_engine`: enabled, called by `company_check`; standalone accepts JSON on stdin via `node scripts/scoring_engine.js`.
-- `website_crawler_router`: enabled, called by `company_check`; standalone `node scripts/website_crawler_router.js <domain>`.
-- `serp_query_builder`: enabled, called by `company_check`; builds search queries for lightweight/free search.
-- `ddg_search`: enabled, called by `company_check` when a query is available; source reliability is low.
-- `free_scraper`: enabled, called by `company_check` when an active URL is available; source reliability is low.
-- `report_formatter`: enabled, called by `company_check`; formats Telegram-safe report.
-- `evidence_store`: enabled via `company_check --save`; writes JSON to `evidence/` and report text to `reports/`.
+- `scoring_engine`: implemented in Go package `../go-service/internal/scoring`.
+- `website_crawler_router`: implemented in Go package `../go-service/internal/crawler`.
+- `serp_query_builder`: implemented in Go package `../go-service/internal/query`.
+- `ddg_search`: implemented in Go package `../go-service/internal/search`; source reliability is low.
+- `free_scraper`: implemented in Go package `../go-service/internal/scraper`; source reliability is low.
+- `report_formatter`: implemented in Go package `../go-service/internal/report`.
+- `evidence_store`: enabled via `company_check --save`; Go writes JSON to `evidence/` and report text to `reports/`.
 - `tool_status`: enabled, `node scripts/tool_status.js`.
 - `last_report`: enabled, `node scripts/last_report.js [email]`.
 - `web_search`: enabled via `ddg_search` fallback; dedicated provider not configured yet.
@@ -31,7 +33,7 @@ This workspace is for the Company Detection Telegram MVP.
 - `tavily_search`: disabled_waiting_budget.
 - `enrichment_api`: disabled_waiting_budget.
 - `browser`: optional, skipped for Telegram MVP unless needed.
-- `slack_reporter`: optional; only sends when `--send-slack` is passed or `COMPANY_DETECTION_SEND_SLACK=true`.
+- `slack_reporter`: optional; Go only sends when `--send-slack` is passed and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured.
 
 ## Operational Rule
 

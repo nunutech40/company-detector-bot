@@ -36,17 +36,18 @@ Runtime MVP saat ini:
 
 ```text
 Telegram / CLI input
--> company_check.js
--> email_intelligence.js
--> domain_checker.js, if custom domain
--> website_crawler_router.js, if custom domain
--> serp_query_builder.js
--> ddg_search.js
--> free_scraper.js, if active URL exists
--> scoring_engine.js
--> report_formatter.js
--> evidence_store.js, if --save
--> slack_reporter.js, only if explicitly enabled
+-> scripts/company_check_go.sh
+-> Go company-check orchestrator
+-> internal/emailintel
+-> internal/domaincheck, if custom domain
+-> internal/crawler, if custom domain
+-> internal/query
+-> internal/search
+-> internal/scraper, if active URL exists
+-> internal/scoring
+-> internal/report
+-> internal/evidence, if --save
+-> internal/slack, only if explicitly enabled
 ```
 
 Implemented files:
@@ -56,6 +57,9 @@ Implemented files:
 - `openclaw_workspace/skills/company-detection/SKILL.md`
 - `openclaw_workspace/config/tool_catalog.yaml`
 - `openclaw_workspace/config/scoring_rules.yaml`
+- `openclaw_workspace/scripts/company_check_go.sh`
+- `go-service/cmd/company-check/main.go`
+- `go-service/internal/*`
 - `openclaw_workspace/scripts/company_check.js`
 - `openclaw_workspace/scripts/email_intelligence.js`
 - `openclaw_workspace/scripts/domain_checker.js`
@@ -122,7 +126,7 @@ TRD target teknis meliputi OpenClaw Gateway, custom worker, queue, Postgres evid
 |---|---:|---|
 | OpenClaw Gateway | Done | VPS runtime sudah jalan. |
 | Telegram channel | Done | MVP delivery via Telegram. |
-| Investigation worker | Not implemented | Belum ada worker service/API; `company_check.js` masih direct script. |
+| Investigation worker | Partial | Go CLI worker/orchestrator sudah ada; belum menjadi API/queue worker. |
 | Queue | Not implemented | Redis/BullMQ belum ada. |
 | Postgres evidence store | Not implemented | File-based evidence masih prototype. |
 | Tool catalog | Done | YAML + docs + status script. |
