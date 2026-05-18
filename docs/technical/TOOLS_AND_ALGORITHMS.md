@@ -534,22 +534,105 @@ Purpose:
 
 ---
 
-## 9. Planned Tool Catalog Expansion
+## 9. Analysis Tools (Go packages, deterministik)
 
-Tools yang direncanakan untuk memperkaya AI reasoning loop:
+Tools ini dipakai AI untuk menganalisis konten yang sudah di-fetch. Semua gratis, selalu tersedia.
 
-### Go Packages (deterministik, gratis, selalu tersedia)
+### `brandhint` (Go `internal/brandhint`)
 
-- **`social_link_extractor`**: Extract social media links dari HTML halaman website (Instagram, LinkedIn, TikTok, Facebook, YouTube).
-- **`role_signal_extractor`**: Deteksi kata kunci CEO/founder/owner/direktur dari teks snippet.
-- **`brand_hint_detector`**: Deteksi apakah local part email adalah brand/toko. Ada `looksLikeBrand()` di report.go, perlu dipindah ke package tersendiri.
+Role:
+
+- Deteksi apakah string (biasanya email local part) adalah brand/toko/bisnis atau nama orang.
+- Dipakai AI untuk decide strategi pencarian: search sebagai brand atau sebagai person.
+
+Algorithm:
+
+```text
+lowercase input
+-> cek brand keywords: store, shop, toko, mart, studio, design, tech, media, agency, dll
+-> cek person name patterns: titik di tengah (r.fajarnugraha), underscore (john_doe)
+-> return Result{IsBrand, Confidence, Signals, Suggestion}
+```
+
+Output:
+
+```json
+{
+  "is_brand": true,
+  "confidence": "high",
+  "signals": ["store"],
+  "suggestion": "search sebagai brand/toko"
+}
+```
+
+Examples:
+
+- `nawaystore` → IsBrand=true, high (mengandung "store")
+- `tokobaju` → IsBrand=true, high (mengandung "toko")
+- `r.fajarnugraha` → IsBrand=false, high (pola nama orang dengan titik)
+- `uitdiedos` → IsBrand=false, low (ambigu)
+
+### `sociallinks` (Go `internal/sociallinks`)
+
+Role:
+
+- Extract social media links dari HTML atau plain text.
+- Dipakai AI setelah fetch halaman website untuk menemukan semua sosial media bisnis.
+
+Algorithm:
+
+```text
+cari href yang mengandung domain sosmed
+-> instagram.com, linkedin.com, facebook.com, twitter.com, x.com, tiktok.com, youtube.com, tokopedia.com, shopee.co.id
+-> cari juga @username di text
+-> cari og:url dan og:site_name meta tags
+-> deduplicate berdasarkan URL
+-> return []SocialLink{Platform, URL, Source}
+```
+
+Platforms yang dideteksi: instagram, linkedin, facebook, twitter, tiktok, youtube, tokopedia, shopee.
+
+### `rolesignal` (Go `internal/rolesignal`)
+
+Role:
+
+- Deteksi sinyal role bisnis (founder, CEO, owner, dll) dari teks snippet.
+- Dipakai AI untuk extract role evidence dari search results atau halaman yang di-fetch.
+
+Algorithm:
+
+```text
+lowercase text
+-> cari kata kunci role dengan context:
+   High confidence owner: founder, co-founder, owner, pemilik, pendiri, direktur utama, CEO
+   Medium confidence owner: direktur, komisaris, managing director
+   Employee: manager, staff, karyawan, bekerja di, works at
+   Freelancer: freelancer, konsultan, consultant, independent
+-> extract evidence: 50 karakter sebelum dan sesudah kata kunci
+-> return []Signal{Role, Confidence, Evidence, IsOwner}
+```
+
+Examples:
+
+- "harga dari owner langsung" → Signal{Role: "owner", IsOwner: true, Confidence: "high"}
+- "Tatak Subekti - Founder at Naway Store" → Signal{Role: "founder", IsOwner: true, Confidence: "high"}
+- "bekerja di PT XYZ" → Signal{Role: "employee", IsOwner: false, Confidence: "medium"}
+
+---
+
+## 10. Planned Tool Catalog Expansion
+
+Tools yang belum diimplementasi:
+
+### Go Packages (deterministik, gratis)
+
 - **`company_name_normalizer`**: Normalize nama perusahaan dari berbagai format (PT X, CV X, X Inc, dll).
 - **`marketplace_url_detector`**: Deteksi URL Tokopedia/Shopee/Bukalapak dari teks atau search results.
 
 ### Network Tools (perlu konfigurasi/budget)
 
-- **Google CSE** (free 100/day): Reliable search, tidak diblokir ISP.
-- **Brave Search API** (~$5/month): Reliable search, structured results.
+- **Google CSE** (free 100/day): Reliable search, tidak diblokir ISP. Setup: `GOOGLE_CSE_KEY` + `GOOGLE_CSE_ID`.
+- **Brave Search API** (~$5/month): Reliable search, structured results. Setup: `BRAVE_SEARCH_API_KEY`.
 - **Firecrawl** ($16/month): Scrape JS-heavy pages, structured extraction.
 - **Tavily** ($20/month): AI-friendly search dengan domain filter.
 
