@@ -1,109 +1,93 @@
 # High Level Business Flow
 
-Dokumen ini menjelaskan alur utama dari input sampai output di level abstraksi tinggi. Fokusnya bukan detail script satu per satu, tapi gambaran besar: data masuk dari mana, diproses oleh lapisan apa, pindah ke teknologi apa, lalu output akhirnya apa.
+Dokumen ini menjelaskan alur utama dari input sampai output di level abstraksi tinggi.
 
-Cara baca dokumen ini:
+- Kalau mau tahu detail teknis dan decision points, baca [FLOW_MAP.md](../technical/FLOW_MAP.md).
+- Kalau mau tahu algoritma setiap tool, baca [TOOLS_AND_ALGORITHMS.md](../technical/TOOLS_AND_ALGORITHMS.md).
 
-- Kalau mau tahu gambaran besar bisnis/logika utama, baca dokumen ini.
-- Kalau mau tahu detail script dan branching teknis, baca [FLOW_MAP.md](../technical/FLOW_MAP.md).
-- Kalau mau tahu algoritma setiap tool/agent, baca [TOOLS_AND_ALGORITHMS.md](../technical/TOOLS_AND_ALGORITHMS.md).
+---
 
-Ada dua versi:
+## 0. Mental Model
 
-1. **Flow sekarang**: Telegram MVP yang sudah berjalan.
-2. **Flow level 2**: versi enrichment yang direncanakan, dengan company profile dan personal-to-business discovery.
-
-## 0. Mental Model Paling Pendek
-
-Sistem ini adalah **Agentic Company Detector** — sama seperti agentic coding, tapi untuk investigasi bisnis. Ada dua layer:
+Sistem ini adalah **Agentic Company Detector** — sama seperti agentic coding, tapi untuk investigasi bisnis.
 
 ```text
 Layer 1 — Deterministik (Go packages):
-  Validasi, routing, scoring, storage, delivery
+  Validasi email, scoring, storage, delivery
   Cepat, predictable, auditable
-  Juga berfungsi sebagai fallback mode ketika AI tidak tersedia
+  Juga berfungsi sebagai FALLBACK MODE ketika AI tidak tersedia
 
-Layer 2 — AI Reasoning Loop (OpenClaw Agent):
+Layer 2 — AI Reasoning Loop (OpenClaw Agent) — PRIMARY MODE:
   Observe → Orient → Decide → Act → loop
   AI pilih tools, iterate dari temuan, pivot strategi
   Kalau tool gagal → cari alternatif dari catalog
   Loop sampai confidence cukup atau budget habis
 ```
 
-Versi sekarang (MVP) masih deterministik penuh — AI hanya sebagai gateway. Phase A akan mengaktifkan AI reasoning loop.
-
-Versi sekarang punya 3 langkah besar:
+Flow sekarang (Phase A aktif):
 
 ```text
-Input email -> [Deterministik] cek sinyal perusahaan/personal -> keluarkan classification + evidence summary.
+Input → [Deterministik] normalisasi + email intelligence + hipotesis awal
+      → [AI] reasoning loop (iterate tools, 2 phase)
+      → [Deterministik] scoring + output
 ```
 
-Versi Phase A (AI loop aktif):
+Inti produknya: **mengubah email/register input menjadi keputusan bisnis yang bisa dipakai automation**.
 
-```text
-Input email -> [Deterministik] normalisasi + hipotesis awal -> [AI] reasoning loop (iterate tools) -> [Deterministik] scoring + output.
-```
+---
 
-Versi level 2 (enrichment penuh):
-
-```text
-Input identity/register -> [AI] investigasi mendalam -> enrich profil/relasi bisnis -> [Deterministik] structured result untuk automation.
-```
-
-Inti produknya adalah **mengubah email/register input menjadi keputusan bisnis yang bisa dipakai automation** — bukan cuma "simpan ke SQL" atau "kirim Slack".
-
-## 1. Flow Sekarang: Telegram MVP
-
-Tujuan flow sekarang:
-
-```text
-Menerima email -> menentukan apakah email kemungkinan terkait perusahaan -> mengirim report hasil ke Telegram.
-```
+## 1. Flow Sekarang: Phase A (AI Reasoning Loop Aktif)
 
 ### 1.1 Business Flowchart Sekarang
 
 ```mermaid
 flowchart TD
-    A[User kirim email via Telegram / CLI] --> B[OpenClaw Agent menerima request]
-    B --> C[Company Check Orchestrator]
+    A[User kirim email via Telegram] --> B[OpenClaw Agent]
+    B --> C[Deterministik: Email Intelligence]
     C --> D{Email valid?}
 
-    D -- Tidak --> E[Classify suspicious_or_invalid]
-    D -- Ya --> F[Email Intelligence]
+    D -- Tidak --> E[suspicious_or_invalid → Stop]
+    D -- Ya --> F{Free email atau custom domain?}
 
-    F --> G{Free email atau custom domain?}
+    F -- Custom domain --> G[AI Reasoning Loop — Phase 1]
+    F -- Free email --> G
 
-    G -- Free email --> H[Personal email baseline check]
-    H --> I[Search hint dari local-part email]
+    G --> H[AI pilih tools dari catalog]
+    H --> I[web_search / web_fetch / domain_checker / crawler / scraper]
+    I --> J{Evidence cukup?}
+    J -- Tidak, ada jalur baru --> H
+    J -- Ya atau budget habis --> K
 
-    G -- Custom domain --> J[Domain + Website Check]
-    J --> K[Lightweight Website Crawl]
-    K --> L[Search/Scrape fallback ringan]
+    K --> L{Phase 1 result: company atau personal?}
+    L -- Company --> M[Kumpulkan profil bisnis lengkap]
+    L -- Personal/Unknown --> N[AI Reasoning Loop — Phase 2]
 
-    I --> M[Rules-first Scoring]
-    L --> M
-    E --> M
+    N --> O[Cari relasi bisnis: sosmed, marketplace, role evidence]
+    O --> P{Relasi bisnis ditemukan?}
+    P -- Ya --> Q[business_owner_candidate / company_affiliated]
+    P -- Tidak --> R[likely_personal_email]
 
-    M --> N[Generate Telegram Report]
-    N --> O[Save evidence ke file MVP]
-    O --> P[Telegram reply ke user]
+    M --> S[Deterministik: Scoring Engine]
+    Q --> S
+    R --> S
+
+    S --> T[Report + Save Evidence]
+    T --> U[Telegram reply]
+    T --> V[deliver_report.sh → Slack]
 ```
 
 ### 1.2 Yang Terjadi Di Setiap Layer
 
-| Layer | Apa yang terjadi | Teknologi sekarang | Output antar-layer |
+| Layer | Apa yang terjadi | Teknologi | Output |
 |---|---|---|---|
-| Input | User mengirim `/check email` atau email langsung. | Telegram + OpenClaw Gateway | Raw user message |
-| Agent Router | Agent mengenali email dan memanggil command utama. | OpenClaw Agent + `AGENTS.md` | `scripts/company_check_go.sh --email <email> --save` |
-| Orchestrator | Mengatur urutan pengecekan dan menggabungkan hasil. | Go `company-check` | Investigation result draft |
-| Email Intelligence | Validasi email, cek free/custom domain, role mailbox, disposable. | Go `internal/emailintel` | Email facts + evidence awal |
-| Domain/Web Check | Untuk custom domain: cek DNS, MX, website aktif, title. | Go `internal/domaincheck` | Domain evidence |
-| Website Crawl | Untuk custom domain: cek halaman umum seperti `/about`, `/team`, `/contact`. | Go `internal/crawler` | Website page evidence |
-| Search/Scrape Fallback | Search ringan dan scrape ringan kalau ada URL aktif. | Go `internal/search`, `internal/scraper` | Low-reliability public evidence |
-| Scoring | Hitung confidence dan classification. | Go `internal/scoring` | Classification + score + action |
-| Report | Buat report Bahasa Indonesia untuk Telegram. | Go `internal/report` | Telegram text |
-| Storage MVP | Simpan JSON/report untuk audit. | Go `internal/evidence` file-based | `evidence/*.json`, `reports/*.txt` |
-| Output | Kirim hasil ke user. | Telegram | Final report |
+| Input | User kirim email + metadata | Telegram + OpenClaw | Raw message |
+| Email Intelligence | Validasi, klasifikasi domain, hipotesis awal | Go `internal/emailintel` | Email facts |
+| AI Reasoning Loop | Investigasi iteratif: pilih tool → baca hasil → update hipotesis → lanjut/stop | OpenClaw Agent + tool catalog | Evidence collection |
+| Tool Catalog | Go tools (domain_checker, crawler, scraper, search cascade) + OpenClaw built-in (web_search, web_fetch, browser) | Go packages + OpenClaw | Evidence items |
+| Scoring | Hitung confidence dari semua evidence | Go `internal/scoring` | Classification + score |
+| Report | Format report (AI narasi + Go scoring summary) | Go `internal/report` (fallback) / AI (primary) | Report text |
+| Storage | Simpan JSON/report untuk audit | Go `internal/evidence` | `evidence/*.json` |
+| Delivery | Kirim ke Telegram + Slack | Telegram (langsung) + `deliver_report.sh` | Final report |
 
 ### 1.3 Sequence Diagram Sekarang
 
@@ -111,91 +95,83 @@ flowchart TD
 sequenceDiagram
     actor User
     participant TG as Telegram Bot
-    participant OC as OpenClaw Agent
-    participant OR as Go company-check
-    participant EI as Email Intelligence
-    participant DW as Domain/Web Tools
-    participant SF as Search/Scrape Fallback
-    participant SC as Scoring Engine
-    participant RP as Report Formatter
+    participant OC as OpenClaw Agent (AI)
+    participant EI as Email Intelligence [Deterministik]
+    participant TC as Tool Catalog [Go + OpenClaw]
+    participant SC as Scoring Engine [Deterministik]
     participant FS as File Evidence Store
+    participant SL as Slack
 
-    User->>TG: /check contact@komerce.id
+    User->>TG: Cek email: nawaystore@yahoo.com, nama: Tatak Subekti
     TG->>OC: deliver message
-    OC->>OR: run company_check(email, --save)
-    OR->>EI: parse + classify email domain
-    EI-->>OR: email facts + initial evidence
+    OC->>EI: run company_check_go.sh --save (baseline)
+    EI-->>OC: email facts + hipotesis awal
 
-    alt Custom domain
-        OR->>DW: DNS, website, crawler checks
-        DW-->>OR: domain + website evidence
-        OR->>SF: SERP/search + lightweight scrape
-        SF-->>OR: public evidence or tool_errors
-    else Free email
-        OR->>SF: local-part public profile search hint
-        SF-->>OR: weak public evidence or tool_errors
+    loop AI Reasoning Loop (Phase 1 + Phase 2)
+        OC->>TC: pilih tool berdasarkan hipotesis
+        TC-->>OC: hasil tool (search results, page content, dll)
+        OC->>OC: update hipotesis, decide: lanjut atau stop?
     end
 
-    OR->>SC: score all evidence
-    SC-->>OR: classification + confidence + automation_action
-    OR->>RP: format result
-    RP-->>OR: Telegram report
-    OR->>FS: save JSON + report
-    FS-->>OR: storage paths
-    OR-->>OC: final report
-    OC-->>TG: reply
-    TG-->>User: Company Detection MVP Report
+    OC->>SC: run company_check_go.sh --save (final)
+    SC-->>OC: classification + confidence + action
+    OC->>FS: evidence + report tersimpan
+    OC-->>TG: reply dengan report lengkap
+    OC->>SL: deliver_report_with_env.sh → Slack
+    TG-->>User: Company Detection Report
 ```
 
 ### 1.4 Output Sekarang
 
-Output aktual dari Go `internal/report`:
-
 ```text
 Company Detection Report
 
-Kesimpulan: [headline + alasan + gaps]
-Classification: ...
-Confidence: low/medium/high (N/100)
-Automation: ...
+PHASE 1: Identifikasi Bisnis
+Classification: [possible_company_affiliated / likely_personal_email / unknown / suspicious]
+Confidence: N/100
 
-Input: [email, nama, brand, hp masked]
+[Round 1 — dari input awal]
+  Hipotesis    : "nawaystore" → brand hint
+  Tool         : web_search("nawaystore tokopedia OR instagram")
+  Hasil        : instagram.com/nawaystore ditemukan
+  Membuka jalur: fetch Instagram
 
-Proses investigasi:
-[1] Email Intelligence  [Deterministik]
-  Algoritma, Hasil, Artinya, Delta, Evaluasi
+[Round 2 — dari Round 1]
+  Tool         : web_fetch("instagram.com/nawaystore")
+  Hasil        : bio = "Naway.inc | WA: 085xxx | nawaystore.id"
+  Phone match  : YES → +25 confidence
 
-[2] Routing Decision  [Deterministik]
-  ...
+[Round 3 — dari Round 2]
+  Tool         : web_fetch("nawaystore.id/about")
+  Hasil        : "Tatak Subekti — Owner"
+  Stop karena  : confidence >= 75, explicit role evidence
 
-[3] Domain Checker  [Tools — DNS + HTTP]  (custom domain only)
-  ...
+PHASE 2: Relasi Bisnis (jika Phase 1 = personal/unknown)
+  [reasoning rounds...]
 
-[AI Reasoning]  ← belum aktif; direncanakan di Phase A
-  Profil, Reasoning (apa yang seharusnya AI lakukan), Butuh (tools yang belum aktif), Dampak
+Temuan:
+  Profil Bisnis: nama, domain, website, deskripsi
+  Sosial Media: LinkedIn, Instagram, Tokopedia, TikTok, dll
+  Lokasi: alamat, Maps
+  Role Evidence: "[quote]" — [source] — reliability: high
+  Phone Confirmation: match/no match/not checked
 
-[Deterministik] Scoring Engine — Kesimpulan Akhir
-  Base score, Total delta, Final score, Classification, Action
-
-Rekomendasi automation: ...
+[Deterministik] Scoring Engine
+  Base score: 35, Total delta: +N, Final: N/100
+  Classification: ..., Action: ...
 ```
 
-Classification saat ini:
-
+Classifications:
 - `possible_company_affiliated`
 - `likely_personal_email`
 - `unknown_needs_more_evidence`
 - `suspicious_or_invalid`
 
-## 2. Flow Level 2: Email-First Enrichment
+---
 
-Tujuan flow level 2:
+## 2. Flow Level 2: Enrichment Penuh (Planned)
 
-```text
-Menerima email -> mendeteksi company/personal -> memperkaya profil perusahaan atau relasi bisnis personal -> menghasilkan JSON lengkap + alert penting.
-```
-
-Perbedaannya: sistem tidak berhenti setelah tahu “ini email perusahaan”. Sistem lanjut mencari **perusahaan apa, sosial medianya apa, bisnisnya apa, dan apakah email personal punya hubungan bisnis**.
+Setelah Phase A terbukti, sistem akan diperluas dengan Postgres, queue, dan dashboard.
 
 ### 2.1 Business Flowchart Level 2
 
@@ -205,164 +181,60 @@ flowchart TD
     B --> C[Identity + Email Baseline]
     C --> D{Custom domain atau free email?}
 
-    D -- Custom domain --> E[Company Enrichment Route]
+    D -- Custom domain --> E[AI: Company Enrichment Route]
     E --> F[Website + Domain Evidence]
     F --> G[Company Profile Builder]
     G --> H[Social + Public Footprint Discovery]
     H --> I[Company Profile JSON]
 
-    D -- Free email --> J[Personal-to-Business Route]
+    D -- Free email --> J[AI: Personal-to-Business Route]
     J --> K[Identity Hint dari email/full_name/brand_name]
     K --> L[Public Profile Discovery]
     L --> M[Role + Business Relationship Detection]
     M --> N[Person/Relationship JSON]
 
-    I --> O[Central Scoring + Guardrails]
+    I --> O[Deterministik: Central Scoring + Guardrails]
     N --> O
 
     O --> P[Save everything to Postgres]
     P --> Q{Important enough for Slack?}
     Q -- Ya --> R[Send Slack Alert]
-    Q -- Tidak --> S[No Slack Alert]
+    Q -- Tidak --> S[DB only]
     R --> T[Dashboard searchable result]
     S --> T
 ```
 
-### 2.2 Yang Terjadi Di Setiap Layer Level 2
+### 2.2 Comparison: Sekarang vs Level 2
 
-| Layer | Apa yang terjadi | Teknologi target | Output antar-layer |
-|---|---|---|---|
-| Input | Data register masuk dengan `email`, `full_name`, `no_hp`, dan `brand_name`. Minimal tetap `email`. | Platform backend / Telegram | Register payload |
-| Job API / Worker | Membuat job investigasi dan mengatur lifecycle. | Node.js worker/API + queue | `investigation_job` |
-| Email Baseline | Validasi email, route custom vs free. | Existing email intelligence | Identity baseline |
-| Company Route | Kalau custom domain, cari profil perusahaan. | Domain tools + crawler + profile builder | `company_profile` |
-| Social Footprint | Cari LinkedIn, Instagram, X, TikTok, Facebook, YouTube, Maps/local signal. | Search provider + scraper + social extractor | Social/entity candidates |
-| Personal Route | Kalau free email, cari apakah orang punya hubungan bisnis. | Local-part/full_name/brand_name search + public profile checker | `person_profile` |
-| Role Detection | Cari sinyal CEO/founder/owner/agency/freelancer. | Role signal extractor + relationship scorer | `business_relationship` |
-| Central Scoring | Menentukan final classification dan confidence. | Scoring engine + guardrails | Final result |
-| Storage | Semua data masuk DB. | Postgres | Full audit trail |
-| Alerting | Slack hanya untuk hasil penting. | Alert decision + Slack reporter | Slack alert or no alert |
-| Dashboard | Semua hasil bisa dicari/review. | Web dashboard | Searchable records |
-
-### 2.3 Sequence Diagram Level 2
-
-```mermaid
-sequenceDiagram
-    actor Platform as Platform / Telegram
-    participant API as Job API / Worker
-    participant ID as Identity Baseline
-    participant CE as Company Enrichment
-    participant PD as Personal Discovery
-    participant SC as Central Scoring
-    participant DB as Postgres
-    participant AL as Alert Decision
-    participant SL as Slack
-    participant UI as Dashboard
-
-    Platform->>API: submit register/email payload
-    API->>DB: create investigation_jobs row
-    API->>ID: normalize email + identity hints
-    ID-->>API: baseline classification route
-
-    alt Custom/company domain
-        API->>CE: enrich company profile
-        CE-->>API: company_profile + social/entity evidence
-    else Free/personal email
-        API->>PD: discover personal-business relationship
-        PD-->>API: person_profile + role/business evidence
-    end
-
-    API->>SC: score evidence + apply guardrails
-    SC-->>API: final classification + confidence + action
-    API->>DB: save tools, evidence, profiles, final report
-    API->>AL: should this result alert Slack?
-
-    alt Important result
-        AL-->>API: send alert
-        API->>SL: post concise alert
-    else Not important enough
-        AL-->>API: no Slack alert
-    end
-
-    UI->>DB: query list/detail/search/review
-    DB-->>UI: all investigation data
-```
-
-### 2.4 Output Level 2
-
-Output level 2 bukan cuma Telegram text. Ada tiga output:
-
-1. **Structured JSON**
-   Dipakai platform automation dan dashboard.
-
-2. **Slack alert**
-   Hanya untuk hasil penting.
-
-3. **Dashboard record**
-   Semua hasil bisa dicari dan direview.
-
-Secara garis besar, output level 2 harus menjawab:
-
-- email ini company, personal, suspicious, atau unknown?
-- kalau company, perusahaan apa dan bukti publiknya apa?
-- kalau personal, apakah ada relasi bisnis yang cukup kuat?
-- confidence-nya berapa?
-- automation action-nya apa?
-- evidence mana yang mendukung keputusan itu?
-
-## 3. Comparison: Sekarang vs Level 2
-
-| Area | Sekarang | Level 2 |
+| Area | Sekarang (Phase A) | Level 2 (Planned) |
 |---|---|---|
-| Main question | Apakah email ini perusahaan/personal? | Siapa perusahaan/orangnya dan apa relasi bisnisnya? |
-| Input | Email dari Telegram/CLI | Register payload: email + optional full_name/no_hp/brand_name |
-| Orchestration | Single script orchestrator | Worker/job system, later multi-agent |
+| Main question | Bisnis atau personal? + relasi bisnis? | Siapa perusahaannya, sosmednya apa, lokasinya mana? |
+| Orchestration | AI reasoning loop (single agent) | Worker/job system + multi-agent |
 | Storage | File JSON/TXT | Postgres |
-| Company domain | Classify + basic evidence | Company profile + social footprint |
-| Free email | Mostly personal/unknown | Search personal-business relationship |
-| Social accounts | Not normalized | Extracted as entity candidates/social profiles |
-| Address/Maps | Not implemented | Maps/local signal candidate |
-| Slack | Optional manual send | Alert only for important results |
-| Dashboard | Not available | Search/review all checks |
-| Multi-agent | Not active | Possible after job contracts stable |
+| Company domain | AI cari profil + sosmed + lokasi | Company profile builder + social extractor |
+| Free email | AI cari relasi bisnis dari nama/brand | Personal-to-business discovery yang lebih structured |
+| Slack | Semua hasil (sekarang) → nanti hanya penting | Alert hanya untuk company/high-value |
+| Dashboard | Tidak ada | Search/review semua hasil |
 
-## 4. One-Sentence Explanation
+---
 
-Versi sekarang:
+## 3. Where The Complexity Lives
 
 ```text
-User kasih email, OpenClaw menjalankan deterministic company check, sistem mengumpulkan bukti ringan, memberi classification/confidence, menyimpan evidence file, lalu membalas Telegram.
+Input → Investigation → Scoring → Output
 ```
 
-Versi level 2:
+Kompleksitas ada di `Investigation` — tapi sekarang AI yang handle, bukan pipeline kaku:
 
 ```text
-Platform mengirim data register, worker membuat job, sistem memilih jalur company atau personal-business discovery, memperkaya profil dan social footprint, menyimpan semua ke Postgres, mengirim Slack hanya jika penting, dan menampilkan semua hasil di dashboard.
+Investigation (AI Reasoning Loop) =
+  email baseline [Deterministik]
+  + AI pilih jalur: company route atau personal-business route
+  + AI iterate tools sampai confident
+  + Scoring [Deterministik]
 ```
 
-## 5. Where The Complexity Lives
-
-Di level tinggi, flow tetap sederhana:
-
-```text
-Input -> Investigation -> Scoring -> Output
-```
-
-Kompleksitas hanya ada di dalam `Investigation`:
-
-```text
-Investigation =
-  email baseline
-  + company route
-  + personal route
-  + search/scrape tools
-  + evidence collection
-```
-
-Supaya tidak membingungkan:
-
-- Final scoring tetap satu tempat.
-- Slack decision tetap satu tempat.
-- Storage tetap satu tempat.
-- Tool baru harus masuk ke flow map.
-- Agent baru hanya boleh mengumpulkan evidence, bukan membuat keputusan final sendiri.
+Aturan yang tidak boleh berubah:
+- Final scoring selalu deterministik
+- AI tidak boleh membuat classification tanpa evidence dari tools
+- Storage dan delivery selalu deterministik
