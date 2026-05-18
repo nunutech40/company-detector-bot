@@ -5,35 +5,34 @@ Scope review: membandingkan implementasi saat ini dengan PRD v6, TRD, Building P
 
 ## 1. Executive Summary
 
-Project sudah mencapai **Telegram MVP yang fungsional, auditable, dan siap untuk Phase A (AI Reasoning Loop)**. Sistem sudah punya OpenClaw runtime, Telegram bot, Go CLI deterministik, report format tiga layer `[Deterministik]/[Tools]/[AI Reasoning]`, file-based evidence store, dan dokumentasi arsitektur dua layer yang jelas.
+Project sudah mencapai **Phase A (AI Reasoning Loop) yang siap ditest**. Sistem sudah punya Go CLI deterministik sebagai tool catalog + fallback mode, AGENTS.md Phase A dengan two-phase investigation dan structured findings, anti-hallucination enforcement di scoring engine, dan search cascade 4 providers.
 
-**Arah yang sudah ditetapkan: Agentic Company Detector**
+**Arah: Agentic Company Detector**
 
-Sistem ini bukan pipeline kaku. Arahnya adalah AI reasoning loop yang didukung tool catalog kaya, dengan deterministik pipeline sebagai fallback mode. Sama seperti agentic coding — AI punya goal, punya tools, dan dia iterate sampai goal tercapai atau budget habis.
+AI reasoning loop sebagai primary mode. Deterministik pipeline sebagai fallback. Sama seperti agentic coding — AI punya goal, punya tool catalog, dan dia iterate sampai goal tercapai atau budget habis.
 
 Status saat ini:
 
 ```text
-MVP Deterministik (Phase 1): DONE
-  - Go CLI deployed di VPS
-  - Telegram bot aktif, Slack delivery ok
-  - Report format tiga layer [Deterministik]/[Tools]/[AI Reasoning]
-  - go test ./... pass
-  - Evidence/report file storage done
+Go MVP Deterministik (Phase 1): DONE
+  - Go CLI deployed di VPS, semua test pass
+  - Search cascade: Google CSE → Brave → Bing → DDG
+  - Anti-hallucination: scoring engine reject AI evidence tanpa source URL
+  - no_hp sebagai confirmation tool
+  - Report fallback mode only
 
-Phase A (AI Reasoning Loop): IN PROGRESS
-  - Prerequisite: Brave Search API (belum dikonfigurasi)
-  - Prerequisite: Go tools exposed as callable functions (belum)
-  - AGENTS.md masih "panggil script langsung", belum reasoning loop
+Phase A (AI Reasoning Loop): READY TO TEST
+  - AGENTS.md sudah Phase A: two-phase investigation, reasoning rounds, structured findings
+  - Tool catalog: Go tools + OpenClaw built-in + paid/not configured
+  - Stop conditions, information gain check, evidence chain
+  - Belum ditest end-to-end dari Telegram
 
-Tool Catalog Expansion: PLANNED
-  - brand_hint_detector: ada di report.go (looksLikeBrand), perlu jadi package
-  - social_link_extractor, role_signal_extractor: belum ada
-  - Brave Search API, marketplace search, LinkedIn/Instagram SERP: belum
+Query package: DIHAPUS — AI yang handle query selection
+Report formatter: DISEDERHANAKAN ke fallback mode only
 
 Postgres/queue/dashboard: DESIGNED, NOT IMPLEMENTED
-Slack alert routing production: DESIGNED, NOT IMPLEMENTED
-Multi-agent: DESIGNED, NOT IMPLEMENTED (setelah Phase A terbukti)
+Slack alert routing: DESIGNED (setelah DB)
+Multi-agent: DESIGNED (Phase D)
 ```
 
 ## 2. Current Implemented System
@@ -362,24 +361,15 @@ Mitigation:
 
 ## 11. Recommended Next Implementation Order
 
-Urutan yang paling masuk akal sekarang:
-
-1. **Setup Brave Search API** — prerequisite Phase A, free tier 2000 req/bulan, ganti DDG yang sering diblokir ISP.
-2. **Expose Go tools sebagai callable functions** — supaya AI bisa panggil emailintel, domain_checker, scraper satu per satu, bukan satu script monolitik.
-3. **Rewrite AGENTS.md jadi reasoning loop** — AI bisa iterate, pivot query, fallback ke deterministik kalau AI down.
-4. **Build brand_hint_detector package** — pindah `looksLikeBrand()` dari report.go ke package tersendiri, perluas keyword list.
-5. **Build social_link_extractor** — extract social links dari HTML halaman website.
-6. **Build role_signal_extractor** — deteksi CEO/founder/owner dari teks snippet.
-7. **Postgres schema + DB writer** — setelah AI loop terbukti menghasilkan evidence lebih kaya.
-8. **Slack alert decision function** — setelah DB ada, baru split routing.
-9. **Dashboard** — setelah DB ada.
-10. **Multi-agent** — setelah volume naik atau investigasi terlalu kompleks untuk satu agent.
-
-Kenapa urutan ini:
-- Brave + callable functions + AGENTS.md rewrite = Phase A aktif, langsung ada improvement nyata
-- Tool catalog expansion = AI punya lebih banyak jalur, lebih sedikit stuck
-- DB setelah AI loop = data yang disimpan lebih kaya dan lebih structured
-- Multi-agent terakhir = amplifies complexity, masuk hanya kalau memang dibutuhkan
+1. **Test Phase A dari Telegram** — kirim `/check nawaystore@yahoo.com` dan verifikasi AI benar-benar memanggil tools, reasoning rounds muncul, structured findings ada.
+2. **Setup Google CSE API key** — gratis, 100/hari, langsung improve search reliability.
+3. **brand_hint_detector package** — pindah `looksLikeBrand()` ke package tersendiri, perluas.
+4. **social_link_extractor** — extract social links dari HTML.
+5. **role_signal_extractor** — deteksi CEO/founder/owner dari teks.
+6. **Postgres schema + DB writer** — setelah AI loop terbukti menghasilkan evidence lebih kaya.
+7. **Slack alert decision** — setelah DB ada, split routing personal vs company.
+8. **Dashboard** — setelah DB ada.
+9. **Multi-agent** — setelah volume naik.
 
 ## 12. Overall Status
 
@@ -388,15 +378,16 @@ Approximate completion by layer:
 | Layer | Completion | Comment |
 |---|---:|---|
 | VPS/OpenClaw/Telegram MVP | 95% | Go binary deployed, live test passed, Slack ok. |
-| Email/company detection logic (deterministik) | 85% | MVP good; unit tests pass; VPS live test verified; report format tiga layer. |
-| Evidence/report audit | 60% | File-based done dan verified di VPS. Postgres missing. |
-| Phase A — AI Reasoning Loop | 10% | Arsitektur dan docs sudah jelas; implementasi belum dimulai. Prerequisite: Brave API + callable functions. |
-| Tool Catalog Expansion | 5% | `looksLikeBrand()` ada di report.go; perlu jadi package + tools baru. |
+| Go deterministik tool catalog | 90% | emailintel, domaincheck, crawler, scraper, search cascade, scoring, evidence. |
+| Phase A — AI Reasoning Loop | 80% | AGENTS.md siap, belum ditest end-to-end dari Telegram. |
+| Anti-hallucination enforcement | 90% | Scoring engine reject AI evidence tanpa source URL. |
+| Search providers | 40% | Bing+DDG aktif; Google CSE dan Brave belum dikonfigurasi. |
+| Tool catalog expansion | 10% | `looksLikeBrand()` ada tapi belum jadi package; social/role extractor belum. |
+| Evidence/report audit | 60% | File-based done. Postgres missing. |
 | Slack production workflow | 30% | Sender exists, all-classification; alert rules dan DB routing belum. |
-| Next-level enrichment | 20% | Search/scrape primitives exist; enrichment layer missing. |
 | Dashboard | 0% | Designed only. |
 | Queue/worker/platform integration | 0% | Designed only. |
 | Multi-agent | 0% | Designed only. |
-| Documentation/map | 90% | Arsitektur dua layer terdokumentasi; harus dijaga tetap sinkron. |
+| Documentation | 95% | Semua docs sinkron dengan implementasi aktual. |
 
-Project sudah di titik yang tepat untuk masuk Phase A. Fondasi deterministik sudah solid, docs sudah sinkron, dan arah sudah jelas: Agentic Company Detector dengan AI reasoning loop + deterministik fallback.
+**Next turning point:** Test Phase A dari Telegram. Kalau AI benar-benar memanggil tools dan menghasilkan structured findings yang lebih kaya dari fallback mode → Phase A terbukti, lanjut ke tool catalog expansion dan Postgres.

@@ -1,98 +1,94 @@
-# AI Company Detection Agent - Production Backlog
+# AI Company Detection Agent — Backlog
 
-Berikut adalah daftar fitur dan komponen yang perlu dibangun untuk membawa sistem dari fase MVP Telegram menuju Production-Grade sesuai PRD dan TRD:
+Status per 2026-05-18. Urutan dari yang paling prioritas.
 
-## 0. Stabilization dari Perubahan Terakhir
-- [x] Pastikan `ddg_search` tidak dicatat di `tools_used` kalau tidak benar-benar dipanggil/berhasil.
-- [x] Pastikan kegagalan DDG/free scraper masuk `tool_errors`, bukan evidence palsu.
-- [x] Pastikan `free_scraper` hanya dicatat dipakai jika ada active URL dan scrape berhasil.
-- [x] Sinkronkan status tools antara `tool_catalog.yaml` dan `TOOLS.md`.
-- [x] Jadikan Slack delivery eksplisit via `--send-slack` atau `COMPANY_DETECTION_SEND_SLACK=true`.
-- [x] Test ulang DDG/free scraper dari VPS setelah deploy.
-- [x] Buat flow map dan tools/algorithms reference supaya alur tetap gampang dibaca.
-- [x] Buat high-level business flow dengan 2 flowchart dan 2 sequence diagram untuk current MVP vs level 2.
-- [x] Rapikan dokumentasi ke folder `docs/product`, `docs/technical`, `docs/operations`, `docs/reviews`, dan tambahkan docs index/cara baca.
-- [x] Selaraskan input contract ke field realistis `email`, `full_name`, `no_hp`, `brand_name` dan hilangkan dependency trusted pada `username`.
+---
 
-## 1. Database & Asynchronous Queue
-- [x] **Go Transition Spec Freeze**: finalkan input/output/evidence/scoring contract sebelum rewrite.
-- [x] **Go Golden Fixtures**: buat fixture input/expected output untuk parity JS vs Go. *(8 input fixtures + coverage via unit tests; static JSON intentionally not used — policy di `expected/README.md`)*
-- [x] **Go Service Skeleton**: buat `go-service/` dengan CLI parity untuk `company-check`.
-- [x] **Go Unit Tests**: port pure logic dengan unit test dan golden fixtures.
-- [x] **Go Integration Tests**: test DNS/fetch/search/Slack dengan mock dan real opt-in tests. *(VPS live tests passed, Slack delivery ok=true)*
-- [x] **Go Side-by-Side Cutover**: deploy Go di VPS, bandingkan dengan JS, lalu switch OpenClaw. *(Go binary di VPS, OpenClaw workspace cut over ke Go wrapper)*
-- [ ] **Install PostgreSQL** di VPS untuk menyimpan relasi data.
-- [ ] **Buat Skema Tabel**: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`.
-- [ ] **Migrasi Evidence Store**: Ubah `evidence_store.js` yang tadinya menyimpan file JSON fisik menjadi operasi `INSERT` ke tabel Postgres.
-- [ ] **DB Writer Bertahap**: Tambahkan writer Postgres tanpa mematikan file evidence writer dulu.
-- [ ] **Setup Queue (Redis + BullMQ)**: Implementasi antrean pekerjaan agar sistem bisa menerima banyak request bersamaan tanpa *bottleneck*.
-- [ ] **Buat API Endpoint**: `POST /internal/company-detection/jobs` di server/worker Node.js.
+## ✅ Selesai
 
-## 2. Next Level Email-First Enrichment
-- [ ] **Company Profile Builder**: Setelah custom/company domain terdeteksi, bangun `company_profile` berisi nama, website, deskripsi bisnis, industri, lokasi jika tersedia, dan source confidence.
-- [ ] **Social Link Extractor**: Ambil social links dari website perusahaan dan halaman publik yang ditemukan.
-- [ ] **SERP Social Discovery**: Cari LinkedIn company, Instagram, X, Facebook, YouTube, TikTok, marketplace/app/product pages via query builder + DDG/search provider.
-- [ ] **Personal-To-Business Discovery**: Untuk free email, gunakan local-part sebagai low-confidence identity hint untuk mencari public profile/business relationship.
-- [ ] **Role Signal Extractor**: Ekstrak sinyal seperti CEO, founder, owner, agency, consultant dari snippet/public pages dengan guardrail anti-overclaim.
-- [ ] **Relationship Scorer**: Tambah `business_relationship` seperti `personal_with_business_affiliation`, `founder_or_owner_candidate`, atau `business_relationship_unknown`.
-- [ ] **Maps/Local Signal**: Mulai dari SERP snippet untuk Google Maps/local business; official Places API bisa menyusul jika budget dan legal jelas.
+### Go MVP + VPS
+- [x] Go CLI MVP deployed di VPS (`/home/nunuopc/.openclaw/go-service/bin/company-check`)
+- [x] VPS live test: `contact@komerce.id` → 100/100, Slack delivery ok
+- [x] `go test ./...` semua pass
+- [x] Input contract: `email`, `full_name`, `no_hp`, `brand_name`
+- [x] Email intelligence, domain checker, crawler, scraper, scoring, evidence store
+- [x] Search cascade: Google CSE → Brave → Bing → DDG (automatic fallback)
+- [x] Slack sends untuk semua classification (bukan hanya company)
+- [x] File-based evidence store dengan retention
 
-Referensi detail: [NEXT_LEVEL_ENRICHMENT_PLAN.md](docs/product/NEXT_LEVEL_ENRICHMENT_PLAN.md).
+### Arsitektur & Refactoring
+- [x] Query package dihapus — AI yang handle query selection
+- [x] Report formatter disederhanakan ke fallback mode only
+- [x] Anti-hallucination: scoring engine reject AI evidence tanpa source URL/tool_call
+- [x] `no_hp` sebagai confirmation tool (bukan search signal)
+- [x] `looksLikeBrand()` ada di report.go (perlu dipindah ke package tersendiri)
 
-## 3. Delivery ke Slack
-- [ ] **Buat Slack App** di workspace perusahaan.
-- [ ] **Konfigurasi Slack Token**: Masukkan `SLACK_BOT_TOKEN` dan `SLACK_APP_TOKEN` ke environment OpenClaw/VPS.
-- [ ] **Alert Decision Function**: Slack hanya menerima alert untuk company/high-value/personal-business/suspicious signals, bukan semua check.
-- [ ] **Modifikasi Report Formatter**: Pastikan `report_formatter.js` bisa mengirimkan JSON terstruktur untuk dikonversi menjadi *Block Kit* atau pesan Slack naratif.
+### Phase A: AI Reasoning Loop
+- [x] AGENTS.md rewrite: two-phase investigation, reasoning rounds, structured findings
+- [x] Tool catalog: tier 1 (Go), tier 2 (OpenClaw built-in), tier 3 (paid/not configured)
+- [x] Stop conditions: confidence >= 75, max 10 tool calls, 3 rounds tanpa temuan baru
+- [x] Information gain check sebelum setiap tool call
+- [x] Evidence chain: setiap temuan membuka jalur lebih spesifik
+- [x] Tool failure reporting: setiap tool call dilaporkan dengan dampak dan harga setup
+- [x] Structured findings: sosial media, lokasi, phone confirmation, role evidence
+- [x] Anti-hallucination rules di AGENTS.md
 
-## 4. Web Dashboard
-- [ ] **Job List View**: Tampilkan semua checked emails dengan filter classification, confidence, alert sent, review status, dan date range.
-- [ ] **Job Detail View**: Tampilkan input, company profile, person relationship, evidence, tool runs, errors, dan final report.
-- [ ] **Search**: Cari by email, domain, company, person identity hint, dan social URL.
-- [ ] **Review Actions**: Mark reviewed, false positive, high-value lead, needs retry, dan internal note.
+### Dokumentasi
+- [x] Flow Map: arsitektur dua layer, AI reasoning loop, fallback mode
+- [x] PRD v6: Agentic Company Detector framing
+- [x] TRD: execution model diupdate ke agentic + deterministik fallback
+- [x] Semua docs sinkron dengan implementasi aktual
 
-Referensi detail DB/Slack/dashboard: [PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md](docs/product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+---
 
-## 5. Implementasi Tools & Scraping (Prioritas Berikutnya)
-- [ ] **Brave Search API**: Setup Brave Search API sebagai pengganti DDG HTML fallback. Free tier 2000 req/bulan. Ini prerequisite untuk Phase A (AI Reasoning Loop) karena DDG sering diblokir ISP.
-- [ ] **Web Search Provider Resmi**: Setelah Brave aktif, expose sebagai provider di OpenClaw `web_search` config.
-- [ ] **Scraping Engine Mendalam**: Lightweight crawler dan `free_scraper` sudah aktif; perlu engine lebih kuat untuk JS-heavy/deep crawl jika dibutuhkan.
-- [ ] **Social & Public Profile Checker**: Buat skrip pencarian LinkedIn via SERP snippet, GitHub, X (Twitter), atau Product Hunt.
+## 🔜 Next Priority
 
-## 6. Tool Catalog Expansion (untuk AI Reasoning Loop)
-*Semakin banyak tools, semakin banyak jalur yang bisa AI pilih ketika satu jalur gagal.*
+### 1. Test Phase A dari Telegram (paling penting sekarang)
+- [ ] Kirim `/check nawaystore@yahoo.com --full-name "Tatak Subekti"` dari Telegram
+- [ ] Verifikasi AI benar-benar memanggil tools (bukan hallucinate)
+- [ ] Verifikasi reasoning rounds muncul di report
+- [ ] Verifikasi structured findings (sosial media, lokasi, dll)
+- [ ] Verifikasi tool failure reporting (Google CSE tidak dikonfigurasi, dll)
+- [ ] Verifikasi anti-hallucination: kalau AI karang klaim → score tidak naik
 
-### Algoritma Deterministik (Go packages — gratis, selalu tersedia)
-- [ ] **brand_hint_detector**: Deteksi apakah local part email adalah brand/toko (nawaystore, tokoshop, dll) bukan nama orang. Sudah ada `looksLikeBrand()` di report.go, perlu dipindah ke package tersendiri dan diperluas.
-- [ ] **social_link_extractor**: Extract social media links dari HTML halaman website (Instagram, LinkedIn, TikTok, Facebook, YouTube).
-- [ ] **role_signal_extractor**: Deteksi kata kunci CEO/founder/owner/direktur dari teks snippet.
-- [ ] **company_name_normalizer**: Normalize nama perusahaan dari berbagai format (PT X, CV X, X Inc, dll).
-- [ ] **marketplace_url_detector**: Deteksi URL Tokopedia/Shopee/Bukalapak dari teks atau search results.
+### 2. Setup Search Provider (prerequisite Phase A yang optimal)
+- [ ] **Google CSE** (gratis, 100/hari): daftar di programmablesearchengine.google.com, set `GOOGLE_CSE_KEY` + `GOOGLE_CSE_ID` di VPS
+- [ ] **Brave Search API** (opsional, ~$5/bulan): set `BRAVE_SEARCH_API_KEY` di VPS
+- [ ] Test search cascade dari VPS setelah konfigurasi
 
-### Tools Network (perlu konfigurasi/budget)
-- [ ] **Brave Search API** (free 2000 req/bulan): Ganti DDG HTML, reliable, tidak diblokir ISP.
-- [ ] **OpenClaw web_search provider config**: Konfigurasi Brave sebagai provider di OpenClaw.
-- [ ] **OpenClaw web_fetch**: Sudah ada di OpenClaw, pastikan dikonfigurasi dan bisa dipanggil AI.
-- [ ] **Marketplace search adapter**: Search Tokopedia/Shopee via public search (gratis).
-- [ ] **Instagram SERP search**: Search `site:instagram.com "keyword"` via Brave/DDG (gratis).
-- [ ] **LinkedIn SERP search**: Search `site:linkedin.com/in/ "nama"` via Brave/DDG (gratis).
-- [ ] **GitHub public checker**: Search GitHub profile via API public (gratis, rate limited).
-- [ ] **Firecrawl** (paid): Scrape JS-heavy pages, structured extraction.
-- [ ] **Tavily** (paid): AI-friendly search dengan domain filter.
+### 3. Tool Catalog Expansion (Go packages, gratis)
+- [ ] **brand_hint_detector**: pindah `looksLikeBrand()` dari report.go ke package tersendiri, perluas keyword list
+- [ ] **social_link_extractor**: extract social links dari HTML (Instagram, LinkedIn, TikTok, Facebook, YouTube)
+- [ ] **role_signal_extractor**: deteksi CEO/founder/owner/direktur dari teks snippet
+- [ ] **marketplace_url_detector**: deteksi URL Tokopedia/Shopee/Bukalapak dari teks
 
-## 7. Phase A: Single Agent + Reasoning Loop
-*Prerequisite: Brave Search API aktif + minimal 3 tools dari Tool Catalog Expansion.*
+---
 
-- [ ] **Rewrite AGENTS.md** dari "panggil script langsung" menjadi "investigasi dengan reasoning loop" — AI bisa reasoning dari hasil tiap step, pivot query, dan jalankan round berikutnya.
-- [ ] **Expose Go tools sebagai callable functions** terpisah supaya AI bisa panggil `emailintel`, `domaincheck`, `scraper` satu per satu sesuai kebutuhan, bukan satu script monolitik.
-- [ ] **Iterative evidence loop** — AI bisa jalankan round 2, round 3 dari temuan sebelumnya.
-- [ ] **Fallback ke deterministik** — kalau AI tidak tersedia atau budget habis, report menunjukkan "AI Reasoning: tidak aktif, fallback ke deterministik pipeline".
-- [ ] **AI reasoning log** — setiap round AI harus menulis: hipotesis saat ini, tool yang dipilih, kenapa, hasilnya apa, hipotesis berubah ke mana.
-- [ ] **Test benchmark** dengan kasus `nawaystore@yahoo.com` sebagai ukuran improvement vs deterministik.
+## 📋 Planned (belum prioritas)
 
-## 8. Arsitektur Multi-Agent & Ops
-*Masuk setelah Phase A terbukti menghasilkan evidence lebih kaya dan volume naik.*
+### Postgres + Queue (Phase B)
+- [ ] Install PostgreSQL di VPS
+- [ ] Schema: `investigation_jobs`, `tool_runs`, `evidence_items`, `final_reports`
+- [ ] DB writer bertahap (tetap pertahankan file writer dulu)
+- [ ] Redis + BullMQ queue
+- [ ] API endpoint `POST /internal/company-detection/jobs`
 
-- [ ] **Aktifkan Sub-agents**: Gunakan `sessions_spawn` di OpenClaw untuk investigasi paralel (satu sub-agent cek SERP, sub-agent lain cek website).
-- [ ] **Dashboard Internal**: Bangun UI sederhana untuk admin mereview hasil yang `inconclusive` atau `business_owner_candidate` dengan confidence menengah.
-- [ ] **Error & Cost Tracking**: Pantau rate limit API dan error jika memakai provider eksternal.
+### Slack Alert Routing (setelah DB)
+- [ ] Alert decision function: personal/unknown → DB only, company → Telegram + Slack
+- [ ] Slack Block Kit formatter
+
+### Dashboard (setelah DB)
+- [ ] Job list view dengan filter
+- [ ] Job detail view
+- [ ] Search by email/domain/company
+- [ ] Review actions: mark reviewed, false positive, high-value lead
+
+### Paid Tools (setelah ada budget)
+- [ ] Firecrawl ($16/bulan): deep scrape, JS-heavy pages
+- [ ] Tavily ($20/bulan): AI-friendly search
+- [ ] Enrichment API ($99+/bulan): direct company/role lookup
+
+### Multi-Agent (Phase D, setelah volume naik)
+- [ ] Sub-agents paralel via `sessions_spawn`
+- [ ] Error & cost tracking
+- [ ] Dashboard internal untuk review inconclusive cases

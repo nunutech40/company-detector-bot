@@ -2,9 +2,9 @@
 
 Dokumen ini adalah kamus semua tool, skill, dan algoritma yang dipakai agent. Baca dokumen ini setelah melihat [Flow Map](FLOW_MAP.md).
 
-## 1. Agent And Skill Layer
+## 1. AI Reasoning Layer
 
-### OpenClaw Agent
+### OpenClaw Agent (Phase A)
 
 File:
 
@@ -15,15 +15,24 @@ openclaw_workspace/AGENTS.md
 Role:
 
 - Menerima pesan Telegram atau request natural-language.
-- Jika ada email valid, menjalankan Go wrapper `scripts/company_check_go.sh`.
-- Tidak bertanya ulang untuk `/check <email>`.
-- Mengembalikan report yang dibuat tool, bukan mengarang evidence.
+- **Primary mode:** menjalankan reasoning loop — observe, orient, decide, act, iterate.
+- Memilih tool berdasarkan information gain, bukan urutan tetap.
+- Menjalankan two-phase investigation: Phase 1 (business/personal), Phase 2 (business relationship).
+- Menghasilkan narasi investigasi langsung (bukan dari Go report formatter).
+- Mengembalikan report yang didasarkan pada tool output, bukan mengarang evidence.
 
-Important rule:
+**Yang AI handle (bukan Go):**
+- Query selection — AI yang memilih query berdasarkan context dan temuan sebelumnya
+- Iterative discovery — AI bisa round 2, round 3 dari temuan sebelumnya
+- Brand hint detection — AI detect apakah local-part email adalah brand atau nama orang
+- Narasi investigasi — AI yang menulis reasoning log dan structured findings
+- Stop decision — AI yang decide kapan evidence sudah cukup
 
+**Anti-hallucination rule:**
 ```text
-For every valid email check, run:
-scripts/company_check_go.sh --email <email> --save --send-slack
+Setiap klaim harus punya source URL dari tool output.
+Scoring engine menolak evidence tanpa source_url.
+Kalau tool gagal → tulis "tidak ditemukan", bukan tebakan.
 ```
 
 ### Company Detection Skill
@@ -40,6 +49,8 @@ Role:
 - Menegaskan no-feedback behavior.
 - Menjelaskan `/tool_status` dan `/last_report`.
 
+---
+
 ## 2. Orchestrator Tool
 
 ### Go `company-check`
@@ -53,11 +64,12 @@ go-service/cmd/company-check
 
 Role:
 
-- Orchestrator deterministik untuk MVP.
-- Mengatur urutan tool.
+- **Fallback mode:** orchestrator deterministik ketika AI tidak tersedia.
+- **Primary mode:** dipakai AI sebagai baseline tool (selalu dijalankan pertama).
+- Mengatur urutan tool deterministik.
 - Menggabungkan evidence.
 - Memanggil scoring.
-- Membuat report.
+- Membuat fallback report (tools used/failed/skipped + scoring summary).
 - Menyimpan hasil jika `--save`.
 - Mengirim Slack hanya jika eksplisit.
 
@@ -76,15 +88,9 @@ go run ./cmd/company-check --email contact@komerce.id --brand-name Komerce --jso
 go run ./cmd/company-check --input-json '{"email":"...","full_name":"...","no_hp":"...","brand_name":"..."}' --json --save
 ```
 
-Current runtime note:
+Algorithm (fallback mode):
 
-- OpenClaw workspace now points to the Go wrapper.
-- Node.js scripts remain as rollback/reference helpers.
-- Telegram `/check` includes `--send-slack`; Go posts Slack for **all results** regardless of classification, as long as Slack env is configured.
-
-Algorithm:
-
-1. Normalize current input package: `email`, `full_name`, `no_hp`, `brand_name`.
+1. Normalize input: `email`, `full_name`, `no_hp`, `brand_name`.
 2. Run `email_intelligence`.
 3. If email custom domain and not disposable:
    - run `domain_checker`
@@ -93,24 +99,20 @@ Algorithm:
    - custom domain: `"<domain>" company`
    - free email with full_name: `"<local>" OR "<fullname>"`
    - free email without full_name: `"<local>"`
-   - Note: Query selection sekarang dilakukan oleh AI reasoning loop. Go hanya menyediakan simple fallback query.
-5. Run `ddg_search` if query exists.
+5. Run search cascade (Google CSE → Brave → Bing → DDG).
 6. Choose active URL from domain checker or crawler.
 7. Run `free_scraper` if active URL exists.
-8. Push browser skip reason:
-   - `skipped_not_needed_for_mvp` if lightweight evidence exists
-   - `optional_fallback_disabled_for_mvp` otherwise
-9. Run `scoring_engine`.
-10. Run `report_formatter` (fallback mode only — AI handles narrative in Phase A).
-11. If `--save`, run `evidence_store`.
-12. If `--send-slack` is present and action routes company-associated, run Go Slack reporter.
+8. Run `scoring_engine`.
+9. Run `report_formatter` (fallback mode only).
+10. If `--save`, run `evidence_store`.
+11. If `--send-slack`, run Go Slack reporter.
 
 Important input rule:
 
 - `brand_name` may add a business hint and search query.
 - `full_name` may add identity/profile queries.
-- `no_hp` is retained/masked for internal matching only and is not used for public search.
-- `username` is intentionally not part of the trusted algorithm because platform username is not reliable.
+- `no_hp` is retained/masked for internal matching only — not used for public search.
+- `username` is intentionally not part of the trusted algorithm.
 
 ### `batch_csv_check.js`
 
@@ -142,9 +144,11 @@ Failure behavior:
 - Tool failure goes to `tool_errors`.
 - Failed tools do not create evidence.
 
+---
+
 ## 3. Input And Identity Tools
 
-### `email_intelligence.js`
+### `email_intelligence` (Go `internal/emailintel`)
 
 Role:
 
@@ -153,7 +157,7 @@ Role:
 - Detect free provider.
 - Detect disposable hints.
 - Detect role/contact mailbox.
-- Produce first evidence items.
+- Produce first evidence items and initial hypothesis for AI.
 
 Algorithm:
 
@@ -165,7 +169,7 @@ normalize email
 -> check DISPOSABLE_HINTS
 -> check ROLE_LOCALS
 -> assign tags
--> emit evidence
+-> emit evidence + initial hypothesis
 ```
 
 Evidence:
@@ -186,9 +190,11 @@ Change impact:
 - Adding free domains affects classification for many emails.
 - Adding role locals can increase score for custom-domain addresses.
 
+---
+
 ## 4. Domain And Website Tools
 
-### `domain_checker.js`
+### `domain_checker` (Go `internal/domaincheck`)
 
 Role:
 
@@ -229,7 +235,7 @@ Change impact:
 - Timeout and HTTP handling affect many custom domains.
 - Increasing negative website inactive weight may punish real companies with blocked sites.
 
-### `website_crawler_router.js`
+### `website_crawler_router` (Go `internal/crawler`)
 
 Role:
 
@@ -271,68 +277,30 @@ Change impact:
 - Adding paths increases runtime and remote requests.
 - Signal regex changes affect confidence.
 
-## 5. Search And Scrape Fallback Tools
+---
 
-### Fallback Query (inline, Go `internal/orchestrator`)
+## 5. Search And Scrape Tools
 
-> **Note:** Query selection sekarang dilakukan oleh AI reasoning loop (Phase A). Go hanya menyediakan simple fallback query yang digunakan ketika AI tidak tersedia.
-
-Role:
-
-- Build a single simple search query for fallback mode.
-- Inline logic in orchestrator — tidak ada package terpisah.
-
-Algorithm:
-
-```text
-if custom domain:
-  query = "<domain>" company
-
-if free email + full_name:
-  query = "<local>" OR "<fullname>"
-
-if free email, no full_name:
-  query = "<local>"
-```
-
-`no_hp` is not used for public search.
-
-### `ddg_search.js`
+### Search Cascade (Go `internal/search`)
 
 Role:
 
-- Free DuckDuckGo HTML search fallback.
-- Low reliability.
-- Should not be treated like a dedicated search API.
+- Multi-provider search dengan automatic fallback.
+- Provider order: Google CSE → Brave → Bing HTML → DDG HTML.
+- Setiap provider dicoba sampai ada yang berhasil.
 
-Algorithm:
+Provider status:
 
-```text
-fetch https://html.duckduckgo.com/html/?q=<query>
--> parse title/url/snippet with regex
--> decode DDG redirect URL if possible
--> return top 5 results
-```
+| Provider | Status | Cost | Notes |
+|---|---|---|---|
+| Google CSE | not_configured | Free (100/day) | Reliable, tidak diblokir ISP |
+| Brave Search API | not_configured | ~$5/month | Reliable, structured results |
+| Bing HTML | fallback | Free | Fragile, bisa diblokir |
+| DDG HTML | last_resort | Free | Paling fragile, sering diblokir ISP |
 
-Evidence:
+**Query selection:** AI yang memilih query di primary mode. Go hanya menyediakan simple fallback query (inline di orchestrator) untuk fallback mode.
 
-- `free_serp_search`
-
-Scoring delta:
-
-- public candidate results: `+5`
-
-Failure behavior:
-
-- If fetch/parsing fails, return `ok: false`.
-- `company_check` records failure in `tool_errors`.
-
-Change impact:
-
-- Regex parsing is fragile because DuckDuckGo HTML can change.
-- Keep reliability `low`.
-
-### `free_scraper.js`
+### `free_scraper` (Go `internal/scraper`)
 
 Role:
 
@@ -363,14 +331,42 @@ Failure behavior:
 - Fetch failure: `tool_errors`.
 - Successful scrape without business terms: tool used, no confidence evidence.
 
+### OpenClaw `web_fetch`
+
+Role:
+
+- Fetch dan extract content dari URL spesifik.
+- Dipakai AI untuk: /about pages, /team pages, social profiles, marketplace pages.
+- Lebih dalam dari `free_scraper` — bisa extract structured content.
+- Fallback: `browser` jika `web_fetch` return empty/incomplete.
+
+### OpenClaw `web_search`
+
+Role:
+
+- OpenClaw built-in search.
+- Dipakai AI untuk query yang berbeda angle dari Go search cascade.
+- Bisa dipakai untuk: social media search, marketplace search, role search.
+
+### OpenClaw `browser`
+
+Role:
+
+- Render JS-heavy pages.
+- Dipakai AI hanya ketika `web_fetch` return empty atau incomplete.
+- Lebih mahal — dicatat di report.
+
+---
+
 ## 6. Scoring And Classification
 
-### `scoring_engine.js`
+### `scoring_engine` (Go `internal/scoring`)
 
 Role:
 
 - Rules-first classification and confidence scoring.
 - Central place for final classification logic.
+- **Selalu deterministik** — AI tidak boleh langsung set classification.
 
 Algorithm:
 
@@ -410,12 +406,15 @@ Guardrail:
 
 ```text
 owner_claim_allowed = false
+Evidence tanpa source_url ditolak.
 ```
 
 Change impact:
 
 - This file controls final classification.
 - Any scoring threshold change should update `scoring_rules.yaml`, docs, and tests.
+
+---
 
 ## 7. Reporting And Storage Tools
 
@@ -425,7 +424,7 @@ Role:
 
 - Convert JSON result into Telegram-safe text.
 - **Fallback mode only** — digunakan ketika AI reasoning tidak aktif.
-- Di Phase A, AI reasoning loop yang menghasilkan narasi investigasi langsung.
+- Di primary mode, AI reasoning loop yang menghasilkan narasi investigasi langsung.
 
 Sections (format fallback):
 
@@ -444,11 +443,11 @@ Sections (format fallback):
 
 Note:
 
-- Narasi investigasi step-by-step (investigationSteps) sudah dihapus — AI yang handle di Phase A.
+- Narasi investigasi step-by-step sudah dihapus — AI yang handle di primary mode.
 - `looksLikeBrand()` dan `initialHypothesis()` sudah dihapus — AI yang detect ini.
 - Query selection sudah dihapus dari report — AI yang handle query selection.
 
-### `evidence_store.js`
+### `evidence_store` (Go `internal/evidence`)
 
 Role:
 
@@ -494,7 +493,7 @@ Limit:
 - YAML parser is simple line-based parser.
 - Keep catalog indentation simple.
 
-### Go Slack reporter
+### Go Slack reporter (Go `internal/slack`)
 
 Role:
 
@@ -504,8 +503,10 @@ Role:
 Important:
 
 - Not automatic.
-- `company_check` calls it when `--send-slack` is present, for **all classification results** — personal, company, unknown, suspicious.
+- `company_check` calls it when `--send-slack` is present, for **all classification results**.
 - After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
+
+---
 
 ## 8. Config Files
 
@@ -529,42 +530,54 @@ Statuses:
 Purpose:
 
 - Reference for scoring thresholds and weights.
-- Should stay aligned with `scoring_engine.js`.
+- Should stay aligned with `scoring_engine` (Go `internal/scoring`).
 
-## 9. Future Tools From Enrichment Plan
+---
 
-Planned:
+## 9. Planned Tool Catalog Expansion
 
-- `social_link_extractor`
-- `company_profile_builder`
-- `public_profile_search`
-- `role_signal_extractor`
-- `relationship_scorer`
-- `maps_signal_search`
-- Postgres DB writer
-- Slack alert decision function
+Tools yang direncanakan untuk memperkaya AI reasoning loop:
 
-Rule:
+### Go Packages (deterministik, gratis, selalu tersedia)
+
+- **`social_link_extractor`**: Extract social media links dari HTML halaman website (Instagram, LinkedIn, TikTok, Facebook, YouTube).
+- **`role_signal_extractor`**: Deteksi kata kunci CEO/founder/owner/direktur dari teks snippet.
+- **`brand_hint_detector`**: Deteksi apakah local part email adalah brand/toko. Ada `looksLikeBrand()` di report.go, perlu dipindah ke package tersendiri.
+- **`company_name_normalizer`**: Normalize nama perusahaan dari berbagai format (PT X, CV X, X Inc, dll).
+- **`marketplace_url_detector`**: Deteksi URL Tokopedia/Shopee/Bukalapak dari teks atau search results.
+
+### Network Tools (perlu konfigurasi/budget)
+
+- **Google CSE** (free 100/day): Reliable search, tidak diblokir ISP.
+- **Brave Search API** (~$5/month): Reliable search, structured results.
+- **Firecrawl** ($16/month): Scrape JS-heavy pages, structured extraction.
+- **Tavily** ($20/month): AI-friendly search dengan domain filter.
+
+Rule untuk setiap tool baru:
 
 ```text
-Each new tool must declare:
+Setiap tool baru harus declare:
 - input
 - output
 - evidence type
 - reliability
 - failure behavior
-- whether it affects score
+- apakah mempengaruhi score
 ```
+
+---
 
 ## 10. Change Impact Map
 
 If changing:
 
-- free email logic -> check `email_intelligence`, fallback query (orchestrator), `scoring_engine`.
-- domain/website logic -> check `domain_checker`, `website_crawler_router`, `free_scraper`, browser skip reason.
-- search behavior -> check fallback query (orchestrator), `ddg_search`, evidence reliability.
-- scoring -> check `scoring_engine`, `scoring_rules.yaml`, report examples.
-- report wording -> check `report_formatter` (fallback mode), `AGENTS.md`, Telegram screenshots/results.
-- storage -> check `evidence_store` and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
-- Slack -> check `slack_reporter`, alert decision rules, and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
-- multi-agent -> check [Flow Map](FLOW_MAP.md), [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md), and [TRD](TRD.md).
+- free email logic → check `email_intelligence`, fallback query (orchestrator), `scoring_engine`.
+- domain/website logic → check `domain_checker`, `website_crawler_router`, `free_scraper`, browser skip reason.
+- search behavior → check search cascade (orchestrator), evidence reliability, AI tool catalog.
+- scoring → check `scoring_engine`, `scoring_rules.yaml`, report examples.
+- report wording → check `report_formatter` (fallback mode), `AGENTS.md`, Telegram screenshots/results.
+- storage → check `evidence_store` and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+- Slack → check `slack_reporter`, alert decision rules, and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+- AI reasoning behavior → check `AGENTS.md`, stop conditions, evidence chain examples.
+- tool catalog → check `tool_catalog.yaml`, `TOOLS.md`, [Flow Map](FLOW_MAP.md).
+- multi-agent → check [Flow Map](FLOW_MAP.md), [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md), and [TRD](TRD.md).
