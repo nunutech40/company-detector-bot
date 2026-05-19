@@ -77,22 +77,13 @@ Output llm-task adalah JSON valid yang bisa langsung disimpan ke DB.
 Kalau field tidak ditemukan → null, jangan tebak.
 ```
 
-**3. Selesai → wajib:**
+**3. Selesai → simpan evidence:**
 ```bash
 bash scripts/finish_investigation.sh \
   --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "<brand_ditemukan>"] \
   --report "<report lengkap>"
 ```
-Jangan skip — ini yang save evidence dan kirim Slack.
-
-**4. Di akhir report — selalu tambahkan info ini:**
-```
-───
-LLM    : [model yang dipakai, misal: deepseek/deepseek-chat]
-Token  : [input tokens] input + [output tokens] output = [total] total
-Biaya  : ~$[estimasi USD] untuk investigasi ini
-```
-Ambil dari `bash scripts/token_usage.sh` setelah investigasi selesai.
+Ini yang save evidence. Slack delivery dimatikan sementara — fokus testing di Telegram.
 
 **4. Di akhir investigasi — normalize semua temuan ke JSON:**
 Sebelum jalankan finish_investigation.sh, pakai llm-task untuk normalize semua yang ditemukan:

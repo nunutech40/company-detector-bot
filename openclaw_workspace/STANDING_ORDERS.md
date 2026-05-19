@@ -14,7 +14,7 @@ AI wajib mengikutinya tanpa perlu diingatkan.
 ### Execution steps (wajib, tidak boleh di-skip)
 
 1. Jalankan investigasi sampai selesai (confidence cukup atau budget habis)
-2. Jalankan `finish_investigation.sh` dengan semua parameter yang ditemukan:
+2. Jalankan `finish_investigation.sh` untuk save evidence:
    ```bash
    bash scripts/finish_investigation.sh \
      --email <email> \
@@ -23,8 +23,10 @@ AI wajib mengikutinya tanpa perlu diingatkan.
      [--brand-name "<brand_yang_ditemukan>"] \
      --report "<isi report>"
    ```
-3. Verifikasi: pastikan `finish_investigation.sh` selesai tanpa error
+3. Verifikasi: pastikan selesai tanpa error
 4. Tambahkan token usage di akhir report: `bash scripts/token_usage.sh`
+
+> **Note:** Slack delivery dimatikan sementara untuk testing. Fokus di Telegram.
 
 ### Execute-Verify-Report
 
