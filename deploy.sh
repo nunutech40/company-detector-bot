@@ -88,3 +88,46 @@ sleep 5
 ssh_cmd "/home/nunuopc/.npm-global/bin/openclaw status 2>&1 | grep -E 'Gateway|reachable' | head -2"
 echo ""
 echo "=== Deploy complete ==="
+echo ""
+echo "=== Post-deploy verification ==="
+
+# Verifikasi 1: Gateway reachable
+echo "[1/3] Gateway check..."
+expect << VERIFYEOF
+set timeout 20
+set pass "${VPS_PASS}"
+spawn ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ${VPS_USER}@${VPS_HOST} {/home/nunuopc/.npm-global/bin/openclaw status 2>&1 | grep -E "reachable|running" | head -2}
+expect "*password:"
+send "\$pass\r"
+expect eof
+VERIFYEOF
+
+# Verifikasi 2: deliver_report.sh tidak kirim Go fallback
+echo "[2/3] Delivery flow check..."
+expect << VERIFYEOF
+set timeout 20
+set pass "${VPS_PASS}"
+spawn ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ${VPS_USER}@${VPS_HOST} {grep -c "Go fallback not sent" /home/nunuopc/.openclaw/workspace/scripts/deliver_report.sh 2>/dev/null && echo "OK: deliver_report.sh hanya kirim AI report" || echo "WARN: cek deliver_report.sh"}
+expect "*password:"
+send "\$pass\r"
+expect eof
+VERIFYEOF
+
+# Verifikasi 3: finish_investigation.sh hapus AI report lama
+echo "[3/3] finish_investigation.sh check..."
+expect << VERIFYEOF
+set timeout 20
+set pass "${VPS_PASS}"
+spawn ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ${VPS_USER}@${VPS_HOST} {grep -c "rm -f.*ai_report_latest" /home/nunuopc/.openclaw/workspace/scripts/finish_investigation.sh 2>/dev/null && echo "OK: finish_investigation.sh hapus report lama" || echo "WARN: cek finish_investigation.sh"}
+expect "*password:"
+send "\$pass\r"
+expect eof
+VERIFYEOF
+
+echo ""
+echo "Delivery contract:"
+echo "  Telegram: AI report (langsung dari AI)"
+echo "  Slack   : AI report via finish_investigation.sh → deliver_report.sh"
+echo "  Go fallback: TIDAK dikirim ke Slack (hanya untuk debugging lokal)"
+echo ""
+echo "=== All checks done ==="
