@@ -44,6 +44,9 @@ fi
 
 echo "finish_investigation: saving for ${EMAIL}"
 
+# Hapus AI report lama supaya tidak ada sisa dari investigasi sebelumnya
+rm -f "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+
 # Step 1: Save AI report ke file
 if [[ -n "${REPORT_TEXT}" ]]; then
   echo "${REPORT_TEXT}" > "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
@@ -71,3 +74,13 @@ echo "finish_investigation: done"
 echo ""
 echo "--- AI Token Usage ---"
 bash "${SCRIPT_DIR}/token_usage.sh" 2>/dev/null || true
+
+# Append token info ke AI report jika ada
+if [[ -f "${WORKSPACE_DIR}/reports/ai_report_latest.txt" ]]; then
+  TOKEN_INFO=$(bash "${SCRIPT_DIR}/token_usage.sh" 2>/dev/null || echo "")
+  if [[ -n "${TOKEN_INFO}" ]]; then
+    echo "" >> "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+    echo "───" >> "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+    echo "${TOKEN_INFO}" >> "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+  fi
+fi

@@ -83,6 +83,15 @@ bash scripts/finish_investigation.sh \
 ```
 Jangan skip — ini yang save evidence dan kirim Slack.
 
+**4. Di akhir report — selalu tambahkan info ini:**
+```
+───
+LLM    : [model yang dipakai, misal: deepseek/deepseek-chat]
+Token  : [input tokens] input + [output tokens] output = [total] total
+Biaya  : ~$[estimasi USD] untuk investigasi ini
+```
+Ambil dari `bash scripts/token_usage.sh` setelah investigasi selesai.
+
 **4. Di akhir investigasi — normalize semua temuan ke JSON:**
 Sebelum jalankan finish_investigation.sh, pakai llm-task untuk normalize semua yang ditemukan:
 ```
