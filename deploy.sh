@@ -60,9 +60,17 @@ echo "      ✓ company-check deployed"
 echo "[3/5] Deploying workspace files..."
 scp_file "${REPO_DIR}/openclaw_workspace/AGENTS.md" "${VPS_WORKSPACE}/AGENTS.md"
 scp_file "${REPO_DIR}/openclaw_workspace/TOOLS.md" "${VPS_WORKSPACE}/TOOLS.md"
+scp_file "${REPO_DIR}/openclaw_workspace/STANDING_ORDERS.md" "${VPS_WORKSPACE}/STANDING_ORDERS.md"
 scp_file "${REPO_DIR}/openclaw_workspace/config/tool_catalog.yaml" "${VPS_WORKSPACE}/config/tool_catalog.yaml"
 scp_file "${REPO_DIR}/openclaw_workspace/config/scoring_rules.yaml" "${VPS_WORKSPACE}/config/scoring_rules.yaml"
 echo "      ✓ workspace files deployed"
+
+# 3b. Deploy hooks
+echo "[3b] Deploying hooks..."
+ssh_cmd "mkdir -p ${VPS_WORKSPACE}/hooks/deliver-on-message-sent"
+scp_file "${REPO_DIR}/openclaw_workspace/hooks/deliver-on-message-sent/HOOK.md" "${VPS_WORKSPACE}/hooks/deliver-on-message-sent/HOOK.md"
+scp_file "${REPO_DIR}/openclaw_workspace/hooks/deliver-on-message-sent/handler.ts" "${VPS_WORKSPACE}/hooks/deliver-on-message-sent/handler.ts"
+echo "      ✓ hooks deployed"
 
 # 4. Deploy scripts
 echo "[4/5] Deploying scripts..."
@@ -124,10 +132,22 @@ send "\$pass\r"
 expect eof
 VERIFYEOF
 
+# Verifikasi 4: Hook handler.ts ada
+echo "[4/4] Hook check..."
+expect << VERIFYEOF
+set timeout 20
+set pass "${VPS_PASS}"
+spawn ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ${VPS_USER}@${VPS_HOST} {test -f /home/nunuopc/.openclaw/workspace/hooks/deliver-on-message-sent/handler.ts && echo "OK: hook handler.ts ada" || echo "WARN: hook handler.ts tidak ditemukan"}
+expect "*password:"
+send "\$pass\r"
+expect eof
+VERIFYEOF
+
 echo ""
 echo "Delivery contract:"
 echo "  Telegram: AI report (langsung dari AI)"
-echo "  Slack   : AI report via finish_investigation.sh → deliver_report.sh"
+echo "  Slack   : AI report via message:sent hook (otomatis) + finish_investigation.sh (backup)"
 echo "  Go fallback: TIDAK dikirim ke Slack (hanya untuk debugging lokal)"
+echo "  Standing Orders: aktif via STANDING_ORDERS.md"
 echo ""
 echo "=== All checks done ==="

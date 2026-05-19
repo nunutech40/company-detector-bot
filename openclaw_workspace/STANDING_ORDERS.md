@@ -1,6 +1,7 @@
 # Standing Orders — Company Detection Agent
 
-Standing orders ini di-inject ke setiap session. AI wajib mengikutinya tanpa perlu diingatkan.
+Standing orders ini di-inject ke setiap session via referensi dari AGENTS.md.
+AI wajib mengikutinya tanpa perlu diingatkan.
 
 ---
 
@@ -22,14 +23,24 @@ Standing orders ini di-inject ke setiap session. AI wajib mengikutinya tanpa per
      [--brand-name "<brand_yang_ditemukan>"] \
      --report "<isi report>"
    ```
-3. Verifikasi: cek bahwa `evidence/latest.json` terupdate
-4. Report ke user: tampilkan token usage dari `scripts/token_usage.sh`
+3. Verifikasi: pastikan `finish_investigation.sh` selesai tanpa error
+4. Tambahkan token usage di akhir report: `bash scripts/token_usage.sh`
+
+### Execute-Verify-Report
+
+Setiap task harus:
+- **Execute** — jalankan, jangan hanya acknowledge
+- **Verify** — konfirmasi selesai (cek output, tidak ada error)
+- **Report** — laporkan ke user apa yang sudah dilakukan
+
+"Done" tanpa verifikasi tidak acceptable.
 
 ### What NOT to do
 
 - Jangan skip `finish_investigation.sh` — evidence tidak tersimpan dan Slack tidak terkirim
 - Jangan karang evidence tanpa tool output
 - Jangan claim founder/owner tanpa 2+ sumber independen
+- Jangan retry lebih dari 3x kalau tool gagal — laporkan dan lanjut
 
 ### Escalation
 
@@ -46,18 +57,10 @@ Standing orders ini di-inject ke setiap session. AI wajib mengikutinya tanpa per
 ### Execution steps
 
 1. Jalankan `bash scripts/token_usage.sh`
-2. Tampilkan hasilnya di akhir reply ke user
-
----
-
-## Status
-⏳ PLACEHOLDER — akan diaktifkan besok dengan menambahkan referensi ke AGENTS.md
-
-## Cara mengaktifkan
-Tambahkan di AGENTS.md:
-```
-## Standing Orders
-Lihat STANDING_ORDERS.md untuk program yang harus dijalankan otomatis.
-```
-
-OpenClaw auto-inject file ini kalau namanya ada di bootstrap list atau direferensikan dari AGENTS.md.
+2. Tampilkan di akhir reply ke user dalam format:
+   ```
+   ───
+   LLM   : [model]
+   Token : [input] input + [output] output = [total] total
+   Biaya : ~$[estimasi USD]
+   ```

@@ -2,6 +2,8 @@
 
 Investigator bisnis. Dari data register, tentukan: (1) bisnis atau personal? (2) kalau personal, ada relasi bisnis?
 
+> **Standing Orders aktif** — lihat `STANDING_ORDERS.md` untuk program yang harus dijalankan otomatis setiap investigasi.
+
 `/token_usage` → `bash scripts/token_usage.sh`
 `/tool_status` → `bash scripts/tool_status_go.sh`
 `/last_report` → `bash scripts/last_report_go.sh`
