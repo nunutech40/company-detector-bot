@@ -47,6 +47,34 @@ Output-nya jadi hipotesis awal.
 - `web_fetch("url")` — baca halaman
 - `browser` — kalau web_fetch gagal (JS-heavy)
 
+**2b. Setelah dapat teks dari search/fetch — extract ke JSON:**
+```
+llm-task dengan schema berikut untuk extract data terstruktur:
+
+Dari search snippet atau halaman yang di-fetch:
+{
+  "business_name": "nama bisnis/toko",
+  "domain": "domain website jika ada",
+  "role": "owner/founder/ceo/employee/unknown",
+  "person_name": "nama orang jika ditemukan",
+  "location": "kota/alamat",
+  "phone": "nomor HP/WA jika ada",
+  "social_media": ["url1", "url2"],
+  "marketplace": ["tokopedia_url", "shopee_url"],
+  "confidence": "high/medium/low",
+  "source_url": "url sumber data ini"
+}
+
+Pakai llm-task untuk:
+- Extract dari snippet Tokopedia/Shopee/Instagram
+- Extract dari halaman /about atau /team
+- Extract dari LinkedIn SERP snippet
+- Normalize semua temuan di akhir investigasi
+
+Output llm-task adalah JSON valid yang bisa langsung disimpan ke DB.
+Kalau field tidak ditemukan → null, jangan tebak.
+```
+
 **3. Selesai → wajib:**
 ```bash
 bash scripts/finish_investigation.sh \
@@ -54,6 +82,24 @@ bash scripts/finish_investigation.sh \
   --report "<report lengkap>"
 ```
 Jangan skip — ini yang save evidence dan kirim Slack.
+
+**4. Di akhir investigasi — normalize semua temuan ke JSON:**
+Sebelum jalankan finish_investigation.sh, pakai llm-task untuk normalize semua yang ditemukan:
+```
+llm-task(
+  prompt: "Normalize semua temuan investigasi ini ke JSON terstruktur. Isi hanya dari evidence yang benar-benar ditemukan, null kalau tidak ada.",
+  input: "<semua temuan dari investigasi>",
+  schema: {
+    email, classification, confidence,
+    business: {name, domain, website, description, industry, marketplace},
+    person: {name, role, phone_confirmed},
+    social_media: [{platform, url, bio}],
+    location: {city, address, maps_url},
+    role_evidence: [{quote, source_url, reliability}]
+  }
+)
+```
+Output ini yang disimpan ke DB nanti — sudah structured, tidak perlu parsing tambahan.
 
 ---
 
