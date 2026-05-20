@@ -86,7 +86,7 @@ sequenceDiagram
 
   box Webhook Queue Layer
     participant Webhook as Webhook Intake
-    participant Queue as PostgreSQL register_intake_jobs
+    participant IntakeDB as PostgreSQL register_intake_jobs
     participant Worker as Sequential Worker
   end
 
@@ -106,7 +106,7 @@ sequenceDiagram
   end
 
   box Storage Output
-    participant DB as PostgreSQL
+    participant ResultDB as PostgreSQL result tables
     participant Dashboard as Dashboard
   end
 
@@ -119,11 +119,11 @@ sequenceDiagram
   Note over Human,AI: Minimum email atau data akun lengkap
 
   Platform->>Webhook: POST register payload
-  Webhook->>Queue: Insert pending register payload
-  Queue-->>Webhook: intake_job_id
+  Webhook->>IntakeDB: Insert pending register payload
+  IntakeDB-->>Webhook: intake_job_id
   Webhook-->>Platform: Accepted queued
-  Worker->>Queue: Lock oldest pending job
-  Worker->>Orchestra: Process one queued job
+  Worker->>IntakeDB: Lock oldest pending job
+  Worker->>AI: Start queued investigation
 
   AI->>Orchestra: Start investigation
   Orchestra->>Go: Run deterministic baseline
@@ -146,13 +146,13 @@ sequenceDiagram
   AI->>Finalizer: OpenClaw executes finalizer
   Note over AI,Finalizer: AI decides report. Finalizer writes output.
   Finalizer->>Writer: Insert result
-  Writer->>DB: jobs reports llm_calls
-  DB-->>Dashboard: Job visible for review
+  Writer->>ResultDB: jobs reports llm_calls
+  ResultDB-->>Dashboard: Job visible for review
 
   loop Daily at 09:00
-    Digest->>DB: Read prospect jobs not yet sent
-    DB-->>Digest: Prospect list or empty result
-    Digest->>Dashboard: Include dashboard links
+    Digest->>ResultDB: Read prospect jobs not yet sent
+    ResultDB-->>Digest: Prospect list or empty result
+    Digest->>Digest: Build dashboard home and detail URLs
     alt Prospects found
       Digest->>Slack: Send prospect digest
     else No prospects found
@@ -241,17 +241,17 @@ sequenceDiagram
 
   box Webhook Queue
     participant Webhook as Webhook Intake
-    participant Queue as PostgreSQL register_intake_jobs
+    participant IntakeDB as PostgreSQL register_intake_jobs
     participant Worker as Sequential Worker
   end
 
   Operator->>Session: /check atau manual input
   Note over Operator,Session: Bisa email saja atau data akun lengkap
   Platform->>Webhook: POST register payload
-  Webhook->>Queue: Insert pending register payload
-  Queue-->>Webhook: intake_job_id
+  Webhook->>IntakeDB: Insert pending register payload
+  IntakeDB-->>Webhook: intake_job_id
   Webhook-->>Platform: accepted
-  Worker->>Queue: Take oldest pending job
+  Worker->>IntakeDB: Lock oldest pending job
   Worker->>Session: Start queued investigation
   Session->>Orchestra: Start investigation with account data
 ```
@@ -453,7 +453,7 @@ sequenceDiagram
 
   box Webhook Service
     participant Webhook as company-webhook
-    participant Queue as PostgreSQL register_intake_jobs
+    participant IntakeDB as PostgreSQL register_intake_jobs
     participant Worker as Queue Worker
   end
 
@@ -463,20 +463,20 @@ sequenceDiagram
   end
 
   box Storage Output
-    participant DB as PostgreSQL
+    participant ResultDB as PostgreSQL result tables
     participant Dashboard as Dashboard
   end
 
   Platform->>Webhook: POST /webhook/check
   Webhook->>Webhook: Validate secret + sanitize input
-  Webhook->>Queue: Insert pending register job
-  Queue-->>Webhook: intake_job_id
+  Webhook->>IntakeDB: Insert pending register job
+  IntakeDB-->>Webhook: intake_job_id
   Webhook-->>Platform: queued response + dashboard_url
-  Worker->>Queue: Lock oldest pending job
+  Worker->>IntakeDB: Lock oldest pending job
   Worker->>OpenClaw: Run investigation one by one
   OpenClaw->>Finalizer: Execute finalizer
-  Finalizer->>DB: Persist investigation result
-  DB-->>Dashboard: Job visible
+  Finalizer->>ResultDB: Persist investigation result
+  ResultDB-->>Dashboard: Job visible
 ```
 
 Worker rule:
@@ -499,8 +499,7 @@ sequenceDiagram
   end
 
   box Storage
-    participant DB as PostgreSQL
-    participant Dashboard as Dashboard
+    participant ResultDB as PostgreSQL result tables
   end
 
   box Slack
@@ -509,16 +508,16 @@ sequenceDiagram
   end
 
   Cron->>Digest: Run daily prospect digest
-  Digest->>DB: Query unsent prospect jobs
-  DB-->>Digest: prospect list or empty result
-  Digest->>Dashboard: Build dashboard home and detail links
+  Digest->>ResultDB: Query unsent prospect jobs
+  ResultDB-->>Digest: prospect list or empty result
+  Digest->>Digest: Build dashboard home and detail links
 
   alt Prospect list found
     Digest->>Channel: Send prospect list and links
-    Digest->>DB: Mark digest run and sent items
+    Digest->>ResultDB: Mark digest run and sent items
   else No prospect found
     Digest->>Channel: Send no prospect heartbeat
-    Digest->>DB: Mark empty digest run
+    Digest->>ResultDB: Mark empty digest run
   end
 ```
 

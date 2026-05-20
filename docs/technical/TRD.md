@@ -69,11 +69,17 @@ Sequential worker
         |
         v
 OpenClaw workspace + Go binary
+        |
+        v
+finish_investigation.sh
+        |
+        v
+db_writer.js --> PostgreSQL result tables
 
 Daily 09:00 cron
         |
         v
-Slack prospect digest reads PostgreSQL
+Slack prospect digest reads PostgreSQL result tables
         |
         v
 Slack channel + dashboard links
