@@ -74,12 +74,12 @@ OpenClaw workspace + Go binary
 finish_investigation.sh
         |
         v
-db_writer.js --> PostgreSQL result tables
+db_writer.js --> PostgreSQL company_detection
 
 Daily 09:00 cron
         |
         v
-Slack prospect digest reads PostgreSQL result tables
+Slack prospect digest reads PostgreSQL company_detection
         |
         v
 Slack channel + dashboard links
