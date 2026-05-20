@@ -26,6 +26,8 @@ Business purpose:
 - Product direction: `docs/product/PRD.md`
 - Technical architecture: `docs/technical/TRD.md`
 - Runtime flow: `docs/technical/FLOW_MAP.md`
+- Next feature plan: `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md`
+- Build checklist: `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md`
 - Current status: `BACKLOG.md`
 - AI handoff: `FETCH_CONTEXT.md`
 
@@ -41,7 +43,7 @@ Layer 2 — AI reasoning loop
   OpenClaw + Qwen chooses tools, gathers evidence, and reasons over findings.
 
 Layer 3 — Storage and operations
-  evidence files + PostgreSQL + dashboard + webhook + delivery routing
+  evidence files + PostgreSQL + dashboard + webhook intake + Slack digest
 ```
 
 Principles:
@@ -50,6 +52,8 @@ Principles:
 - Classification and scoring remain deterministic.
 - Failed tools are errors, not evidence.
 - `no_hp` is confirmation only and must not be used for public search.
+- Webhook final target is async enqueue, not direct investigation inside HTTP request.
+- Slack final target is one daily prospect digest at 09:00 Asia/Jakarta, not realtime raw reports.
 
 ---
 
@@ -64,16 +68,18 @@ Done:
 - 3 tables: `investigation_jobs`, `final_reports`, `llm_calls`.
 - `db_writer.js`.
 - Dashboard on port 3001.
-- Webhook API scaffold on port 3002; final DB path/platform validation pending.
+- Webhook API scaffold on port 3002; final target is PostgreSQL-backed intake queue.
 - Go packages: `brandhint`, `sociallinks`, `rolesignal`.
 - Token usage/cost tracking.
 
 Next:
 
 - Telegram E2E validation.
-- Finalize webhook DB path and validate from Komerce platform.
+- Build webhook PostgreSQL intake queue using `register_intake_jobs`.
+- Build sequential worker that processes queued register payloads one by one.
+- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
+- Validate from Komerce platform register flow.
 - Improve `db_writer.js` extraction.
-- Finalize Slack hook with smart routing after validation.
 
 ---
 
@@ -89,6 +95,8 @@ Next:
 | `dashboard/app.js` | Dashboard service |
 | `webhook/app.js` | Webhook service |
 | `docs/technical/migration_v1.sql` | Database schema |
+| `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` | Next feature plan |
+| `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` | Build checklist |
 
 ---
 
@@ -122,6 +130,22 @@ scripts/finish_investigation.sh --email <email>
 
 This writes evidence, inserts DB rows, applies delivery routing, and shows token usage.
 
+For platform register input, the planned final flow is:
+
+```text
+Platform Register
+  -> webhook/app.js
+  -> PostgreSQL company_detection.register_intake_jobs
+  -> sequential worker
+  -> OpenClaw/Go investigation
+  -> finish_investigation.sh
+  -> db_writer.js
+  -> investigation_jobs / final_reports / llm_calls
+  -> dashboard
+```
+
+Slack must read finalized DB rows later through the digest script. Slack should not receive raw investigation logic.
+
 ---
 
 ## Credentials
@@ -136,3 +160,4 @@ Important variables:
 - `SLACK_REPORT_CHANNEL`
 - `WEBHOOK_SECRET`
 - `OPENCLAW_BASE_URL`
+- `DASHBOARD_BASE_URL`

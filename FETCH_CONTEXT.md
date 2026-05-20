@@ -25,7 +25,9 @@ Canonical docs:
 1. `docs/product/PRD.md` — product source of truth.
 2. `docs/technical/TRD.md` — technical source of truth.
 3. `docs/technical/FLOW_MAP.md` — runtime flow.
-4. `BACKLOG.md` — status and next priorities.
+4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — next feature plan.
+5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — execution checklist.
+6. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
 
@@ -39,7 +41,7 @@ Runtime instructions:
 ## 3. Current Architecture
 
 ```text
-Telegram / Webhook / Manual CLI
+Telegram / Manual CLI
         |
         v
 Deterministic Go pipeline
@@ -59,11 +61,35 @@ finish_investigation.sh
         +--> file evidence
         +--> PostgreSQL through db_writer.js
         +--> dashboard
-        +--> Telegram/Slack delivery
+        +--> Telegram delivery
         +--> token usage
+
+Platform Register
+        |
+        v
+Webhook intake
+        |
+        v
+PostgreSQL company_detection.register_intake_jobs
+        |
+        v
+Sequential worker
+        |
+        v
+Existing investigation + finalization path
+
+Daily 09:00 Asia/Jakarta
+        |
+        v
+Slack digest script reads PostgreSQL
+        |
+        v
+Sales-ready prospect digest + dashboard links
 ```
 
 Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.
+
+Important boundary: AI/OpenClaw does not write directly to storage or Slack. Finalizer/db_writer writes results. Slack digest reads finalized DB rows later.
 
 ---
 
@@ -73,7 +99,7 @@ Important point: AI can reason and choose tools, but deterministic scoring/class
 |---|---:|---|---|
 | OpenClaw gateway | 18789 | VPS service | AI runtime |
 | Dashboard | 3001 | `dashboard/` | Express + EJS |
-| Webhook API | 3002 | `webhook/` | Express scaffold; final DB path pending |
+| Webhook API | 3002 | `webhook/` | Express scaffold; final target is enqueue-only |
 | PostgreSQL | 5432 | VPS service | DB `company_detection` |
 
 VPS:
@@ -100,6 +126,12 @@ Current tables:
 
 Do not resurrect the older 7/8-table plan unless the user explicitly asks for a normalized analytics schema.
 
+Planned next tables for webhook + Slack:
+
+- `register_intake_jobs`: PostgreSQL-backed queue for platform register payloads.
+- `slack_digest_runs`: one row per daily Slack digest execution.
+- `slack_digest_items`: sent prospect item tracking so jobs are not repeated.
+
 ---
 
 ## 6. Critical Runtime Rule
@@ -122,12 +154,15 @@ This is mandatory. It writes DB records, handles routing, and shows token usage.
 - `unknown_needs_more_evidence`
 - `suspicious_or_invalid`
 
-Slack target rule:
+Slack daily digest target:
 
 ```text
-possible_company_affiliated + confidence_score >= 75 => Slack
-all else => DB/dashboard only
+09:00 Asia/Jakarta every day
+possible_company_affiliated + confidence_score >= 75 => listed as prospect
+empty prospect window => send heartbeat digest
 ```
+
+Slack must not include raw evidence, AI reasoning detail, scraping/search logic, tool traces, or internal scoring breakdown. Slack is for sales/stakeholder handoff only.
 
 ---
 
@@ -178,6 +213,18 @@ curl -X POST http://103.226.139.107:3002/webhook/check \
   }'
 ```
 
+Expected final webhook behavior is queued response, not direct investigation:
+
+```json
+{
+  "ok": true,
+  "queued": true,
+  "intake_job_id": "uuid",
+  "status": "pending",
+  "dashboard_url": "http://103.226.139.107:3001"
+}
+```
+
 Deploy:
 
 ```bash
@@ -191,8 +238,10 @@ bash deploy.sh
 Current next priorities:
 
 1. Telegram E2E validation.
-2. Webhook validation from Komerce platform.
-3. Finalize webhook DB path and Slack smart routing.
-4. Improve `db_writer.js` extraction.
+2. Build webhook PostgreSQL intake queue.
+3. Build sequential worker for queued register payloads.
+4. Build Slack daily prospect digest at 09:00 Asia/Jakarta.
+5. Validate from Komerce platform register flow.
+6. Improve `db_writer.js` extraction.
 
 Avoid broad rewrites. This project already has the core implementation; most near-term work is validation, polish, and operational hardening.
