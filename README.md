@@ -111,6 +111,20 @@ curl -X POST http://103.226.139.107:3002/webhook/check \
   }'
 ```
 
+Process one queued webhook job:
+
+```bash
+cd webhook
+npm run worker:once
+```
+
+Preview Slack daily digest:
+
+```bash
+cd openclaw_workspace
+npm run slack:digest:dry-run
+```
+
 Run Go tests:
 
 ```bash
@@ -143,13 +157,16 @@ bash deploy.sh
 │   │   ├── TRD.md
 │   │   ├── FLOW_MAP.md
 │   │   ├── TOOLS_AND_ALGORITHMS.md
-│   │   └── migration_v1.sql
+│   │   ├── migration_v1.sql
+│   │   └── migration_v2_webhook_slack_queue.sql
 │   └── archive/       ← plan/review/checklist/flow lama
 ├── go-service/
 │   ├── cmd/
 │   └── internal/
 ├── dashboard/
 ├── webhook/
+├── ops/
+│   └── systemd/
 └── openclaw_workspace/
     ├── AGENTS.md
     ├── STANDING_ORDERS.md
@@ -175,7 +192,7 @@ Post-investigation rule:
 scripts/finish_investigation.sh --email <email>
 ```
 
-This finalizer handles evidence saving, DB write, delivery routing, and token usage.
+This finalizer handles evidence saving, DB write, and token usage. Slack delivery is handled by the daily digest flow.
 
 Slack daily digest target:
 

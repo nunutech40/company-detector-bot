@@ -2,6 +2,10 @@
   "name": "company-detection-openclaw-workspace",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "slack:digest": "node scripts/slack_daily_digest.js",
+    "slack:digest:dry-run": "node scripts/slack_daily_digest.js --dry-run"
+  },
   "dependencies": {
     "pg": "^8.21.0"
   }

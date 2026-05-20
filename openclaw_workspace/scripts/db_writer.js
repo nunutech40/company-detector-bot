@@ -36,6 +36,7 @@ const get  = (flag) => {
 const email      = get('--email');
 const fullName   = get('--full-name');
 const brandName  = get('--brand-name');
+const source     = get('--source') || 'telegram';
 
 if (!email) {
   console.error('db_writer: --email is required');
@@ -556,7 +557,7 @@ async function main() {
       fields.domain,
       fields.full_name,
       fields.brand_name,
-      'telegram',
+      source,
       classification,
       confidenceScore,
       confidenceLabel,

@@ -4,9 +4,12 @@
   "description": "Webhook API for Company Detection — receives register events from platform",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "worker": "node worker.js",
+    "worker:once": "node worker.js --once"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pg": "^8.21.0"
   }
 }

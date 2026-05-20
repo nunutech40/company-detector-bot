@@ -25,7 +25,8 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) | Rencana final webhook PostgreSQL queue, sequential worker, dan Slack digest jam 09:00 |
 | [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) | Checklist build, test, deploy, dan dokumentasi closeout untuk fitur webhook + Slack |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
-| [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL aktual |
+| [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL awal: investigation jobs, reports, LLM calls |
+| [Migration v2](technical/migration_v2_webhook_slack_queue.sql) | Schema webhook queue dan Slack daily digest tracking |
 
 ---
 

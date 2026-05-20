@@ -18,22 +18,23 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 
 ### Webhook Queue + Slack Daily Digest
 
-- [ ] Add PostgreSQL migration for:
+- [x] Add PostgreSQL migration for:
   - `register_intake_jobs`
   - `slack_digest_runs`
   - `slack_digest_items`
-- [ ] Change webhook final behavior to enqueue-only.
-- [ ] Return queued response with `intake_job_id`.
-- [ ] Build sequential worker for `register_intake_jobs`.
-- [ ] Ensure worker processes one job at a time.
-- [ ] Link completed queue jobs to `investigation_jobs`.
-- [ ] Build Slack daily digest script.
+- [x] Change webhook final behavior to enqueue-only.
+- [x] Return queued response with `intake_job_id`.
+- [x] Build sequential worker for `register_intake_jobs`.
+- [x] Ensure worker processes one job at a time.
+- [x] Link completed queue jobs to `investigation_jobs`.
+- [x] Build Slack daily digest script.
 - [ ] Send digest every day at 09:00 Asia/Jakarta.
-- [ ] Always send heartbeat when no prospects exist.
-- [ ] Include dashboard home link in every digest.
-- [ ] Include dashboard detail link per prospect.
-- [ ] Hide raw evidence, AI reasoning, search/scrape logic, tool traces, and scoring internals from Slack.
-- [ ] Add dry-run command for digest preview.
+- [x] Always send heartbeat when no prospects exist.
+- [x] Include dashboard home link in every digest.
+- [x] Include dashboard detail link per prospect.
+- [x] Hide raw evidence, AI reasoning, search/scrape logic, tool traces, and scoring internals from Slack.
+- [x] Add dry-run command for digest preview.
+- [x] Add systemd unit/timer templates for worker and digest.
 - [ ] Deploy scheduler via cron/systemd timer or OpenClaw cron.
 
 ### Validation

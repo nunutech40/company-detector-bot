@@ -65,38 +65,9 @@ ARGS=(--email "${EMAIL}" --save)
 echo "finish_investigation: running company_check --save"
 bash "${SCRIPT_DIR}/company_check_go.sh" "${ARGS[@]}" 2>&1 | tail -3
 
-# Step 3: Smart Slack alert routing
-# Kirim ke Slack HANYA kalau: classification = bisnis DAN confidence >= 75
-# Personal/unknown → DB only, tidak spam Slack
-echo "finish_investigation: checking alert routing..."
-LATEST_JSON="${WORKSPACE_DIR}/evidence/latest.json"
-SHOULD_ALERT=false
-
-if [[ -f "${LATEST_JSON}" ]]; then
-  CLASSIFICATION=$(python3 -c "import json,sys; d=json.load(open('${LATEST_JSON}')); print(d.get('classification',''))" 2>/dev/null || echo "")
-  CONFIDENCE=$(python3 -c "import json,sys; d=json.load(open('${LATEST_JSON}')); print(d.get('confidence_score',0))" 2>/dev/null || echo "0")
-
-  # Override dengan hasil AI dari report kalau ada
-  if [[ -f "${WORKSPACE_DIR}/reports/ai_report_latest.txt" ]]; then
-    AI_CONF=$(grep -oP '(?:Confidence|confidence)[:\s]+\K\d+(?=/100)' "${WORKSPACE_DIR}/reports/ai_report_latest.txt" 2>/dev/null | head -1 || echo "")
-    [[ -n "${AI_CONF}" ]] && CONFIDENCE="${AI_CONF}"
-    AI_CLASS=$(grep -iP '(?:bisnis|business|company|BUSINESS)' "${WORKSPACE_DIR}/reports/ai_report_latest.txt" 2>/dev/null | head -1 || echo "")
-    [[ -n "${AI_CLASS}" ]] && CLASSIFICATION="possible_company_affiliated"
-  fi
-
-  if [[ "${CLASSIFICATION}" == "possible_company_affiliated" ]] && [[ "${CONFIDENCE}" -ge 75 ]]; then
-    SHOULD_ALERT=true
-    echo "finish_investigation: alert → Slack (${CLASSIFICATION}, ${CONFIDENCE}/100)"
-  else
-    echo "finish_investigation: skip Slack (${CLASSIFICATION}, ${CONFIDENCE}/100) — DB only"
-  fi
-fi
-
-if [[ "${SHOULD_ALERT}" == "true" ]]; then
-  bash "${SCRIPT_DIR}/deliver_report_with_env.sh"
-fi
-
-echo "finish_investigation: done"
+# Step 3: Slack realtime delivery is intentionally disabled.
+# Slack now uses the daily prospect digest script at 09:00 Asia/Jakarta.
+echo "finish_investigation: Slack realtime delivery disabled — daily digest will read DB later"
 
 # Step 4: Insert ke Postgres
 echo "finish_investigation: writing to database"

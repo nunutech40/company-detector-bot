@@ -211,7 +211,10 @@ Tracks model usage and estimated cost:
 - `cost_usd`
 - previews and timestamp
 
-Schema source: `docs/technical/migration_v1.sql`.
+Schema sources:
+
+- `docs/technical/migration_v1.sql`
+- `docs/technical/migration_v2_webhook_slack_queue.sql`
 
 ### Planned Final-Phase Tables
 

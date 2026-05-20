@@ -86,7 +86,8 @@ for script in \
   deliver_report_with_env.sh \
   finish_investigation.sh \
   token_usage.sh \
-  db_writer.js; do
+  db_writer.js \
+  slack_daily_digest.js; do
   if [[ -f "${REPO_DIR}/openclaw_workspace/scripts/${script}" ]]; then
     scp_file "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
     ssh_cmd "chmod +x ${VPS_WORKSPACE}/scripts/${script}"
@@ -124,6 +125,8 @@ if [[ -f "${REPO_DIR}/webhook/package-lock.json" ]]; then
   scp_file "${REPO_DIR}/webhook/package-lock.json" "/home/nunuopc/.openclaw/webhook/package-lock.json"
 fi
 scp_file "${REPO_DIR}/webhook/app.js" "/home/nunuopc/.openclaw/webhook/app.js"
+scp_file "${REPO_DIR}/webhook/worker.js" "/home/nunuopc/.openclaw/webhook/worker.js"
+ssh_cmd "chmod +x /home/nunuopc/.openclaw/webhook/worker.js"
 ssh_cmd "cd /home/nunuopc/.openclaw/webhook && npm install --omit=dev"
 ssh_cmd "systemctl --user restart company-webhook"
 echo "      ✓ webhook deployed"
@@ -179,7 +182,7 @@ VERIFYEOF
 echo ""
 echo "Delivery contract:"
 echo "  Telegram: AI report (langsung dari AI)"
-echo "  Slack   : AI report via message:sent hook (otomatis) + finish_investigation.sh (backup)"
+echo "  Slack   : daily prospect digest jam 09:00, bukan realtime raw report"
 echo "  Go fallback: TIDAK dikirim ke Slack (hanya untuk debugging lokal)"
 echo "  Standing Orders: aktif via STANDING_ORDERS.md"
 echo ""

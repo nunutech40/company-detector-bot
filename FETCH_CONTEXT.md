@@ -143,7 +143,7 @@ cd openclaw_workspace
 scripts/finish_investigation.sh --email <email>
 ```
 
-This is mandatory. It writes DB records, handles routing, and shows token usage.
+This is mandatory. It writes DB records and shows token usage. Slack delivery is handled separately by the daily digest flow.
 
 ---
 
