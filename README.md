@@ -41,8 +41,9 @@ For humans:
 2. [TRD](docs/technical/TRD.md) — technical source of truth.
 3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
 4. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — plan fitur berikutnya.
-5. [Documentation Index](docs/README.md) — all docs.
-6. [Backlog](BACKLOG.md) — status and next work.
+5. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist build fitur berikutnya.
+6. [Documentation Index](docs/README.md) — all docs.
+7. [Backlog](BACKLOG.md) — status and next work.
 
 For another AI agent:
 

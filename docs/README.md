@@ -6,7 +6,8 @@ Dokumentasi aktif dibuat sederhana:
 2. [TRD](technical/TRD.md) — source of truth teknis.
 3. [Flow Map](technical/FLOW_MAP.md) — satu-satunya flow aktif: sequence bisnis + runtime/orchestrator + finalization.
 4. [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — plan fitur berikutnya.
-5. [Backlog](../BACKLOG.md) — status kerja berikutnya.
+5. [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist eksekusi fitur berikutnya.
+6. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -22,6 +23,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [TRD](technical/TRD.md) | Architecture, services, storage, deployment, security |
 | [Flow Map](technical/FLOW_MAP.md) | Alur detail dari input data akun, orchestra loop, stop branches, finalizer, DB/dashboard |
 | [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) | Rencana final webhook PostgreSQL queue, sequential worker, dan Slack digest jam 09:00 |
+| [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) | Checklist build, test, deploy, dan dokumentasi closeout untuk fitur webhook + Slack |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL aktual |
 
