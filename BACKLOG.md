@@ -3,6 +3,68 @@
 **Project:** AI Company Detection Agent  
 **Last updated:** 20 Mei 2026
 
+Backlog adalah tracker status kerja. Source of truth tetap:
+
+- Product: `docs/product/PRD.md`
+- Technical: `docs/technical/TRD.md`
+- Flow: `docs/technical/FLOW_MAP.md`
+- AI/new chat handoff: `FETCH_CONTEXT.md`
+- Current feature plan: `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md`
+- Current build checklist: `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md`
+
+---
+
+## Now
+
+### Webhook Queue + Slack Daily Digest
+
+- [ ] Add PostgreSQL migration for:
+  - `register_intake_jobs`
+  - `slack_digest_runs`
+  - `slack_digest_items`
+- [ ] Change webhook final behavior to enqueue-only.
+- [ ] Return queued response with `intake_job_id`.
+- [ ] Build sequential worker for `register_intake_jobs`.
+- [ ] Ensure worker processes one job at a time.
+- [ ] Link completed queue jobs to `investigation_jobs`.
+- [ ] Build Slack daily digest script.
+- [ ] Send digest every day at 09:00 Asia/Jakarta.
+- [ ] Always send heartbeat when no prospects exist.
+- [ ] Include dashboard home link in every digest.
+- [ ] Include dashboard detail link per prospect.
+- [ ] Hide raw evidence, AI reasoning, search/scrape logic, tool traces, and scoring internals from Slack.
+- [ ] Add dry-run command for digest preview.
+- [ ] Deploy scheduler via cron/systemd timer or OpenClaw cron.
+
+### Validation
+
+- [ ] Validate Telegram/OpenClaw path still works.
+- [ ] Validate webhook enqueue with sample payload.
+- [ ] Validate worker drains queued payloads sequentially.
+- [ ] Validate dashboard row appears after worker processing.
+- [ ] Validate Slack digest with prospects.
+- [ ] Validate Slack digest empty heartbeat.
+- [ ] Validate Komerce platform register flow.
+
+---
+
+## Next
+
+- [ ] Improve `db_writer.js` extraction for social, marketplace, and role evidence.
+- [ ] Add dashboard visibility for queue status if needed.
+- [ ] Add dashboard authentication before broad exposure.
+- [ ] Add rate limiting if platform traffic increases.
+- [ ] Add richer observability for queue and digest jobs.
+
+---
+
+## Later
+
+- [ ] Paid enrichment/search tools: Firecrawl, Tavily, enrichment APIs.
+- [ ] Google CSE key if needed.
+- [ ] Multi-agent parallel investigation.
+- [ ] Normalize JSONB fields into dedicated analytics tables if dashboard queries require it.
+
 ---
 
 ## Done
@@ -56,66 +118,17 @@
 - [x] `GET /health`.
 - [x] `POST /webhook/check`.
 - [x] Shared secret auth.
-- [x] Runs deterministic Go check.
-- [x] Returns classification, confidence, action, and dashboard URL.
-- [ ] Production DB write path from webhook is finalized.
-- [ ] Komerce register flow validation is done.
+- [x] Deterministic check scaffold exists.
 
 ### Documentation
 
 - [x] PRD updated as product source of truth.
 - [x] TRD updated as technical source of truth.
 - [x] Flow map updated.
-- [x] DB/dashboard docs updated to implemented 3-table schema.
-- [x] Webhook API doc updated.
-- [x] Fetch context file added for future AI agents.
-
----
-
-## Next Priority
-
-### 1. Telegram End-To-End Validation
-
-- [ ] Send `/check contact@komerce.id` from Telegram.
-- [ ] Confirm row appears in dashboard.
-- [ ] Confirm job detail shows AI report.
-- [ ] Confirm LLM cost appears.
-- [ ] Confirm social/marketplace extraction where evidence exists.
-
-### 2. Finalize Webhook Integration With Komerce Platform
-
-- [ ] Share webhook URL and secret through secure channel.
-- [ ] Align webhook evidence path with DB writer path.
-- [ ] Trigger from real/staging register flow.
-- [ ] Confirm JSON response.
-- [ ] Confirm DB/dashboard row.
-- [ ] Confirm timeout behavior is acceptable.
-
-### 3. Finalize Slack Smart Routing
-
-- [ ] Verify current smart routing logic.
-- [ ] Re-enable delivery hook only after DB/testing is stable.
-- [ ] Ensure personal/unknown cases do not send Slack.
-- [ ] Ensure high-confidence business cases do send Slack.
-
-### 4. Improve `db_writer.js` Extraction
-
-- [ ] Better parse marketplace URLs and metrics.
-- [ ] Better parse social profiles and handles.
-- [ ] Better parse role evidence quotes.
-- [ ] Reduce duplicate JSONB entries.
-
----
-
-## Later
-
-- [ ] Dashboard authentication.
-- [ ] Queue/worker for webhook jobs.
-- [ ] Rate limiting and idempotency key.
-- [ ] Paid tools: Firecrawl, Tavily, enrichment APIs.
-- [ ] Google CSE key if needed.
-- [ ] Multi-agent parallel investigation.
-- [ ] Normalize JSONB fields into dedicated analytics tables if dashboard queries require it.
+- [x] Webhook + Slack daily digest plan added.
+- [x] Webhook + Slack building checklist added.
+- [x] `FETCH_CONTEXT.md` updated for future AI agents.
+- [x] `CONTEXT.md` reduced to pointer.
 
 ---
 
@@ -125,7 +138,7 @@
 |---|---:|---|
 | `openclaw-gateway` | 18789 | OpenClaw gateway |
 | `company-dashboard` | 3001 | Dashboard |
-| `company-webhook` | 3002 | Webhook API |
+| `company-webhook` | 3002 | Webhook API scaffold |
 | `postgresql` | 5432 | Database |
 
 ---
@@ -134,11 +147,13 @@
 
 | File | Purpose |
 |---|---|
-| `FETCH_CONTEXT.md` | Fast project context for future AI agents |
+| `FETCH_CONTEXT.md` | Canonical handoff for future AI agents |
 | `docs/product/PRD.md` | Product source of truth |
 | `docs/technical/TRD.md` | Technical source of truth |
 | `docs/technical/FLOW_MAP.md` | Runtime flow |
-| `docs/technical/migration_v1.sql` | PostgreSQL schema |
+| `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` | Current feature plan |
+| `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` | Current build checklist |
+| `docs/technical/migration_v1.sql` | Current PostgreSQL schema |
 | `openclaw_workspace/AGENTS.md` | Agent behavior |
 | `openclaw_workspace/STANDING_ORDERS.md` | Runtime standing orders |
 | `openclaw_workspace/scripts/company_check_go.sh` | Go wrapper |
@@ -157,8 +172,8 @@ Old Node.js investigation scripts have been replaced by Go packages and moved un
 openclaw_workspace/scripts/_legacy/
 ```
 
-The historical Telegram MVP building plan lives in:
+Archived planning docs live in:
 
 ```text
-docs/archive/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md
+docs/archive/
 ```
