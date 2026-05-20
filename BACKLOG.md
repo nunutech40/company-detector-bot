@@ -28,23 +28,23 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [x] Ensure worker processes one job at a time.
 - [x] Link completed queue jobs to `investigation_jobs`.
 - [x] Build Slack daily digest script.
-- [ ] Send digest every day at 09:00 Asia/Jakarta.
+- [x] Configure digest timer for every day at 09:00 Asia/Jakarta.
 - [x] Always send heartbeat when no prospects exist.
 - [x] Include dashboard home link in every digest.
 - [x] Include dashboard detail link per prospect.
 - [x] Hide raw evidence, AI reasoning, search/scrape logic, tool traces, and scoring internals from Slack.
 - [x] Add dry-run command for digest preview.
 - [x] Add systemd unit/timer templates for worker and digest.
-- [ ] Deploy scheduler via cron/systemd timer or OpenClaw cron.
+- [x] Deploy scheduler via systemd timer.
 
 ### Validation
 
 - [ ] Validate Telegram/OpenClaw path still works.
-- [ ] Validate webhook enqueue with sample payload.
-- [ ] Validate worker drains queued payloads sequentially.
-- [ ] Validate dashboard row appears after worker processing.
-- [ ] Validate Slack digest with prospects.
-- [ ] Validate Slack digest empty heartbeat.
+- [x] Validate webhook enqueue with sample payload.
+- [x] Validate worker drains queued payloads sequentially.
+- [x] Validate dashboard row appears after worker processing.
+- [x] Validate Slack digest with prospects in dry-run.
+- [x] Validate Slack digest empty heartbeat in dry-run.
 - [ ] Validate Komerce platform register flow.
 
 ---

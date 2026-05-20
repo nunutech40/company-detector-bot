@@ -83,27 +83,56 @@ async function getDigestWindow(client) {
 
 async function getProspects(client, window) {
   const result = await client.query(`
+    WITH candidates AS (
+      SELECT
+        j.id,
+        j.email,
+        j.full_name,
+        j.brand_name,
+        j.business_name,
+        j.business_website,
+        j.confidence_score,
+        j.finished_at,
+        j.created_at,
+        COALESCE(j.finished_at, j.created_at) AS event_time
+      FROM investigation_jobs j
+      WHERE j.classification = 'possible_company_affiliated'
+        AND COALESCE(j.confidence_score, 0) >= 75
+        AND COALESCE(j.finished_at, j.created_at) >= $1
+        AND COALESCE(j.finished_at, j.created_at) < $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM slack_digest_items i
+          WHERE i.investigation_job_id = j.id
+        )
+    ),
+    deduped AS (
+      SELECT DISTINCT ON (LOWER(email))
+        id,
+        email,
+        full_name,
+        brand_name,
+        business_name,
+        business_website,
+        confidence_score,
+        finished_at,
+        created_at,
+        event_time
+      FROM candidates
+      ORDER BY LOWER(email), COALESCE(confidence_score, 0) DESC, event_time DESC
+    )
     SELECT
-      j.id,
-      j.email,
-      j.full_name,
-      j.brand_name,
-      j.business_name,
-      j.business_website,
-      j.confidence_score,
-      j.finished_at,
-      j.created_at
-    FROM investigation_jobs j
-    WHERE j.classification = 'possible_company_affiliated'
-      AND COALESCE(j.confidence_score, 0) >= 75
-      AND COALESCE(j.finished_at, j.created_at) >= $1
-      AND COALESCE(j.finished_at, j.created_at) < $2
-      AND NOT EXISTS (
-        SELECT 1
-        FROM slack_digest_items i
-        WHERE i.investigation_job_id = j.id
-      )
-    ORDER BY COALESCE(j.confidence_score, 0) DESC, COALESCE(j.finished_at, j.created_at) DESC
+      id,
+      email,
+      full_name,
+      brand_name,
+      business_name,
+      business_website,
+      confidence_score,
+      finished_at,
+      created_at
+    FROM deduped
+    ORDER BY COALESCE(confidence_score, 0) DESC, event_time DESC
     LIMIT 50
   `, [window.start, window.end]);
   return result.rows;

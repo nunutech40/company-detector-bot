@@ -2,7 +2,8 @@
 Description=Run Company Detector Slack prospect digest every day at 09:00
 
 [Timer]
-OnCalendar=*-*-* 09:00:00
+# VPS systemd runs in UTC. 02:00 UTC = 09:00 Asia/Jakarta.
+OnCalendar=*-*-* 02:00:00 UTC
 Persistent=true
 Unit=company-slack-digest.service
 
