@@ -62,7 +62,76 @@ Manual/Telegram input
 
 ---
 
-## 4. End-To-End Flow Dengan Pemisah Area
+## 4. End-To-End Sequence Dengan Pemisah Area
+
+```mermaid
+sequenceDiagram
+  autonumber
+  box Human / Platform Input
+    actor Human as Operator / Manual
+    participant Platform as Future Platform
+  end
+
+  box OpenClaw AI Layer
+    participant AI as OpenClaw Agent
+    participant Orchestra as Investigation Orchestra
+  end
+
+  box Machine / Go Tools
+    participant Go as Go company-check
+    participant Tools as Tools + Scoring
+  end
+
+  box Finalization
+    participant Finalizer as finish_investigation.sh
+    participant Writer as db_writer.js
+  end
+
+  box Storage / Output
+    participant DB as PostgreSQL
+    participant Dashboard as Dashboard
+    participant Slack as Slack
+  end
+
+  Human->>AI: /check atau manual input data akun
+  Note over Human,AI: Minimum email; optional full_name, brand_name, no_hp
+  Platform-->>AI: Future webhook path, final integration pending
+
+  AI->>Orchestra: Start investigation
+  Orchestra->>Go: Run deterministic baseline
+  Go->>Tools: email/domain/crawler/search/scoring
+  Tools-->>Go: evidence + skipped + tool_errors
+  Go-->>Orchestra: baseline classification + confidence
+
+  loop AI reasoning rounds
+    Orchestra->>Orchestra: Evaluate evidence gaps and confidence
+    alt Butuh evidence lagi
+      Orchestra->>Tools: Call selected safe tool
+      Tools-->>Orchestra: new evidence / skipped / error
+      Orchestra->>Orchestra: Re-score deterministically
+    else Confidence cukup / budget habis / no gain
+      Orchestra->>Orchestra: Stop loop
+    end
+  end
+
+  Orchestra-->>AI: Final classification + AI report
+  AI->>Finalizer: Run finalization
+  Finalizer->>Writer: Insert result
+  Writer->>DB: jobs + reports + llm_calls
+  DB-->>Dashboard: Job visible for review
+
+  alt Business high-confidence and Slack finalized
+    Finalizer->>Slack: Send alert
+  else Personal / unknown / Slack pending
+    Finalizer->>DB: DB only
+  end
+```
+
+---
+
+## 5. Area Map Tambahan
+
+Diagram ini cuma peta ringkas area. Sequence utama tetap ada di section 4.
 
 ```mermaid
 flowchart TB
@@ -118,7 +187,7 @@ flowchart TB
 
 ---
 
-## 5. Sequence 1 — Input Masuk
+## 6. Sequence Detail — Input Masuk
 
 ```mermaid
 sequenceDiagram
@@ -165,7 +234,7 @@ company-check --input-json '{"email":"user@gmail.com","full_name":"Nama User","b
 
 ---
 
-## 6. Sequence 2 — Baseline Go Check
+## 7. Sequence Detail — Baseline Go Check
 
 ```mermaid
 sequenceDiagram
@@ -208,7 +277,7 @@ Main Go components:
 
 ---
 
-## 7. Sequence 3 — AI / Orchestra Loop
+## 8. Sequence Detail — AI / Orchestra Loop
 
 ```mermaid
 sequenceDiagram
@@ -253,7 +322,7 @@ Rules:
 
 ---
 
-## 8. Sequence 4 — Finalization, DB, Dashboard
+## 9. Sequence Detail — Finalization, DB, Dashboard
 
 ```mermaid
 sequenceDiagram
@@ -299,7 +368,7 @@ scripts/finish_investigation.sh --email <email>
 
 ---
 
-## 9. Storage Map
+## 10. Storage Map
 
 ```text
 File evidence/report
@@ -323,7 +392,7 @@ PostgreSQL adalah source of truth operasional. File evidence tetap dipakai untuk
 
 ---
 
-## 10. Webhook Path Status
+## 11. Webhook Path Status
 
 Webhook adalah jalur final integration, bukan jalur persistence utama yang sudah divalidasi.
 
@@ -357,7 +426,7 @@ sequenceDiagram
 
 ---
 
-## 11. Classification Outputs
+## 12. Classification Outputs
 
 | Classification | Meaning |
 |---|---|
@@ -368,7 +437,7 @@ sequenceDiagram
 
 ---
 
-## 12. Current Status
+## 13. Current Status
 
 Validated:
 
@@ -384,4 +453,3 @@ Final integration pending:
 - Webhook DB persistence path.
 - Slack high-confidence routing.
 - Platform register validation.
-
