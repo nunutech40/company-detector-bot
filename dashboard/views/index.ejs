@@ -1,0 +1,158 @@
+<%
+const html = `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div class="page-title" style="margin:0">Investigasi</div>
+  <div style="color:#64748b;font-size:13px">${total} hasil</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat-card"><div class="num">${stats.total}</div><div class="lbl">Total</div></div>
+  <div class="stat-card"><div class="num" style="color:#34d399">${stats.company}</div><div class="lbl">Bisnis</div></div>
+  <div class="stat-card"><div class="num" style="color:#94a3b8">${stats.personal}</div><div class="lbl">Personal</div></div>
+  <div class="stat-card"><div class="num" style="color:#fbbf24">${stats.unknown}</div><div class="lbl">Unknown</div></div>
+  <div class="stat-card"><div class="num" style="color:#f87171">${stats.suspicious}</div><div class="lbl">Suspicious</div></div>
+  <div class="stat-card"><div class="num">${stats.avg_confidence || 0}</div><div class="lbl">Avg Confidence</div></div>
+</div>
+
+<!-- Filters — compact single row -->
+<form method="get" action="/" style="margin-bottom:16px">
+<div style="background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+  <select name="classification" style="background:#0f1117;border:1px solid #2d3148;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:13px">
+    <option value="">Semua klasifikasi</option>
+    <option value="possible_company_affiliated" ${query.classification === 'possible_company_affiliated' ? 'selected' : ''}>✅ Bisnis</option>
+    <option value="likely_personal_email" ${query.classification === 'likely_personal_email' ? 'selected' : ''}>👤 Personal</option>
+    <option value="unknown_needs_more_evidence" ${query.classification === 'unknown_needs_more_evidence' ? 'selected' : ''}>❓ Unknown</option>
+    <option value="suspicious_or_invalid" ${query.classification === 'suspicious_or_invalid' ? 'selected' : ''}>⚠️ Suspicious</option>
+  </select>
+
+  <select name="review_status" style="background:#0f1117;border:1px solid #2d3148;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:13px">
+    <option value="">Semua status</option>
+    <option value="unreviewed" ${query.review_status === 'unreviewed' ? 'selected' : ''}>Belum direview</option>
+    <option value="reviewed" ${query.review_status === 'reviewed' ? 'selected' : ''}>Reviewed</option>
+    <option value="high_value" ${query.review_status === 'high_value' ? 'selected' : ''}>⭐ High Value</option>
+    <option value="false_positive" ${query.review_status === 'false_positive' ? 'selected' : ''}>❌ False Positive</option>
+    <option value="needs_retry" ${query.review_status === 'needs_retry' ? 'selected' : ''}>🔄 Needs Retry</option>
+  </select>
+
+  <div style="display:flex;align-items:center;gap:6px">
+    <span style="color:#64748b;font-size:12px">Confidence</span>
+    <select name="confidence_preset" style="background:#0f1117;border:1px solid #2d3148;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:13px">
+      <option value="">Semua</option>
+      <option value="high" ${query.confidence_preset === 'high' ? 'selected' : ''}>🟢 Tinggi (75–100)</option>
+      <option value="medium" ${query.confidence_preset === 'medium' ? 'selected' : ''}>🟡 Sedang (45–74)</option>
+      <option value="low" ${query.confidence_preset === 'low' ? 'selected' : ''}>🔴 Rendah (0–44)</option>
+    </select>
+  </div>
+
+  <input type="text" name="search" value="${query.search || ''}" placeholder="🔍 Cari email, bisnis, nama..." style="background:#0f1117;border:1px solid #2d3148;color:#e2e8f0;padding:6px 12px;border-radius:6px;font-size:13px;flex:1;min-width:200px">
+
+  <button type="submit" style="background:#3b82f6;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap">Filter</button>
+  <a href="/" style="color:#64748b;font-size:13px;white-space:nowrap">Reset</a>
+</div>
+</form>
+`;
+%>
+<%- html %>
+
+<% if (jobs.length === 0) { %>
+<div class="empty"><div class="icon">🔍</div><div>Belum ada data investigasi</div></div>
+<% } else { %>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Waktu</th>
+      <th>Email</th>
+      <th>Bisnis / Person</th>
+      <th>Klasifikasi</th>
+      <th>Confidence</th>
+      <th>Marketplace</th>
+      <th>Sosmed</th>
+      <th>LLM</th>
+      <th>Review</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  <% for (const job of jobs) { %>
+  <%
+    const ci = classInfo(job.classification);
+    const confClass = job.confidence_score >= 75 ? 'conf-high' : job.confidence_score >= 45 ? 'conf-medium' : 'conf-low';
+    const mkt = Array.isArray(job.marketplace_json) ? job.marketplace_json : [];
+    const soc = Array.isArray(job.social_media_json) ? job.social_media_json : [];
+    const dt  = job.finished_at ? new Date(job.finished_at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const reviewColors = {unreviewed:'gray',reviewed:'blue',high_value:'green',false_positive:'red',needs_retry:'yellow'};
+    const reviewColor = reviewColors[job.review_status] || 'gray';
+  %>
+  <tr>
+    <td style="color:#64748b;font-size:12px;white-space:nowrap"><%= dt %></td>
+    <td style="font-size:13px"><%= job.email %></td>
+    <td>
+      <% if (job.business_name) { %><div style="font-weight:600;color:#fff;font-size:13px"><%= job.business_name %></div><% } %>
+      <% if (job.person_name) { %><div style="color:#94a3b8;font-size:12px"><%= job.person_name %><% if (job.person_role) { %> · <span style="color:#60a5fa"><%= job.person_role %></span><% } %></div><% } %>
+      <% if (job.business_city) { %><div style="color:#64748b;font-size:11px">📍 <%= job.business_city %></div><% } %>
+      <% if (!job.business_name && !job.person_name) { %><span style="color:#2d3148;font-size:12px">—</span><% } %>
+    </td>
+    <td><span class="badge badge-<%= ci.color %>"><%= ci.label %></span></td>
+    <td>
+      <div class="conf-bar">
+        <div class="conf-bar-bg"><div class="conf-bar-fill <%= confClass %>" style="width:<%= job.confidence_score || 0 %>%"></div></div>
+        <span style="font-size:12px;color:#94a3b8"><%= job.confidence_score || 0 %></span>
+      </div>
+    </td>
+    <td>
+      <div class="platforms">
+        <% for (const m of mkt) { %>
+          <% if (m.url) { %>
+            <a href="<%= m.url %>" target="_blank" class="platform-tag" style="color:#60a5fa;text-decoration:none" title="<%= m.url %>"><%= m.platform %> ↗</a>
+          <% } else { %>
+            <span class="platform-tag"><%= m.platform %></span>
+          <% } %>
+        <% } %>
+        <% if (!mkt.length) { %><span style="color:#2d3148">—</span><% } %>
+      </div>
+    </td>
+    <td>
+      <div class="platforms">
+        <% for (const s of soc.slice(0,4)) { %>
+          <% if (s.url) { %>
+            <a href="<%= s.url %>" target="_blank" class="platform-tag" style="color:#94a3b8;text-decoration:none" title="<%= s.url %>"><%= s.platform %> ↗</a>
+          <% } else { %>
+            <span class="platform-tag"><%= s.platform %></span>
+          <% } %>
+        <% } %>
+        <% if (soc.length > 4) { %><span class="platform-tag" title="<%= soc.slice(4).map(s=>s.platform).join(', ') %>">+<%= soc.length - 4 %></span><% } %>
+        <% if (!soc.length) { %><span style="color:#2d3148">—</span><% } %>
+      </div>
+    </td>
+    <td style="font-size:11px;color:#64748b">
+      <% if (job.model_name) { %><span style="color:#94a3b8"><%= job.model_name.replace('qwen3.6-','q').replace('deepseek-chat','ds') %></span><br><% } %>
+      <% if (job.total_tokens) { %><%= (job.total_tokens/1000).toFixed(1) %>k tok<br><% } %>
+      <% if (job.cost_usd) { %><span style="color:#34d399">$<%= parseFloat(job.cost_usd).toFixed(4) %></span><% } %>
+    </td>
+    <td><span class="badge badge-<%= reviewColor %>" style="white-space:nowrap"><%= job.review_status.replace(/_/g,' ') %></span></td>
+    <td>
+      <a href="/jobs/<%= job.id %>" style="display:inline-block;padding:5px 14px;background:#3b82f6;color:#fff;border-radius:6px;font-size:12px;white-space:nowrap;font-weight:500">Detail →</a>
+    </td>
+  </tr>
+  <% } %>
+  </tbody>
+</table>
+</div>
+
+<!-- Pagination -->
+<% if (totalPages > 1) { %>
+<div class="pagination">
+  <% if (page > 1) { %><a href="?<%= new URLSearchParams({...query, page: page-1}).toString() %>">← Prev</a><% } %>
+  <% for (let p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) { %>
+    <% if (p === page) { %><span class="current"><%= p %></span>
+    <% } else { %><a href="?<%= new URLSearchParams({...query, page: p}).toString() %>"><%= p %></a><% } %>
+  <% } %>
+  <% if (page < totalPages) { %><a href="?<%= new URLSearchParams({...query, page: page+1}).toString() %>">Next →</a><% } %>
+  <span style="color:#64748b;font-size:12px"><%= total %> total</span>
+</div>
+<% } %>
+
+<% } %>

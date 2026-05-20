@@ -3,3 +3,4 @@ evidence/
 reports/
 .env
 .DS_Store
+node_modules/

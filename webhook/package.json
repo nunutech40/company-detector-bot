@@ -1,0 +1,12 @@
+{
+  "name": "company-detection-webhook",
+  "version": "1.0.0",
+  "description": "Webhook API for Company Detection — receives register events from platform",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

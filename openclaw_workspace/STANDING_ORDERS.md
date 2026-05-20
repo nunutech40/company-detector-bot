@@ -26,7 +26,7 @@ AI wajib mengikutinya tanpa perlu diingatkan.
 3. Verifikasi: pastikan selesai tanpa error
 4. Tambahkan token usage di akhir report: `bash scripts/token_usage.sh`
 
-> **Note:** Slack delivery dimatikan sementara untuk testing. Fokus di Telegram.
+> **Note:** Slack delivery sekarang otomatis dengan smart routing — bisnis confidence >= 75 → kirim Slack, personal/unknown → DB only. Tidak perlu setting manual.
 
 ### Execute-Verify-Report
 
@@ -59,10 +59,15 @@ Setiap task harus:
 ### Execution steps
 
 1. Jalankan `bash scripts/token_usage.sh`
-2. Tampilkan di akhir reply ke user dalam format:
+2. Tampilkan output-nya langsung di akhir reply ke user — format sudah dinamis dari script.
+   Script otomatis baca model aktif dari `openclaw.json`, jadi kalau model diganti, output ikut berubah.
+   Contoh output (isi sesuai model yang benar-benar dipakai):
    ```
    ───
-   LLM   : [model]
-   Token : [input] input + [output] output = [total] total
-   Biaya : ~$[estimasi USD]
+   LLM      : deepseek/deepseek-chat [ACTIVE]
+   Token    : 12,450 input + 3,210 output = 15,660 total
+   Context  : 15,660 / 65,536 (23.9% used)
+   Biaya    : ~$0.0069 USD  (input $0.0034 + output $0.0035)
+   ──────────────────────────────────────────────────
    ```
+   Kalau ada model lain yang juga dipakai di session yang sama, script akan tampilkan semua — model primary duluan dengan label `[ACTIVE]`.

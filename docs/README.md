@@ -1,88 +1,74 @@
 # Documentation Index
 
-Dokumentasi project ini dibagi supaya gampang dibaca dan gampang diubah. Root `README.md` hanya pintu masuk. Detail produk, teknis, operasi, dan review disimpan di folder masing-masing.
+Root `README.md` is the entry point. The canonical project direction lives in `PRD.md` and `TRD.md`.
 
-## Cara Baca Paling Enak
+For AI agents continuing the work, read [FETCH_CONTEXT.md](../FETCH_CONTEXT.md) first.
 
-Untuk paham project dari nol:
+---
 
-1. [High Level Business Flow](product/HIGH_LEVEL_BUSINESS_FLOW.md)
-   Mulai dari sini. Gambaran besar: input dari mana, dua layer arsitektur (deterministik + AI), output akhirnya apa.
+## Primary Docs
 
-2. [Flow Map](technical/FLOW_MAP.md)
-   Baca setelah paham gambar besar. Ini menjelaskan arsitektur dua layer secara detail: kapan deterministik, kapan AI, bagaimana fallback bekerja, dan roadmap Phase A–E.
+| Doc | Purpose |
+|---|---|
+| [PRD](product/PRD.md) | Product source of truth: goals, classifications, product workflow, roadmap |
+| [TRD](technical/TRD.md) | Technical source of truth: architecture, storage, services, deployment |
+| [Flow Map](technical/FLOW_MAP.md) | Runtime flow and decision points |
+| [Backlog](../BACKLOG.md) | Implementation status and next work |
 
-3. [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
-   Baca kalau mau tahu tool/algoritma mana melakukan apa, dan mana yang bisa dipanggil AI vs yang selalu deterministik.
-
-4. [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
-   Baca kalau mau tahu project sudah sampai mana, gap yang masih ada, dan next priority.
-
-5. [Backlog](../BACKLOG.md)
-   Baca kalau mau menentukan kerja berikutnya.
+---
 
 ## Product Docs
 
-- [High Level Business Flow](product/HIGH_LEVEL_BUSINESS_FLOW.md)
-  Peta bisnis/logika utama current MVP vs Level 2. Berisi 2 flowchart dan 2 sequence diagram.
+| Doc | Status | Notes |
+|---|---|---|
+| [High Level Business Flow](product/HIGH_LEVEL_BUSINESS_FLOW.md) | Current | Business-readable flow |
+| [PRD](product/PRD.md) | Current | Product source of truth |
+| [Product Workflow And Storage Plan](product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md) | Current summary | Storage workflow after implementation |
+| [Next Level Enrichment Plan](product/NEXT_LEVEL_ENRICHMENT_PLAN.md) | Future plan | Enrichment ideas not fully implemented |
 
-- [PRD](product/PRD.md)
-  Product requirement: masalah, goal, classification model, scoring rubric, report expectation, dan contoh skenario.
-
-- [Next Level Enrichment Plan](product/NEXT_LEVEL_ENRICHMENT_PLAN.md)
-  Rencana email-first enrichment: company profile, social footprint, dan personal-to-business discovery.
-
-- [Product Workflow and Storage Plan](product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md)
-  Rencana Postgres, Slack alert, dashboard, dan lifecycle data setelah MVP.
+---
 
 ## Technical Docs
 
-- [TRD](technical/TRD.md)
-  Target architecture teknis: arsitektur dua layer (deterministik + AI reasoning loop), tool catalog, Postgres, deployment, security, observability, roadmap Phase A–E.
+| Doc | Status | Notes |
+|---|---|---|
+| [TRD](technical/TRD.md) | Current | Technical source of truth |
+| [Flow Map](technical/FLOW_MAP.md) | Current | Runtime flow |
+| [DB And Dashboard](technical/DB_AND_DASHBOARD_PLAN.md) | Current | Actual 3-table schema and dashboard |
+| [Webhook API](technical/WEBHOOK_API.md) | Current | `POST /webhook/check` |
+| [Migration v1](technical/migration_v1.sql) | Current | PostgreSQL schema |
+| [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Reference | Tool/algorithm notes |
 
-- [Flow Map](technical/FLOW_MAP.md)
-  Arsitektur dua layer: deterministik sebagai fondasi + AI reasoning loop sebagai primary mode. Kapan pakai masing-masing, bagaimana fallback bekerja, roadmap Phase A–E.
+---
 
-- [Tools and Algorithms Reference](technical/TOOLS_AND_ALGORITHMS.md)
-  Kamus tool/script, algoritma, scoring behavior, config, dan change impact map.
+## Runtime Docs
 
-- [Go Transition Plan](technical/GO_TRANSITION_PLAN.md) ⚠️ ARCHIVED
-  Rencana transisi dari Node.js ke Go — sudah selesai. Disimpan sebagai referensi historis.
+| Doc | Purpose |
+|---|---|
+| [AGENTS.md](../openclaw_workspace/AGENTS.md) | OpenClaw agent behavior |
+| [STANDING_ORDERS.md](../openclaw_workspace/STANDING_ORDERS.md) | Persistent runtime instructions |
+| [TOOLS.md](../openclaw_workspace/TOOLS.md) | Runtime tool notes |
+| [tool_catalog.yaml](../openclaw_workspace/config/tool_catalog.yaml) | Enabled/disabled tool registry |
+| [scoring_rules.yaml](../openclaw_workspace/config/scoring_rules.yaml) | Scoring thresholds and rules |
 
-- [Go Transition Execution Checklist](technical/GO_TRANSITION_CHECKLIST.md) ⚠️ ARCHIVED
-  Checklist granular transisi Go — sudah selesai. Disimpan sebagai referensi historis.
+---
 
-## Operations Docs
+## Archived Or Historical
 
-- [Building Plan OpenClaw Telegram MVP](operations/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md) ⚠️ ARCHIVED
-  Catatan build awal dari VPS setup sampai Telegram MVP — sudah selesai. Disimpan sebagai referensi historis.
+| Doc | Notes |
+|---|---|
+| [Building Plan OpenClaw Telegram MVP](archive/BUILDING_PLAN_OPENCLAW_TELEGRAM_MVP.md) | Historical MVP build plan |
+| [Go Transition Plan](archive/GO_TRANSITION_PLAN.md) | Historical Node.js to Go transition |
+| [Go Transition Checklist](archive/GO_TRANSITION_CHECKLIST.md) | Historical checklist |
+| [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md) | Older review; use backlog for current status |
 
-## Reviews
+---
 
-- [Project Implementation Review](reviews/PROJECT_IMPLEMENTATION_REVIEW.md)
-  Review status implementasi terhadap PRD, TRD, building plan, next-level enrichment, dan storage/dashboard plan.
+## Maintenance Rule
 
-## Runtime Docs In OpenClaw Workspace
+- Update `PRD.md` for product direction.
+- Update `TRD.md` for technical architecture.
+- Update `FLOW_MAP.md` when runtime flow changes.
+- Update `BACKLOG.md` when status changes.
+- Keep planning docs short once implementation is done.
 
-- [OpenClaw Agent Prompt](../openclaw_workspace/AGENTS.md)
-  Behavior contract yang dipakai agent Telegram.
-
-- [Tool Notes](../openclaw_workspace/TOOLS.md)
-  Status runtime tool, availability, dan operational rules.
-
-- [Tool Catalog](../openclaw_workspace/config/tool_catalog.yaml)
-  Registry tools yang enabled/disabled/optional.
-
-- [Scoring Rules](../openclaw_workspace/config/scoring_rules.yaml)
-  Catatan classification dan evidence weighting.
-
-## Apa Yang Redundant Dan Sudah Dipisah
-
-- Gambar besar bisnis/logika utama ada di `product/HIGH_LEVEL_BUSINESS_FLOW.md`.
-- Detail runtime dan branching ada di `technical/FLOW_MAP.md`.
-- Detail algoritma/script ada di `technical/TOOLS_AND_ALGORITHMS.md`.
-- Rencana masa depan produk ada di `product/NEXT_LEVEL_ENRICHMENT_PLAN.md`.
-- Rencana storage/Slack/dashboard ada di `product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md`.
-- Status gap terhadap plan ada di `reviews/PROJECT_IMPLEMENTATION_REVIEW.md`.
-
-Kalau ada feature baru, update dokumen sesuai rumahnya. Jangan menaruh semua hal baru di README.

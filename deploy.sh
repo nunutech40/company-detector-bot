@@ -74,6 +74,10 @@ echo "      ✓ hooks deployed"
 
 # 4. Deploy scripts
 echo "[4/5] Deploying scripts..."
+scp_file "${REPO_DIR}/openclaw_workspace/package.json" "${VPS_WORKSPACE}/package.json"
+if [[ -f "${REPO_DIR}/openclaw_workspace/package-lock.json" ]]; then
+  scp_file "${REPO_DIR}/openclaw_workspace/package-lock.json" "${VPS_WORKSPACE}/package-lock.json"
+fi
 for script in \
   company_check_go.sh \
   tool_status_go.sh \
@@ -81,19 +85,48 @@ for script in \
   deliver_report.sh \
   deliver_report_with_env.sh \
   finish_investigation.sh \
-  token_usage.sh; do
+  token_usage.sh \
+  db_writer.js; do
   if [[ -f "${REPO_DIR}/openclaw_workspace/scripts/${script}" ]]; then
     scp_file "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
     ssh_cmd "chmod +x ${VPS_WORKSPACE}/scripts/${script}"
     echo "      ✓ ${script}"
   fi
 done
+ssh_cmd "cd ${VPS_WORKSPACE} && npm install --omit=dev"
+echo "      ✓ workspace npm dependencies"
 
 # 5. Restart gateway
 echo "[5/5] Restarting OpenClaw gateway..."
 ssh_cmd "systemctl --user restart openclaw-gateway"
 sleep 5
 ssh_cmd "/home/nunuopc/.npm-global/bin/openclaw status 2>&1 | grep -E 'Gateway|reachable' | head -2"
+
+# 5b. Deploy dashboard
+echo "[5b] Deploying dashboard..."
+scp_file "${REPO_DIR}/dashboard/package.json" "/home/nunuopc/.openclaw/dashboard/package.json"
+if [[ -f "${REPO_DIR}/dashboard/package-lock.json" ]]; then
+  scp_file "${REPO_DIR}/dashboard/package-lock.json" "/home/nunuopc/.openclaw/dashboard/package-lock.json"
+fi
+scp_file "${REPO_DIR}/dashboard/app.js" "/home/nunuopc/.openclaw/dashboard/app.js"
+scp_file "${REPO_DIR}/dashboard/views/layout.ejs" "/home/nunuopc/.openclaw/dashboard/views/layout.ejs"
+scp_file "${REPO_DIR}/dashboard/views/index.ejs" "/home/nunuopc/.openclaw/dashboard/views/index.ejs"
+scp_file "${REPO_DIR}/dashboard/views/job_detail.ejs" "/home/nunuopc/.openclaw/dashboard/views/job_detail.ejs"
+scp_file "${REPO_DIR}/dashboard/views/search.ejs" "/home/nunuopc/.openclaw/dashboard/views/search.ejs"
+ssh_cmd "cd /home/nunuopc/.openclaw/dashboard && npm install --omit=dev"
+ssh_cmd "systemctl --user restart company-dashboard"
+echo "      ✓ dashboard deployed"
+
+# 5c. Deploy webhook
+echo "[5c] Deploying webhook..."
+scp_file "${REPO_DIR}/webhook/package.json" "/home/nunuopc/.openclaw/webhook/package.json"
+if [[ -f "${REPO_DIR}/webhook/package-lock.json" ]]; then
+  scp_file "${REPO_DIR}/webhook/package-lock.json" "/home/nunuopc/.openclaw/webhook/package-lock.json"
+fi
+scp_file "${REPO_DIR}/webhook/app.js" "/home/nunuopc/.openclaw/webhook/app.js"
+ssh_cmd "cd /home/nunuopc/.openclaw/webhook && npm install --omit=dev"
+ssh_cmd "systemctl --user restart company-webhook"
+echo "      ✓ webhook deployed"
 echo ""
 echo "=== Deploy complete ==="
 echo ""

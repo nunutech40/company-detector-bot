@@ -8,6 +8,15 @@ GO_SERVICE_DIR="${REPO_DIR}/go-service"
 BINARY="${GO_SERVICE_DIR}/bin/tool-status"
 export GOCACHE="${GOCACHE:-/private/tmp/company-detector-go-cache}"
 
+# Load env vars dari gateway.systemd.env supaya key checks akurat
+ENV_FILE="/home/nunuopc/.openclaw/gateway.systemd.env"
+if [[ -f "${ENV_FILE}" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+fi
+
 if [[ -x "${BINARY}" ]]; then
   cd "${GO_SERVICE_DIR}"
   exec "${BINARY}" --catalog "${WORKSPACE_DIR}/config/tool_catalog.yaml" "$@"

@@ -83,7 +83,7 @@ bash scripts/finish_investigation.sh \
   --email <email> [--full-name "..."] [--no-hp "..."] [--brand-name "<brand_ditemukan>"] \
   --report "<report lengkap>"
 ```
-Ini yang save evidence. Slack delivery dimatikan sementara — fokus testing di Telegram.
+Ini yang save evidence + insert DB + smart Slack routing (bisnis >= 75 → Slack, personal → DB only).
 
 **4. Di akhir investigasi — normalize semua temuan ke JSON:**
 Sebelum jalankan finish_investigation.sh, pakai llm-task untuk normalize semua yang ditemukan:

@@ -1,429 +1,401 @@
-**Technical Requirements Document (TRD)**
+# Technical Requirements Document
 
-**AI Company Detection Agent berbasis OpenClaw**
+**Project:** AI Company Detection Agent  
+**Version:** v7  
+**Status:** Active technical source of truth  
+**Last updated:** 20 Mei 2026
 
-Versi: 1.0 | Status: Draft Teknis | Bahasa: Indonesia  
-Disusun untuk kebutuhan implementasi perusahaan berdasarkan PRD Deteksi Perusahaan v6
+---
 
-*Tujuan teknis: membangun Agentic Company Detector — sistem yang menggunakan AI reasoning loop untuk menginvestigasi data register, dengan tool catalog yang kaya (deterministik + network tools) sebagai action surface, scoring deterministik sebagai ground truth, dan deterministik pipeline sebagai fallback mode ketika AI tidak tersedia.*
+## 1. System Overview
 
-# Arsitektur Dua Layer
+AI Company Detection Agent is a hybrid deterministic + agentic investigation system.
 
-Sistem ini dibangun di atas dua layer yang bekerja bersama:
+Primary responsibilities:
 
+- Accept investigation input from Telegram, webhook, or manual CLI.
+- Run deterministic checks in Go.
+- Allow OpenClaw AI to reason over evidence and call tools when deeper investigation is needed.
+- Produce deterministic classification and confidence score.
+- Persist evidence to files and PostgreSQL.
+- Expose operator dashboard and platform webhook API.
+
+---
+
+## 2. Runtime Architecture
+
+```text
+Telegram / Webhook / Manual CLI
+        |
+        v
+OpenClaw workspace + Go binary
+        |
+        v
+company_check_go.sh
+        |
+        v
+go-service/cmd/company-check
+        |
+        +--> emailintel
+        +--> domaincheck
+        +--> crawler
+        +--> search cascade
+        +--> scraper
+        +--> brandhint / sociallinks / rolesignal
+        +--> scoring
+        +--> evidence/report
+        |
+        v
+finish_investigation.sh
+        |
+        +--> db_writer.js --> PostgreSQL
+        +--> smart Slack routing
+        +--> token_usage.sh
+        |
+        v
+Dashboard / Telegram / Slack
 ```
-Layer 1 — Deterministik (Go packages):
-  emailintel, domain_checker, crawler, query_builder,
-  search adapters, scraper, scoring_engine, report, evidence_store
-  → Cepat, predictable, auditable
-  → Juga berfungsi sebagai fallback mode ketika AI tidak tersedia
 
-Layer 2 — AI Reasoning Loop (OpenClaw Agent):
-  Observe → Orient → Decide → Act → loop
-  → AI pilih tool dari catalog berdasarkan hipotesis
-  → Kalau tool gagal → cari alternatif
-  → Loop sampai confidence cukup atau budget habis
-  → Scoring dan classification tetap deterministik
+AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
+
+---
+
+## 3. Repositories And Main Paths
+
+| Path | Responsibility |
+|---|---|
+| `go-service/` | Deterministic Go CLI and packages |
+| `openclaw_workspace/` | Agent prompt, standing orders, tool catalog, runtime scripts |
+| `dashboard/` | Express + EJS internal dashboard |
+| `webhook/` | Express webhook API |
+| `docs/technical/migration_v1.sql` | PostgreSQL schema |
+| `docs/` | Product and technical documentation |
+
+---
+
+## 4. Go Service Components
+
+| Component | Responsibility |
+|---|---|
+| `cmd/company-check` | Main CLI |
+| `cmd/last-report` | Read latest saved report |
+| `cmd/tool-status` | Tool status command |
+| `internal/emailintel` | Email parsing and heuristics |
+| `internal/domaincheck` | DNS/MX/website checks |
+| `internal/crawler` | Lightweight website crawler |
+| `internal/search` | Search provider cascade |
+| `internal/scraper` | Page fetch/extraction |
+| `internal/scoring` | Deterministic scoring/classification |
+| `internal/report` | Report formatting |
+| `internal/evidence` | Evidence JSON storage |
+| `internal/slack` | Slack delivery helper |
+| `internal/brandhint` | Brand/local-part analysis |
+| `internal/sociallinks` | Social link extraction |
+| `internal/rolesignal` | Owner/founder/CEO role signals |
+
+CLI input contract:
+
+```text
+--email        required
+--full-name    optional
+--no-hp        optional, confirmation only
+--brand-name   optional
+--json         optional JSON output
+--save         save evidence/report
 ```
 
-Aturan penting:
-- AI collect evidence, scoring dan classification **selalu** deterministik
-- AI tidak boleh mengarang evidence — semua klaim harus dari tool output
-- Kalau AI tidak tersedia → deterministik pipeline jalan sebagai fallback
-- Report harus menunjukkan reasoning AI: kenapa pilih tool ini, hasilnya apa, hipotesis berubah ke mana
+---
 
-# Daftar Isi
+## 5. OpenClaw Runtime
 
-- 1\. Ringkasan Teknis
+| File | Responsibility |
+|---|---|
+| `openclaw_workspace/AGENTS.md` | Investigation policy and agent behavior |
+| `openclaw_workspace/STANDING_ORDERS.md` | Persistent session instructions |
+| `openclaw_workspace/TOOLS.md` | Runtime tool notes |
+| `openclaw_workspace/config/tool_catalog.yaml` | Tool availability/cost tiers |
+| `openclaw_workspace/config/scoring_rules.yaml` | Scoring and classification notes |
 
-- 2\. Scope dan Non-Scope
+AI rules:
 
-- 3\. Prinsip Arsitektur
+- Do not invent evidence.
+- Do not use failed tools as negative evidence.
+- Respect max rounds/tool budget.
+- Deterministic scoring is source of truth.
+- Always finalize with `finish_investigation.sh`.
 
-- 4\. Target Architecture
+---
 
-- 5\. Komponen Sistem
+## 6. Storage Model
 
-- 6\. OpenClaw Tools & Provider Plan
+The system stores results in both file evidence and PostgreSQL.
 
-- 7\. Multi-Agent Design
+### File Storage
 
-- 8\. Data Model dan Evidence Store
+Used for audit/debug and compatibility with the original MVP.
 
-- 9\. API Contract dan Job Lifecycle
+```text
+openclaw_workspace/evidence/*.json
+openclaw_workspace/evidence/latest.json
+openclaw_workspace/reports/ai_report_latest.txt
+```
 
-- 10\. Deployment Docker
+### PostgreSQL
 
-- 11\. Security, Privacy, dan Compliance Guardrails
+Database: `company_detection` on PostgreSQL 16.
 
-- 12\. Observability dan Operasional
+Current MVP schema intentionally uses 3 tables instead of the older 7/8-table plan.
 
-- 13\. Roadmap Implementasi
+#### `investigation_jobs`
 
-- 14\. Risiko Teknis dan Mitigasi
+One row per investigation.
 
-- 15\. Referensi Teknis
+Key fields:
 
-# 1. Ringkasan Teknis
+- Identity: `id`, `email`, `domain`, `full_name`, `brand_name`, `source`
+- Classification: `classification`, `confidence_score`, `confidence_label`, `automation_action`, `review_status`
+- Business/person: `business_name`, `business_industry`, `business_website`, `business_city`, `business_address`, `person_name`, `person_role`, `phone_confirmed`
+- JSONB findings: `marketplace_json`, `social_media_json`, `role_evidence_json`
+- Timestamps: `started_at`, `finished_at`, `created_at`
 
-Dokumen ini menerjemahkan PRD Deteksi Perusahaan menjadi kebutuhan teknis implementasi. Sistem yang dibangun adalah AI Company Detection Agent: sebuah agent berbasis OpenClaw yang menerima data register, membentuk hipotesis awal, memilih tools investigasi secara fleksibel, mengumpulkan bukti, menghitung confidence, lalu mengirim laporan ke Slack dalam gaya naratif asisten kerja.
+#### `final_reports`
 
-OpenClaw digunakan sebagai orchestration layer karena tools di OpenClaw memang berfungsi sebagai typed functions yang dapat dipanggil agent, misalnya exec, browser, web_search, web_fetch, x_search, message, code_execution, dan subagents. Skill boleh dipakai sebagai instruksi, tetapi TRD ini fokus pada tools, runtime, data model, deployment, dan integration contract.
+Stores full report text and raw JSON:
 
-| **Area**        | **Keputusan Teknis**                                                                                    |
-|-----------------|----------------------------------------------------------------------------------------------------------|
-| Primary runtime | OpenClaw Agent (AI reasoning loop) + Go tool catalog (deterministik)                                    |
-| Execution model | Agentic reasoning loop — AI pilih tools, iterate dari temuan, fallback ke deterministik jika AI down     |
-| Fallback mode   | Deterministik pipeline Go — jalan otomatis ketika AI tidak tersedia atau budget habis                    |
-| Deployment awal | Docker Compose di VPS atau cloud VM                                                                      |
-| Queue           | Redis + BullMQ/Celery, atau Temporal untuk versi lebih serius                                            |
-| Database        | Postgres sebagai evidence store dan result store                                                         |
-| Search/scrape   | Brave Search API (free tier, primary), DDG HTML (fallback), OpenClaw web_search/web_fetch, Firecrawl/Tavily jika tersedia |
-| Slack report    | OpenClaw message tool atau Slack Web API melalui custom tool                                             |
-| Fallback budget | Tool yang belum ada API key/budget ditandai disabled/skipped — AI harus cari alternatif sebelum menyerah |
+- `job_id`
+- `telegram_text`
+- `slack_text`
+- `json_result`
+- `sent_to_slack_at`
 
-# 2. Scope dan Non-Scope
+#### `llm_calls`
 
-## 2.1 Scope
+Tracks model usage and estimated cost:
 
-- Menerima job investigasi dari backend platform saat user register.
+- `model_provider`
+- `model_name`
+- `prompt_tokens`
+- `completion_tokens`
+- `total_tokens`
+- `cost_usd`
+- previews and timestamp
 
-- Melakukan normalisasi identitas dari field register yang tersedia: email, full_name, no_hp, brand_name.
+Schema source: `docs/technical/migration_v1.sql`.
 
-- Memberikan AI goal, aturan, batas tools, retry budget, dan stop condition.
+---
 
-- Menggunakan tools OpenClaw dan custom tools untuk mencari evidence publik.
+## 7. Database Writer
 
-- Menyimpan semua evidence, tool run, confidence update, dan alasan keputusan.
+File: `openclaw_workspace/scripts/db_writer.js`
 
-- Menghasilkan internal JSON dan Slack narrative report.
+Responsibilities:
 
-- Mendukung tools yang belum aktif dengan status disabled/waiting_budget tanpa merusak flow.
+- Read `evidence/latest.json`.
+- Read `reports/ai_report_latest.txt`.
+- Extract structured fields for dashboard.
+- Extract social/marketplace/role evidence from evidence/report text.
+- Read OpenClaw token usage when available.
+- Insert into `investigation_jobs`, `final_reports`, and `llm_calls`.
 
-## 2.2 Non-Scope Awal
+Operational requirement:
 
-- Tidak membangun dashboard CRM penuh di fase MVP.
+- DB write failure must not block Telegram/report delivery.
+- `DATABASE_URL` is loaded from environment/systemd env.
+- The writer currently uses pragmatic parsing; richer extraction is next priority.
 
-- Tidak melakukan bypass login, CAPTCHA, paywall, atau anti-bot system.
+---
 
-- Tidak menjadikan scraping LinkedIn langsung sebagai dependency utama.
+## 8. Dashboard
 
-- Tidak membuat klaim “owner/founder” tanpa evidence kuat dan traceable.
+Path: `dashboard/`  
+Stack: Node.js, Express, EJS, `pg`  
+Port: `3001`  
+Service: `company-dashboard`
 
-- Tidak memakai semua tools secara wajib; tools dipilih berdasarkan suspicion dan expected value.
+Routes:
 
-# 3. Prinsip Arsitektur
+- `GET /` — investigation list, filters, pagination, stats.
+- `GET /jobs/:id` — detail page.
+- `POST /jobs/:id/review` — update review status.
+- `GET /search?q=...` — search across key fields and JSONB text.
 
-| **Prinsip**                       | **Implikasi Teknis**                                                                                                                                                                      |
-|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Goal-first agent                  | Agent selalu menerima tujuan eksplisit sebelum tools: deteksi apakah akun merupakan individu biasa, terafiliasi perusahaan, mewakili perusahaan, founder/owner, suspicious, atau unknown. |
-| Suspicion-based routing           | Agent memilih tools berdasarkan kecurigaan, evidence sementara, source reliability, biaya, dan risiko; bukan alur fixed A lalu B lalu C.                                                  |
-| Early stop with proof             | Agent boleh berhenti setelah 2 tools jika klaim sudah aman, confidence tinggi, dan evidence cukup.                                                                                        |
-| Evidence over guess               | Setiap conclusion wajib punya evidence item, source, timestamp, dan confidence contribution.                                                                                              |
-| Tool availability aware           | Jika API key belum ada atau budget belum tersedia, tool diberi status disabled/waiting_budget dan dilewati dengan alasan.                                                                 |
-| Human-readable + machine-readable | Slack report dibuat naratif, sementara JSON internal disimpan untuk audit dan automation.                                                                                                 |
+Dashboard reads directly from PostgreSQL.
 
-# 4. Target Architecture
+---
 
-Arsitektur target memisahkan platform backend, queue, OpenClaw gateway, custom worker, evidence store, external tools, dan Slack delivery. OpenClaw menjadi tool orchestration surface, sedangkan custom worker menangani kontrak job, persistence, dan integrasi business logic yang spesifik ke perusahaan.
+## 9. Webhook API
 
-<img src="/mnt/data/md_conversion_media/trd/media/image1.png" style="width:6.6in;height:0.95481in" />
+Path: `webhook/`  
+Stack: Node.js, Express  
+Port: `3002`  
+Service: `company-webhook`
 
-Gambar 1. Arsitektur logis AI Company Detection Agent.
+Status: service scaffold is live, but production DB integration is part of the final webhook/Slack phase. The already validated persistence path is `finish_investigation.sh -> db_writer.js -> PostgreSQL`.
 
-# 5. Komponen Sistem
+Routes:
 
-| **Komponen**                | **Fungsi**                                                              | **Teknologi**                    |
-|-----------------------------|-------------------------------------------------------------------------|----------------------------------|
-| Registration Event Producer | Backend platform mengirim event user_registered ke queue/webhook.       | App backend                      |
-| Investigation Job API       | Menerima payload register dan membuat job_id/idempotency_key.           | FastAPI/Express/NestJS           |
-| Queue                       | Menjamin job async, retry, rate limit, dan backpressure.                | Redis BullMQ / Celery / Temporal |
-| OpenClaw Gateway            | Runtime agent, channel Slack, tool access, web/browser/message.         | OpenClaw Docker/Gateway          |
-| Investigation Worker        | Mengatur lifecycle job, memanggil OpenClaw, custom tools, DB writes.    | Node.js/Python service           |
-| Tool Catalog                | Registry tools yang available/disabled/cost/risk.                       | YAML/DB config                   |
-| Evidence Store              | Menyimpan evidence graph, source URL, raw snippet, screenshot metadata. | Postgres + object storage        |
-| Scoring Engine              | Menghitung classification dan confidence.                               | Rules + LLM structured output    |
-| Slack Reporter              | Membentuk laporan naratif dan mengirim ke Slack.                        | OpenClaw message / Slack API     |
+- `GET /health`
+- `POST /webhook/check`
 
-# 6. OpenClaw Tools & Provider Plan
+Request body:
 
-Tools di bawah dipetakan berdasarkan kebutuhan produk. Tidak semua harus aktif di MVP. Agent harus membaca availability matrix sebelum memilih tool.
-
-| **Tool**                 | **Type**            | **Dipakai untuk**                                                    | **Prioritas** | **Catatan**                            |
-|--------------------------|---------------------|----------------------------------------------------------------------|---------------|----------------------------------------|
-| web_search               | Built-in            | Cari kandidat company/person/profile lewat web dan SERP-like result. | MVP: wajib    | Low-medium cost                        |
-| x_search                 | Built-in            | Cari sinyal dari X/Twitter jika ditemukan kandidat public profile dari full_name/brand_name. | Phase 2 optional | Jangan bergantung pada username register karena tidak trusted |
-| web_fetch                | Built-in            | Fetch konten URL spesifik untuk halaman ringan/static.               | MVP: wajib    | Tidak untuk JS-heavy                   |
-| browser                  | Built-in UI         | Render halaman JS-heavy, klik, screenshot, validasi visual.          | Phase 2       | Lebih mahal dan lebih lambat           |
-| code_execution           | Built-in runtime    | Normalisasi data, scoring, dedup, validation script.                 | MVP: wajib    | Sandboxed                              |
-| message                  | Built-in messaging  | Kirim report ke Slack/channel lain.                                  | MVP: wajib    | Butuh Slack channel configured         |
-| sessions_spawn/subagents | Built-in sessions   | Investigasi paralel: website, public profiles, enrichment.           | Phase 2       | Gunakan untuk job kompleks             |
-| read/write/edit          | Built-in FS         | Simpan draft report, configs, temporary evidence.                    | MVP: optional | Jangan jadi DB utama                   |
-| cron/gateway             | Built-in automation | Scheduled re-check, gateway config, operational tasks.               | Phase 2       | Owner-only untuk config sensitif       |
-| Firecrawl                | Provider/plugin     | Search/scrape/crawl web page menjadi markdown/structured data.       | MVP/Phase 2   | Butuh API key/budget                   |
-| Tavily                   | Provider/plugin     | AI-friendly search/extract dengan filters/domain control.            | Phase 2       | Butuh API key                          |
-| Brave/Exa/Perplexity     | Search providers    | Alternatif provider web_search sesuai budget dan kualitas.           | Phase 2       | Provider selection by config           |
-| llm-task                 | Plugin tool         | JSON-only structured scoring/report fields.                          | Phase 2       | Bagus untuk schema validation          |
-
-## 6.1 Custom Tools yang Perlu Dibuat
-
-| **Custom Tool**                      | **Contract Ringkas**                                                                       | **Fase**     |
-|--------------------------------------|--------------------------------------------------------------------------------------------|--------------|
-| email_intelligence                   | Input: email. Output: domain, free_provider, disposable, mx_valid, role_email, risk flags. | MVP          |
-| domain_checker                       | Input: domain. Output: website_active, redirects, title, meta, detected_company_name.      | MVP          |
-| serp_query_builder                   | Input: identity. Output: query variants + target sources.                                  | MVP          |
-| evidence_store.write                 | Input: evidence item. Output: evidence_id.                                                 | MVP          |
-| scoring_engine.score                 | Input: evidence graph. Output: classification, confidence, reasons.                        | MVP          |
-| slack_report_formatter               | Input: internal JSON. Output: human narrative Slack text.                                  | MVP          |
-| enrichment_api.lookup_person/company | Input: email/full_name/domain/brand_name. Output: vendor signals.                          | Phase 2/paid |
-| github_public_checker                | Input: full_name/email local-part/brand_name. Output: profile/company/blog/org evidence.   | Phase 2      |
-| producthunt_checker                  | Input: full_name/email local-part/brand_name. Output: maker/product evidence.              | Phase 2      |
-
-## 6.2 Alternatif Tools Gratis (Workaround MVP)
-
-Untuk mencegah hambatan budget/API key pada eksekusi MVP (seperti `firecrawl`, `tavily`, atau `enrichment_api`), implementasi dapat menggunakan alternatif berikut sebagai *Custom Tools*:
-- **Free Search (`web_search` fallback)**: Gunakan DuckDuckGo HTML scraper script (`ddg_search.js`) atau Brave Search API (2.000 free requests/bulan).
-- **Free Web Scraper (`firecrawl_scrape` fallback)**: Gunakan script custom Node.js (`axios` + `cheerio` atau `@mozilla/readability`) untuk mengekstrak plain-text dari halaman web perusahaan (`/about`, `/team`) tanpa biaya.
-- **LinkedIn / Profile Enrichment (`enrichment_api` fallback)**: Gunakan **SERP Dorking** (misal: `site:linkedin.com/in/ "Nama User"`). AI dapat membaca langsung *snippet* hasil pencarian Google/DuckDuckGo untuk mengekstrak *Role* tanpa membuka halaman profil aslinya (yang berisiko diblokir).
-
-# 7. Multi-Agent Design
-
-MVP dapat berjalan dengan single orchestrator agent. Multi-agent digunakan saat volume, latensi, atau kompleksitas evidence meningkat. Multi-agent tidak wajib dari awal, tetapi desainnya perlu disiapkan.
-
-| **Agent**             | **Tanggung Jawab**                                                   | **Kapan Dipakai**                             |
-|-----------------------|----------------------------------------------------------------------|-----------------------------------------------|
-| Orchestrator Agent    | Menetapkan goal, suspicion, tool selection, stop/continue decision.  | Selalu                                        |
-| Web Research Agent    | Search SERP, LinkedIn via SERP signal, source discovery.             | Jika email tidak cukup atau butuh cross-check |
-| Company Website Agent | Scrape company domain, about/team/contact/pricing/legal pages.       | Jika ada domain kandidat                      |
-| Public Profile Agent  | Cek X/GitHub/Product Hunt/Crunchbase/Wellfound signal.               | Jika full_name + brand_name atau local-part cukup spesifik |
-| Scoring Agent         | Membaca evidence graph dan menghasilkan classification + confidence. | Setiap job                                    |
-| Report Agent          | Membuat Slack report naratif dan internal JSON final.                | Setiap job                                    |
-
-## 7.1 Agent Loop
-
-<img src="/mnt/data/md_conversion_media/trd/media/image2.png" style="width:5.9in;height:8.91609in" />
-
-Gambar 2. Bounded agentic investigation loop.
-
-# 8. Data Model dan Evidence Store
-
-Evidence store adalah pusat audit. Semua tool run harus menghasilkan record yang bisa ditelusuri ulang. Jangan hanya menyimpan final conclusion.
-
-| **Tabel**          | **Fungsi**                                         | **Kolom Kunci**                                                                           |
-|--------------------|----------------------------------------------------|-------------------------------------------------------------------------------------------|
-| investigation_jobs | Menyimpan status job per user register.            | job_id, user_id, status, started_at, finished_at, final_classification, confidence        |
-| register_snapshots | Menyimpan snapshot data register saat investigasi. | job_id, email, full_name, no_hp/phone_hash, brand_name, metadata_json                     |
-| tool_runs          | Log setiap tool call.                              | tool_run_id, job_id, tool_name, status, started_at, latency_ms, cost_estimate, error      |
-| evidence_items     | Unit bukti yang sudah diekstrak.                   | evidence_id, job_id, source_type, source_url, claim, value, reliability, confidence_delta |
-| entity_candidates  | Kandidat company/person yang ditemukan.            | candidate_id, job_id, entity_type, name, domain, match_score                              |
-| confidence_updates | Riwayat perubahan confidence.                      | job_id, prior_score, delta, posterior_score, reason                                       |
-| final_reports      | Report internal dan Slack report.                  | job_id, json_result, slack_text, sent_at, slack_ts                                        |
-
-{  
-"job_id": "job_123",  
-"classification": "founder_verified",  
-"company_detected": true,  
-"company_name": "Acme AI",  
-"company_domain": "acme.ai",  
-"confidence": 91,  
-"tools_used": \["email_intelligence", "firecrawl_scrape", "scoring_engine"\],  
-"tools_skipped": \[  
-{"tool": "tavily_search", "reason": "stop_condition_met"},  
-{"tool": "enrichment_api", "reason": "not_needed_to_save_cost"}  
-\],  
-"evidence": \[  
-{  
-"source_type": "email_domain",  
-"claim": "Corporate email domain detected",  
-"value": "alex@acme.ai",  
-"confidence_delta": 25  
-},  
-{  
-"source_type": "company_website",  
-"source_url": "https://acme.ai/about",  
-"claim": "User appears as Founder",  
-"value": "Alex Rivera - Founder",  
-"confidence_delta": 45  
-}  
-\],  
-"recommendation": "Route to B2B Founder / High Intent Lead segment"  
+```json
+{
+  "email": "user@example.com",
+  "full_name": "Nama User",
+  "no_hp": "08123456789",
+  "brand_name": "Nama Brand",
+  "secret": "<shared-secret>"
 }
+```
 
-# 9. API Contract dan Job Lifecycle
+Response includes:
 
-## 9.1 Job Input Contract
+- `ok`
+- `email`
+- `classification`
+- `confidence_score`
+- `confidence_label`
+- `automation_action`
+- `company_detected`
+- `summary`
+- `dashboard_url`
 
-POST /internal/company-detection/jobs  
-{  
-"user_id": "u_123",  
-"email": "alex@acme.ai",  
-"full_name": "Alex Rivera",
-"no_hp": "08123456789",
-"brand_name": "Acme AI",
-"metadata": {  
-"plan": "free",  
-"utm_campaign": "x_launch"  
-}  
-}
+Current webhook runs the deterministic Go binary and returns a fast JSON response. The final production step is to align webhook evidence output with `db_writer.js` so the exact webhook request is persisted reliably. Full async queue/worker is future work.
 
-## 9.2 Job State Machine
+---
 
-| **State**    | **Arti**                                      | **Next**                        |
-|--------------|-----------------------------------------------|---------------------------------|
-| queued       | Job masuk antrean.                            | running / failed                |
-| running      | Agent sedang investigasi.                     | waiting_tool / scoring / failed |
-| waiting_tool | Menunggu tool eksternal/API.                  | running / skipped / failed      |
-| scoring      | Evidence sudah cukup untuk scoring.           | reporting / running             |
-| reporting    | Slack report sedang dibentuk/dikirim.         | completed / failed              |
-| completed    | Report berhasil dibuat dan disimpan.          | \-                              |
-| inconclusive | Tidak cukup evidence setelah batas percobaan. | completed                       |
-| failed       | Error teknis.                                 | retry / dead_letter             |
+## 10. Delivery
 
-# 10. Deployment Docker
+| Surface | Current Behavior |
+|---|---|
+| Telegram | Main interactive testing/AI delivery channel |
+| Dashboard | Persistent operator interface |
+| Slack | Intended only for high-confidence business alerts |
+| Webhook response | Fast deterministic result; final DB integration pending |
 
-Deployment awal disarankan memakai Docker Compose di VPS/cloud VM. Komponen minimum: openclaw-gateway, investigation-worker, postgres, redis. Provider API keys disimpan sebagai environment variables atau secret manager.
+Smart Slack routing rule:
 
-<img src="/mnt/data/md_conversion_media/trd/media/image3.png" style="width:6.6in;height:1.29778in" />
+```text
+possible_company_affiliated AND confidence_score >= 75 => Slack
+otherwise => DB/dashboard only
+```
 
-Gambar 3. Deployment topology Docker/VPS.
+---
 
-services:  
-openclaw-gateway:  
-image: openclaw/openclaw:latest  
-restart: unless-stopped  
-env_file: .env  
-volumes:  
-- ./openclaw:/workspace  
-ports:  
-- "3000:3000"  
-  
-investigation-worker:  
-build: ./worker  
-restart: unless-stopped  
-env_file: .env  
-depends_on:  
-- redis  
-- postgres  
-- openclaw-gateway  
-  
-postgres:  
-image: postgres:16  
-restart: unless-stopped  
-environment:  
-POSTGRES_DB: company_detection  
-POSTGRES_USER: company_detection  
-POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}  
-volumes:  
-- pgdata:/var/lib/postgresql/data  
-  
-redis:  
-image: redis:7-alpine  
-restart: unless-stopped  
-  
-volumes:  
-pgdata:
+## 11. Deployment
 
-## 10.1 Environment Variables
+Current production deployment is VPS + systemd, not Docker Compose.
 
-| **Variable**         | **Fungsi**                                             | **Status**                               |
-|----------------------|--------------------------------------------------------|------------------------------------------|
-| OPENCLAW_BASE_URL    | Endpoint gateway OpenClaw.                             | Required                                 |
-| SLACK_BOT_TOKEN      | Kirim report ke Slack jika memakai Slack API langsung. | Required jika tidak via OpenClaw channel |
-| SLACK_REPORT_CHANNEL | Channel report seperti \#company-detection.            | Required                                 |
-| DATABASE_URL         | Koneksi Postgres.                                      | Required                                 |
-| REDIS_URL            | Koneksi queue/cache.                                   | Required                                 |
-| BRAVE_API_KEY        | Search provider.                                       | Optional                                 |
-| FIRECRAWL_API_KEY    | Scrape/crawl provider.                                 | Optional/paid                            |
-| TAVILY_API_KEY       | AI search/extract provider.                            | Optional/paid                            |
-| EXA_API_KEY          | Neural search provider.                                | Optional/paid                            |
-| PDL_API_KEY          | People/company enrichment.                             | Optional/paid                            |
+VPS:
 
-# 11. Security, Privacy, dan Compliance Guardrails
+- Host: `103.226.139.107`
+- User: `nunuopc`
+- Workspace: `/home/nunuopc/.openclaw/workspace/`
+- Go binary: `/home/nunuopc/.openclaw/go-service/bin/company-check`
 
-- Tool allowlist harus eksplisit. Deny exec/process untuk agent yang tidak perlu shell access.
+Services:
 
-- Browser dan scraping tidak boleh digunakan untuk bypass login, CAPTCHA, paywall, atau anti-bot.
+| Service | Port | Responsibility |
+|---|---:|---|
+| `openclaw-gateway` | 18789 | OpenClaw gateway |
+| `company-dashboard` | 3001 | Dashboard |
+| `company-webhook` | 3002 | Webhook API |
+| `postgresql` | 5432 | Database |
 
-- Evidence yang disimpan harus relevan dengan tujuan company detection, bukan profiling bebas.
+Deploy command from repo root:
 
-- Raw scraped content sebaiknya dibatasi, direduksi menjadi evidence claim, dan diberi TTL jika tidak diperlukan.
+```bash
+bash deploy.sh
+```
 
-- API keys harus disimpan di secret manager/.env server, bukan di prompt, Slack, atau repo.
+---
 
-- Slack report tidak boleh memuat data sensitif yang tidak relevan.
+## 12. Configuration
 
-- Setiap classification harus punya source dan timestamp agar bisa diaudit/diperbaiki.
+Credentials live on VPS env files and must not be committed.
 
-- Tool marketplace/community plugin perlu security review sebelum diinstall di production.
+Important variables:
 
-| **Risk**                     | **Mitigasi**                                                                                                                        |
-|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| AI overclaiming              | Gunakan classification levels: company_affiliated, business_owner_candidate, founder_verified, unknown; require evidence threshold. |
-| Cost blow-up                 | Tool budget per job, max attempts, provider priority, caching.                                                                      |
-| Bad/ambiguous identity match | Entity matching score, conflicting evidence penalty, manual review status.                                                          |
-| Tool abuse                   | OpenClaw allow/deny tools, restricted exec, no untrusted plugins.                                                                   |
-| Rate limits                  | Queue backoff, provider rotation, graceful skip/waiting_budget.                                                                     |
+- `DATABASE_URL`
+- `BRAVE_SEARCH_API_KEY`
+- `SLACK_BOT_TOKEN`
+- `SLACK_REPORT_CHANNEL`
+- `WEBHOOK_SECRET`
+- `OPENCLAW_BASE_URL`
+- Optional: `GOOGLE_CSE_KEY`, `GOOGLE_CSE_ID`
 
-# 12. Observability dan Operasional
+---
 
-| **Metric/Log**              | **Tujuan**                                         |
-|-----------------------------|----------------------------------------------------|
-| jobs_completed_total        | Jumlah investigasi selesai.                        |
-| jobs_inconclusive_rate      | Mengukur kualitas data/register dan tool coverage. |
-| avg_tools_used_per_job      | Kontrol cost dan efisiensi early stop.             |
-| avg_confidence_by_source    | Menilai source mana yang paling berguna.           |
-| tool_error_rate             | Deteksi provider down/API limit.                   |
-| slack_delivery_success_rate | Memastikan report terkirim.                        |
-| manual_review_rate          | Mengukur kasus ambigu.                             |
+## 13. Security Requirements
 
-# 13. Roadmap Implementasi
+- Keep secrets in environment files only.
+- Webhook must validate shared secret.
+- `no_hp` must not be used as a public search query.
+- Dashboard is internal; add auth before exposing broadly.
+- Avoid storing unnecessary PII beyond investigation requirement.
+- Reports must preserve evidence source so decisions are auditable.
 
-| **Fase**                        | **Deliverables**                                                                                          | **Tools Aktif**                                                    |
-|---------------------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| Phase 0 - Design ✅              | Finalisasi PRD/TRD, schema DB, tool catalog, report format.                                               | Tidak perlu                                                        |
-| Phase 1 - MVP Deterministik ✅   | Go CLI, emailintel, domain_checker, crawler, DDG search, scoring, report, file evidence, Slack/Telegram.  | Go tools, DDG fallback, Slack                                      |
-| Phase A - AI Reasoning Loop     | Rewrite AGENTS.md jadi reasoning loop. AI pilih tools, iterate, fallback ke deterministik jika AI down.   | Brave Search API, OpenClaw web_search/web_fetch, Go tools as callable functions |
-| Phase B - Tool Catalog Expansion| Tambah tools gratis: brand_hint_detector, social_link_extractor, marketplace_search, role_signal_extractor | Brave, DDG, web_fetch, custom Go tools                             |
-| Phase C - Postgres + Queue      | Postgres evidence store, Redis queue, job lifecycle, DB writer.                                           | Semua tools Phase A+B                                              |
-| Phase D - Paid Tools            | Firecrawl, Tavily, enrichment API — dipakai AI ketika free tools tidak cukup.                             | Firecrawl, Tavily, PDL/Apollo                                      |
-| Phase E - Multi-Agent           | Sub-agents paralel untuk investigasi kompleks. Masuk setelah volume naik.                                 | sessions_spawn/subagents                                           |
-| Phase F - Ops Dashboard         | Review dashboard, evidence viewer, feedback loop, metrics.                                                | Internal admin app                                                 |
+---
 
-**Catatan penting Phase A:**
-- Deterministik pipeline tetap ada sebagai fallback — tidak dihapus
-- AI reasoning loop menggantikan deterministik sebagai primary mode
-- Report harus menunjukkan: reasoning AI, tools yang dipilih, kenapa, hasilnya apa, hipotesis berubah ke mana
-- Kalau AI tidak tersedia → report menunjukkan "AI Reasoning: tidak aktif, fallback ke deterministik pipeline"
+## 14. Observability
 
-# 14. Risiko Teknis dan Mitigasi
+Current:
 
-| **Risiko**                                    | **Dampak**             | **Mitigasi**                                                                |
-|-----------------------------------------------|------------------------|-----------------------------------------------------------------------------|
-| Provider belum bisa diakses/belum ada dana    | Coverage rendah        | Tool availability matrix; skipped reason; start dengan free/built-in tools. |
-| Data register minim                           | Banyak inconclusive    | Gunakan email, full_name, dan brand_name; jangan bergantung pada username register. |
-| False positive company owner                  | Salah segmentasi lead  | Pisahkan affiliation vs ownership; require founder evidence.                |
-| Scrape gagal karena JS-heavy                  | Evidence tidak terbaca | Fallback dari web_fetch ke browser/Firecrawl.                               |
-| Report terlalu panjang di Slack               | Sulit dibaca           | Gunakan summary + evidence bullets + link ke full JSON/internal report.     |
-| LLM membuat alasan yang tidak sesuai evidence | Audit gagal            | Report generator hanya boleh memakai evidence_items yang tersimpan.         |
+- `token_usage.sh` reads model pricing from OpenClaw config.
+- `llm_calls` stores token and estimated cost.
+- Dashboard shows cost per job.
+- Script logs are available through shell/systemd.
 
-# 15. Referensi Teknis
+Future:
 
-- [OpenClaw Tools and Plugins](https://docs.openclaw.ai/tools)
+- Structured service logs.
+- Queue metrics.
+- Alert delivery success/failure tracking.
+- Dashboard usage/audit events.
 
-- [OpenClaw Web Search / Web Tools](https://docs.openclaw.ai/tools/web)
+---
 
-- [OpenClaw Firecrawl Tool](https://docs.openclaw.ai/tools/firecrawl)
+## 15. Test Requirements
 
-- [OpenClaw Tavily Tool](https://docs.openclaw.ai/tools/tavily)
+Core verification:
 
-- [OpenClaw Slack Channel](https://docs.openclaw.ai/channels/slack)
+```bash
+cd go-service
+go test ./...
+```
 
-- [OpenClaw Sub-Agents](https://docs.openclaw.ai/tools/subagents)
+Manual E2E:
 
-- [OpenClaw LLM Task](https://docs.openclaw.ai/tools/llm-task)
+- Telegram `/check contact@komerce.id`
+- Confirm dashboard row appears.
+- Confirm job detail contains report, social/marketplace where available, and LLM cost.
+- Webhook `POST /webhook/check`.
+- Confirm response classification and DB insert.
 
-- [Bounded Rationality - Herbert Simon Nobel Lecture](https://www.nobelprize.org/uploads/2018/06/simon-lecture.pdf)
+---
 
-- [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)
+## 16. Roadmap
 
-- [OODA Loop overview](https://en.wikipedia.org/wiki/OODA_loop)
+### Done
+
+- Go MVP.
+- AI reasoning loop.
+- Tool catalog expansion.
+- PostgreSQL + dashboard.
+- Webhook API scaffold.
+
+### Next
+
+- E2E Telegram validation.
+- Finalize webhook DB path and validate from Komerce platform register.
+- Improve `db_writer.js` extraction quality.
+- Finalize Slack hook with smart routing after validation.
+
+### Later
+
+- Queue/worker with retry and idempotency.
+- Dashboard authentication.
+- Paid enrichment/search tools.
+- Multi-agent parallel investigation.
+- Normalize JSONB fields into dedicated analytics tables if query needs grow.

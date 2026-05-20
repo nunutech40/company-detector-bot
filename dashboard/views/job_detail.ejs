@@ -1,0 +1,176 @@
+<%
+const ci = classInfo(job.classification);
+const mkt = Array.isArray(job.marketplace_json) ? job.marketplace_json : [];
+const soc = Array.isArray(job.social_media_json) ? job.social_media_json : [];
+const rev = Array.isArray(job.role_evidence_json) ? job.role_evidence_json : [];
+const dt  = job.finished_at ? new Date(job.finished_at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta'}) : '—';
+const reviewLabels = {unreviewed:'Belum direview',reviewed:'Reviewed',high_value:'High Value',false_positive:'False Positive',needs_retry:'Needs Retry'};
+const reviewColors = {unreviewed:'gray',reviewed:'blue',high_value:'green',false_positive:'red',needs_retry:'yellow'};
+%>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+  <a href="/" style="color:#64748b;font-size:13px">← Kembali</a>
+  <div class="page-title" style="margin:0"><%= job.email %></div>
+  <span class="badge badge-<%= ci.color %>"><%= ci.label %></span>
+  <span class="badge badge-<%= reviewColors[job.review_status] %>"><%= reviewLabels[job.review_status] || job.review_status %></span>
+</div>
+
+<div class="detail-grid">
+
+  <!-- Classification -->
+  <div class="detail-card">
+    <h3>Hasil Investigasi</h3>
+    <div class="detail-row"><span class="key">Classification</span><span class="val"><span class="badge badge-<%= ci.color %>"><%= ci.label %></span></span></div>
+    <div class="detail-row"><span class="key">Confidence</span><span class="val" style="font-size:20px;font-weight:700;color:#fff"><%= job.confidence_score %>/100 <span style="font-size:13px;color:#64748b">(<%= job.confidence_label %>)</span></span></div>
+    <div class="detail-row"><span class="key">Action</span><span class="val"><%= job.automation_action || '—' %></span></div>
+    <div class="detail-row"><span class="key">Waktu</span><span class="val"><%= dt %></span></div>
+    <div class="detail-row"><span class="key">Source</span><span class="val"><%= job.source %></span></div>
+  </div>
+
+  <!-- Input -->
+  <div class="detail-card">
+    <h3>Input Register</h3>
+    <div class="detail-row"><span class="key">Email</span><span class="val"><%= job.email %></span></div>
+    <div class="detail-row"><span class="key">Domain</span><span class="val"><%= job.domain || '—' %></span></div>
+    <div class="detail-row"><span class="key">Nama</span><span class="val"><%= job.full_name || '—' %></span></div>
+    <div class="detail-row"><span class="key">Brand</span><span class="val"><%= job.brand_name || '—' %></span></div>
+  </div>
+
+  <!-- Business Profile -->
+  <div class="detail-card">
+    <h3>Profil Bisnis</h3>
+    <div class="detail-row"><span class="key">Nama Bisnis</span><span class="val"><%= job.business_name || '—' %></span></div>
+    <div class="detail-row"><span class="key">Industri</span><span class="val"><%= job.business_industry || '—' %></span></div>
+    <div class="detail-row"><span class="key">Website</span><span class="val"><% if (job.business_website) { %><a href="<%= job.business_website %>" target="_blank"><%= job.business_website %></a><% } else { %>—<% } %></span></div>
+    <div class="detail-row"><span class="key">Kota</span><span class="val"><%= job.business_city || '—' %></span></div>
+    <div class="detail-row"><span class="key">Alamat</span><span class="val"><%= job.business_address || '—' %></span></div>
+  </div>
+
+  <!-- Person -->
+  <div class="detail-card">
+    <h3>Person</h3>
+    <div class="detail-row"><span class="key">Nama</span><span class="val"><%= job.person_name || '—' %></span></div>
+    <div class="detail-row"><span class="key">Role</span><span class="val"><%= job.person_role || '—' %></span></div>
+    <div class="detail-row"><span class="key">Phone Confirmed</span><span class="val"><%= job.phone_confirmed ? '✅ Ya' : '—' %></span></div>
+  </div>
+
+  <!-- Marketplace -->
+  <div class="detail-card">
+    <h3>Marketplace (<%= mkt.length %>)</h3>
+    <% if (mkt.length === 0) { %><div style="color:#64748b">Tidak ditemukan</div>
+    <% } else { %>
+    <table style="width:100%;font-size:12px">
+      <tr>
+        <th style="text-align:left;color:#64748b;padding:4px 0">Platform</th>
+        <th style="text-align:left;color:#64748b;padding:4px 0">Store</th>
+        <th style="text-align:left;color:#64748b;padding:4px 0">Rating</th>
+        <th style="text-align:left;color:#64748b;padding:4px 0">Ulasan</th>
+        <th style="text-align:left;color:#64748b;padding:4px 0">Terjual</th>
+      </tr>
+      <% for (const m of mkt) { %>
+      <tr>
+        <td style="padding:4px 0"><span class="platform-tag"><%= m.platform %></span></td>
+        <td style="padding:4px 8px">
+          <% if (m.url) { %>
+            <a href="<%= m.url %>" target="_blank" style="color:#60a5fa">
+              <%= m.store_name || m.url.split('/').pop() %> ↗
+            </a>
+          <% } else { %>
+            <%= m.store_name || '—' %>
+          <% } %>
+        </td>
+        <td style="padding:4px 8px;color:#fbbf24"><%= m.rating ? '⭐ ' + m.rating : '—' %></td>
+        <td style="padding:4px 8px;color:#94a3b8"><%= m.review_count ? m.review_count.toLocaleString() : '—' %></td>
+        <td style="padding:4px 8px;color:#34d399"><%= m.sold ? m.sold.toLocaleString() + ' terjual' : '—' %></td>
+      </tr>
+      <% } %>
+    </table>
+    <% } %>
+  </div>
+
+  <!-- Social Media -->
+  <div class="detail-card">
+    <h3>Social Media (<%= soc.length %>)</h3>
+    <% if (soc.length === 0) { %><div style="color:#64748b">Tidak ditemukan</div>
+    <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <% for (const s of soc) { %>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="platform-tag" style="min-width:75px;text-align:center"><%= s.platform %></span>
+        <% if (s.url) { %>
+          <a href="<%= s.url %>" target="_blank" style="font-size:13px;color:#60a5fa">
+            <%= s.url.replace('https://','').replace('http://','') %> ↗
+          </a>
+        <% } %>
+        <% if (s.handle) { %><span style="color:#64748b;font-size:12px"><%= s.handle %></span><% } %>
+        <% if (s.followers) { %><span style="color:#94a3b8;font-size:11px;margin-left:auto"><%= s.followers.toLocaleString() %> followers</span><% } %>
+        <% if (s.posts) { %><span style="color:#64748b;font-size:11px"><%= s.posts.toLocaleString() %> posts</span><% } %>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Role Evidence -->
+  <% if (rev.length > 0) { %>
+  <div class="detail-card full-width">
+    <h3>Role Evidence (<%= rev.length %>)</h3>
+    <div class="evidence-list">
+      <% for (const r of rev) { %>
+      <div class="evidence-item">
+        <div class="source">Reliability: <span class="badge badge-<%= r.reliability === 'high' ? 'green' : r.reliability === 'medium' ? 'yellow' : 'gray' %>"><%= r.reliability %></span></div>
+        <div class="quote">"<%= r.quote %>"</div>
+        <% if (r.source_url) { %><div class="url"><a href="<%= r.source_url %>" target="_blank"><%= r.source_url %></a></div><% } %>
+      </div>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- LLM Usage -->
+  <% if (llmCalls.length > 0) { %>
+  <div class="detail-card">
+    <h3>LLM Usage</h3>
+    <table class="llm-table" style="width:100%">
+      <tr><th style="text-align:left;color:#64748b;padding:4px 0">Model</th><th style="text-align:right;color:#64748b;padding:4px 0">Tokens</th><th style="text-align:right;color:#64748b;padding:4px 0">Biaya</th></tr>
+      <% let totalTokens = 0, totalCost = 0; %>
+      <% for (const l of llmCalls) { totalTokens += l.total_tokens; totalCost += parseFloat(l.cost_usd || 0); %>
+      <tr>
+        <td style="padding:4px 0"><%= l.model_provider %>/<%= l.model_name %></td>
+        <td style="text-align:right;color:#94a3b8"><%= l.total_tokens.toLocaleString() %></td>
+        <td style="text-align:right;color:#34d399">$<%= parseFloat(l.cost_usd).toFixed(6) %></td>
+      </tr>
+      <% } %>
+      <tr style="border-top:1px solid #2d3148">
+        <td style="padding:6px 0;font-weight:600;color:#fff">Total</td>
+        <td style="text-align:right;font-weight:600;color:#fff"><%= totalTokens.toLocaleString() %></td>
+        <td style="text-align:right;font-weight:600;color:#34d399">$<%= totalCost.toFixed(6) %></td>
+      </tr>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Review Actions -->
+  <div class="detail-card">
+    <h3>Review Actions</h3>
+    <div style="color:#64748b;font-size:12px;margin-bottom:10px">Status saat ini: <span class="badge badge-<%= reviewColors[job.review_status] %>"><%= reviewLabels[job.review_status] %></span></div>
+    <form method="post" action="/jobs/<%= job.id %>/review">
+      <div class="review-actions">
+        <button name="status" value="reviewed" class="review-btn <%= job.review_status === 'reviewed' ? 'active' : '' %>">✅ Reviewed</button>
+        <button name="status" value="high_value" class="review-btn <%= job.review_status === 'high_value' ? 'active' : '' %>">⭐ High Value</button>
+        <button name="status" value="false_positive" class="review-btn <%= job.review_status === 'false_positive' ? 'active' : '' %>">❌ False Positive</button>
+        <button name="status" value="needs_retry" class="review-btn <%= job.review_status === 'needs_retry' ? 'active' : '' %>">🔄 Needs Retry</button>
+        <button name="status" value="unreviewed" class="review-btn <%= job.review_status === 'unreviewed' ? 'active' : '' %>">↩ Reset</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- AI Report -->
+  <% if (report && report.telegram_text) { %>
+  <div class="detail-card full-width">
+    <h3>AI Report</h3>
+    <div class="report-text"><%= report.telegram_text %></div>
+  </div>
+  <% } %>
+
+</div>

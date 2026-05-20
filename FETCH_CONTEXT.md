@@ -1,0 +1,198 @@
+# Fetch Context
+
+**Purpose:** Fast orientation for any AI agent continuing this project.  
+**Last updated:** 20 Mei 2026
+
+---
+
+## 1. What This Project Is
+
+AI Company Detection Agent detects whether a registering user is personal, business-affiliated, company-owned, agency/freelancer, or suspicious.
+
+It is used for Komerce user segmentation:
+
+- Business/company users can be routed to B2B or sales workflows.
+- Personal users continue normal flow.
+- Unknown users are stored for retry/review.
+- Suspicious users go to risk review.
+
+---
+
+## 2. Read These First
+
+Canonical docs:
+
+1. `docs/product/PRD.md` — product source of truth.
+2. `docs/technical/TRD.md` — technical source of truth.
+3. `docs/technical/FLOW_MAP.md` — runtime flow.
+4. `BACKLOG.md` — status and next priorities.
+
+Runtime instructions:
+
+1. `openclaw_workspace/AGENTS.md`
+2. `openclaw_workspace/STANDING_ORDERS.md`
+3. `openclaw_workspace/config/tool_catalog.yaml`
+4. `openclaw_workspace/config/scoring_rules.yaml`
+
+---
+
+## 3. Current Architecture
+
+```text
+Telegram / Webhook / Manual CLI
+        |
+        v
+Deterministic Go pipeline
+        |
+        +--> emailintel
+        +--> domaincheck
+        +--> crawler/search/scraper
+        +--> brandhint/sociallinks/rolesignal
+        +--> scoring/report/evidence
+        |
+        v
+OpenClaw AI reasoning loop when needed
+        |
+        v
+finish_investigation.sh
+        |
+        +--> file evidence
+        +--> PostgreSQL through db_writer.js
+        +--> dashboard
+        +--> Telegram/Slack delivery
+        +--> token usage
+```
+
+Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.
+
+---
+
+## 4. Implemented Services
+
+| Service | Port | Path | Notes |
+|---|---:|---|---|
+| OpenClaw gateway | 18789 | VPS service | AI runtime |
+| Dashboard | 3001 | `dashboard/` | Express + EJS |
+| Webhook API | 3002 | `webhook/` | Express scaffold; final DB path pending |
+| PostgreSQL | 5432 | VPS service | DB `company_detection` |
+
+VPS:
+
+- IP: `103.226.139.107`
+- Workspace: `/home/nunuopc/.openclaw/workspace/`
+- Go binary: `/home/nunuopc/.openclaw/go-service/bin/company-check`
+
+---
+
+## 5. Database
+
+Schema source:
+
+```text
+docs/technical/migration_v1.sql
+```
+
+Current tables:
+
+- `investigation_jobs`: main investigation row, searchable columns and JSONB findings.
+- `final_reports`: full report text and raw JSON.
+- `llm_calls`: model token usage and estimated cost.
+
+Do not resurrect the older 7/8-table plan unless the user explicitly asks for a normalized analytics schema.
+
+---
+
+## 6. Critical Runtime Rule
+
+After AI finishes an investigation, run:
+
+```bash
+cd openclaw_workspace
+scripts/finish_investigation.sh --email <email>
+```
+
+This is mandatory. It writes DB records, handles routing, and shows token usage.
+
+---
+
+## 7. Classifications
+
+- `possible_company_affiliated`
+- `likely_personal_email`
+- `unknown_needs_more_evidence`
+- `suspicious_or_invalid`
+
+Slack target rule:
+
+```text
+possible_company_affiliated + confidence_score >= 75 => Slack
+all else => DB/dashboard only
+```
+
+---
+
+## 8. Input Contract
+
+| Field | Required | Rule |
+|---|---:|---|
+| `email` | Yes | Primary signal |
+| `full_name` | No | Identity hint |
+| `brand_name` | No | Business hint |
+| `no_hp` | No | Confirmation only, never public search seed |
+
+---
+
+## 9. Common Commands
+
+Run Go check:
+
+```bash
+cd openclaw_workspace
+scripts/company_check_go.sh --email contact@komerce.id --save
+```
+
+Finalize investigation:
+
+```bash
+cd openclaw_workspace
+scripts/finish_investigation.sh --email contact@komerce.id
+```
+
+Run Go tests:
+
+```bash
+cd go-service
+go test ./...
+```
+
+Test webhook:
+
+```bash
+curl -X POST http://103.226.139.107:3002/webhook/check \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "contact@komerce.id",
+    "full_name": "Ragil Setiawan",
+    "brand_name": "Komerce",
+    "secret": "<shared-secret>"
+  }'
+```
+
+Deploy:
+
+```bash
+bash deploy.sh
+```
+
+---
+
+## 10. Next Work
+
+Current next priorities:
+
+1. Telegram E2E validation.
+2. Webhook validation from Komerce platform.
+3. Finalize webhook DB path and Slack smart routing.
+4. Improve `db_writer.js` extraction.
+
+Avoid broad rewrites. This project already has the core implementation; most near-term work is validation, polish, and operational hardening.

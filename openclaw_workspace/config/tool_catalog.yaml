@@ -120,12 +120,11 @@ tools:
     setup_url: "https://programmablesearchengine.google.com/"
 
   web_search_brave:
-    status: disabled_not_configured
+    status: enabled
     type: go_package
     cost: paid_low
     priority: phase_a
-    note: "~$5 credit/bulan otomatis. Reliable, tidak diblokir ISP."
-    setup: "Set BRAVE_SEARCH_API_KEY di /home/nunuopc/.openclaw/gateway.systemd.env"
+    note: "~$5 credit/bulan otomatis. Reliable, tidak diblokir ISP. Key: BRAVE_SEARCH_API_KEY di gateway.systemd.env"
     setup_url: "https://api.search.brave.com/"
 
   web_search_bing_html:
@@ -206,3 +205,52 @@ tools:
     cost: free
     priority: mvp
     note: "Sends to Slack for all classifications. After DB: personal → DB only, company → Telegram + Slack."
+
+  # ── OpenClaw Plugins (installable) ───────────────────────────────────────────
+
+  plugin_webhooks:
+    status: disabled_not_configured
+    type: openclaw_plugin
+    package: "@openclaw/webhooks"
+    install: "included in OpenClaw — enable via openclaw.json"
+    cost: free
+    priority: phase_c
+    note: "Authenticated inbound webhooks → bind platform register event ke OpenClaw TaskFlow. Dipakai saat integrasi platform register (Phase C). Tidak perlu install, sudah included."
+
+  plugin_tavily:
+    status: disabled_waiting_budget
+    type: openclaw_plugin
+    package: "@openclaw/tavily-plugin"
+    install: "openclaw plugins install clawhub:tavily"
+    cost: paid
+    price: "$20/month"
+    priority: phase_b
+    note: "AI-friendly search + extract. Lebih baik dari DDG/Bing HTML. Butuh TAVILY_API_KEY."
+
+  plugin_firecrawl:
+    status: disabled_waiting_budget
+    type: openclaw_plugin
+    package: "@openclaw/firecrawl-plugin"
+    install: "openclaw plugins install clawhub:firecrawl"
+    cost: paid
+    price: "$16/month"
+    priority: phase_b
+    note: "Deep scrape + JS-heavy pages + structured extraction. Jauh lebih baik dari free_scraper. Butuh FIRECRAWL_API_KEY."
+
+  plugin_searxng:
+    status: disabled_not_configured
+    type: openclaw_plugin
+    package: "@openclaw/searxng-plugin"
+    install: "openclaw plugins install clawhub:searxng"
+    cost: free
+    priority: phase_b
+    note: "Self-hosted search engine. Gratis, tidak perlu API key. Alternatif Brave kalau mau zero cost. Butuh instance SearXNG sendiri di VPS."
+
+  plugin_diagnostics_prometheus:
+    status: disabled_not_configured
+    type: openclaw_plugin
+    package: "@openclaw/diagnostics-prometheus"
+    install: "openclaw plugins install npm:@openclaw/diagnostics-prometheus"
+    cost: free
+    priority: phase_c
+    note: "Export metrics OpenClaw ke Prometheus: job count, token usage, latency. Berguna untuk monitoring dashboard."

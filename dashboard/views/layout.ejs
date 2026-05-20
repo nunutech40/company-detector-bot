@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Company Detection Dashboard' %></title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; font-size: 14px; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    .nav { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 12px 24px; display: flex; align-items: center; gap: 24px; }
+    .nav-brand { font-weight: 700; font-size: 16px; color: #fff; }
+    .nav-brand span { color: #60a5fa; }
+    .nav a { color: #94a3b8; font-size: 13px; }
+    .nav a:hover { color: #fff; text-decoration: none; }
+    .nav-search { margin-left: auto; display: flex; gap: 8px; }
+    .nav-search input { background: #0f1117; border: 1px solid #2d3148; color: #e2e8f0; padding: 6px 12px; border-radius: 6px; width: 240px; font-size: 13px; }
+    .nav-search button { background: #3b82f6; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+    /* Layout */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #fff; }
+
+    /* Stats bar */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: #1a1d27; border: 1px solid #2d3148; border-radius: 8px; padding: 14px 20px; min-width: 120px; }
+    .stat-card .num { font-size: 24px; font-weight: 700; color: #fff; }
+    .stat-card .lbl { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Filters */
+    .filters { background: #1a1d27; border: 1px solid #2d3148; border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-group label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-group select, .filter-group input { background: #0f1117; border: 1px solid #2d3148; color: #e2e8f0; padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+    .filter-group button { background: #3b82f6; color: #fff; border: none; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .filter-clear { background: transparent; border: 1px solid #2d3148; color: #94a3b8; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+    /* Table */
+    .table-wrap { background: #1a1d27; border: 1px solid #2d3148; border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #0f1117; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; text-align: left; border-bottom: 1px solid #2d3148; }
+    td { padding: 10px 14px; border-bottom: 1px solid #1e2235; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1e2235; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-green  { background: #064e3b; color: #34d399; }
+    .badge-gray   { background: #1e293b; color: #94a3b8; }
+    .badge-yellow { background: #451a03; color: #fbbf24; }
+    .badge-red    { background: #450a0a; color: #f87171; }
+    .badge-blue   { background: #1e3a5f; color: #60a5fa; }
+
+    /* Confidence bar */
+    .conf-bar { display: flex; align-items: center; gap: 8px; }
+    .conf-bar-bg { width: 60px; height: 6px; background: #2d3148; border-radius: 3px; overflow: hidden; }
+    .conf-bar-fill { height: 100%; border-radius: 3px; }
+    .conf-high   { background: #34d399; }
+    .conf-medium { background: #fbbf24; }
+    .conf-low    { background: #f87171; }
+
+    /* Platform icons */
+    .platforms { display: flex; gap: 4px; flex-wrap: wrap; }
+    .platform-tag { font-size: 10px; background: #1e2235; border: 1px solid #2d3148; color: #94a3b8; padding: 1px 6px; border-radius: 3px; }
+
+    /* Pagination */
+    .pagination { display: flex; gap: 8px; margin-top: 20px; align-items: center; justify-content: center; }
+    .pagination a, .pagination span { padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+    .pagination a { background: #1a1d27; border: 1px solid #2d3148; color: #94a3b8; }
+    .pagination a:hover { background: #2d3148; text-decoration: none; }
+    .pagination .current { background: #3b82f6; color: #fff; }
+
+    /* Detail page */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .detail-card { background: #1a1d27; border: 1px solid #2d3148; border-radius: 8px; padding: 20px; }
+    .detail-card h3 { font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .detail-row { display: flex; gap: 12px; margin-bottom: 8px; }
+    .detail-row .key { color: #64748b; min-width: 120px; font-size: 13px; }
+    .detail-row .val { color: #e2e8f0; font-size: 13px; word-break: break-all; }
+    .full-width { grid-column: 1 / -1; }
+    .report-text { background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; padding: 16px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; color: #94a3b8; }
+    .review-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .review-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #2d3148; background: #0f1117; color: #94a3b8; cursor: pointer; font-size: 12px; }
+    .review-btn:hover { background: #2d3148; color: #fff; }
+    .review-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+    /* Evidence list */
+    .evidence-list { display: flex; flex-direction: column; gap: 8px; }
+    .evidence-item { background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; padding: 10px 14px; }
+    .evidence-item .source { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .evidence-item .quote { font-size: 13px; color: #e2e8f0; font-style: italic; }
+    .evidence-item .url { font-size: 11px; color: #60a5fa; margin-top: 4px; }
+
+    /* LLM table */
+    .llm-table td { font-size: 12px; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 60px; color: #64748b; }
+    .empty .icon { font-size: 40px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-brand">🦞 <span>OpenClaw</span> Detector</div>
+    <a href="/">Jobs</a>
+    <div class="nav-search">
+      <form action="/search" method="get" style="display:flex;gap:8px;">
+        <input type="text" name="q" placeholder="Cari email, bisnis, nama..." value="<%= typeof q !== 'undefined' ? q : '' %>">
+        <button type="submit">Cari</button>
+      </form>
+    </div>
+  </nav>
+  <div class="container">
+    <%- body %>
+  </div>
+</body>
+</html>
