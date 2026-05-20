@@ -395,7 +395,7 @@ Failure handling:
 
 | Surface | Current Behavior |
 |---|---|
-| Telegram | Main interactive testing/AI delivery channel |
+| Telegram | Mandatory per-investigation delivery channel |
 | Dashboard | Persistent operator interface |
 | Slack | Daily 09:00 prospect digest for sales/stakeholders |
 | Webhook response | Fast queue acknowledgement; no direct investigation in final design |
@@ -416,6 +416,7 @@ Slack digest behavior:
 - Includes detail links per prospect when jobs exist.
 - Does not include raw evidence, AI reasoning, tool traces, scraping logic, or internal score breakdown.
 - Records sent jobs in `slack_digest_items` so prospects are not repeated.
+- Realtime Slack forwarding from Telegram messages is disabled; Slack must read finalized DB rows only.
 
 Scheduler options:
 

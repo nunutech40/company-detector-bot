@@ -9,6 +9,9 @@ EnvironmentFile=/home/nunuopc/.openclaw/gateway.systemd.env
 Environment=OPENCLAW_WORKSPACE=/home/nunuopc/.openclaw/workspace
 Environment=REGISTER_WORKER_MODE=agent
 Environment=REGISTER_WORKER_AGENT_TIMEOUT_SEC=900
+Environment=REGISTER_WORKER_DELIVER_TELEGRAM=true
+# Optional. If empty, worker reads ~/.openclaw/credentials/telegram-default-allowFrom.json.
+# Environment=REGISTER_WORKER_TELEGRAM_TO=
 ExecStart=/usr/bin/env node worker.js
 Restart=always
 RestartSec=10

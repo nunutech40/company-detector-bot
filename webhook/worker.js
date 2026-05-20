@@ -30,6 +30,10 @@ const RUN_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_RUN_TIMEOUT_MS || '1
 const WORKER_MODE = process.env.REGISTER_WORKER_MODE || 'agent';
 const OPENCLAW_BIN = process.env.OPENCLAW_BIN || '/home/nunuopc/.npm-global/bin/openclaw';
 const AGENT_TIMEOUT_SEC = parseInt(process.env.REGISTER_WORKER_AGENT_TIMEOUT_SEC || '900', 10);
+const DELIVER_TELEGRAM = (process.env.REGISTER_WORKER_DELIVER_TELEGRAM || 'true') !== 'false';
+const TELEGRAM_TARGET = process.env.REGISTER_WORKER_TELEGRAM_TO
+  || process.env.TELEGRAM_DELIVERY_TO
+  || readTelegramAllowFromTarget('/home/nunuopc/.openclaw/credentials/telegram-default-allowFrom.json');
 
 const args = process.argv.slice(2);
 const once = args.includes('--once');
@@ -181,13 +185,18 @@ async function runDbWriter(job, reportText = '') {
 async function runOpenClawAgent(job) {
   const sessionId = `register-intake-${job.id}`;
   const prompt = buildAgentPrompt(job);
-  return runCommand(OPENCLAW_BIN, [
+  const commandArgs = [
     'agent',
     '--session-id', sessionId,
     '--message', prompt,
     '--json',
     '--timeout', String(AGENT_TIMEOUT_SEC),
-  ], {
+  ];
+  if (DELIVER_TELEGRAM) {
+    commandArgs.push('--channel', 'telegram', '--deliver');
+    if (TELEGRAM_TARGET) commandArgs.push('--to', TELEGRAM_TARGET);
+  }
+  return runCommand(OPENCLAW_BIN, commandArgs, {
     cwd: WORKSPACE,
     timeout: (AGENT_TIMEOUT_SEC + 60) * 1000,
   });
@@ -362,5 +371,15 @@ function loadEnv(filePath) {
     const key = trimmed.slice(0, eqIdx).trim();
     const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
     if (!process.env[key]) process.env[key] = val;
+  }
+}
+
+function readTelegramAllowFromTarget(filePath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const first = Array.isArray(parsed.allowFrom) ? parsed.allowFrom[0] : '';
+    return first ? String(first) : '';
+  } catch (_) {
+    return '';
   }
 }
