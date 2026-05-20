@@ -213,6 +213,12 @@ Tracks model usage and estimated cost:
 - `cost_usd`
 - previews and timestamp
 
+LLM usage rules:
+
+- `ai_reasoning` jobs store per-job usage returned by the OpenClaw agent run.
+- `deterministic_fallback` jobs must not create `llm_calls` rows.
+- Aggregate usage from `openclaw sessions --json` is fallback-only and should not be used for queue jobs.
+
 Schema sources:
 
 - `docs/technical/migration_v1.sql`

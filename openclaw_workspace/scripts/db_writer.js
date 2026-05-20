@@ -16,6 +16,8 @@
  *     [--ai-report "<path>"]     (default: reports/ai_report_latest.txt)
  *     [--evidence "<path>"]      (default: evidence/latest.json)
  *     [--report-source "<source>"] (ai_reasoning | deterministic_fallback)
+ *     [--llm-usage "<path>"]     per-job OpenClaw usage JSON
+ *     [--skip-llm-usage]         do not write llm_calls
  *
  * Output: job_id yang baru dibuat (stdout)
  */
@@ -39,6 +41,8 @@ const fullName   = get('--full-name');
 const brandName  = get('--brand-name');
 const source     = get('--source') || 'telegram';
 const reportSource = get('--report-source') || 'unknown';
+const llmUsagePath = get('--llm-usage');
+const skipLlmUsage = args.includes('--skip-llm-usage') || reportSource === 'deterministic_fallback';
 const reportQuality = get('--report-quality') || (
   reportSource === 'ai_reasoning' ? 'full_investigation' :
   reportSource === 'deterministic_fallback' ? 'fallback' :
@@ -92,8 +96,61 @@ if (fs.existsSync(reportPath)) {
   reportText = fs.readFileSync(reportPath, 'utf8').trim();
 }
 
-// ── Get token usage dari openclaw sessions ───────────────────────────────────
+// ── LLM usage ────────────────────────────────────────────────────────────────
+function loadCostMap() {
+  const configPath = '/home/nunuopc/.openclaw/openclaw.json';
+  const costMap = {};
+  if (!fs.existsSync(configPath)) return costMap;
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const providers = (cfg.models || {}).providers || {};
+    for (const [providerName, providerCfg] of Object.entries(providers)) {
+      for (const m of (providerCfg.models || [])) {
+        const key = `${providerName}/${m.id}`;
+        costMap[key] = {
+          input:  (m.cost || {}).input  || 0,
+          output: (m.cost || {}).output || 0,
+        };
+      }
+    }
+  } catch (_) {}
+  return costMap;
+}
+
+function costUsdFor(usage, costMap) {
+  const key = `${usage.model_provider}/${usage.model_name}`;
+  const pricing = costMap[key] || { input: 0, output: 0 };
+  const costUsd = (usage.prompt_tokens * pricing.input + usage.completion_tokens * pricing.output) / 1_000_000;
+  return Math.round(costUsd * 1_000_000) / 1_000_000;
+}
+
 function getTokenUsage() {
+  if (skipLlmUsage) return [];
+
+  const costMap = loadCostMap();
+  if (llmUsagePath && fs.existsSync(llmUsagePath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(llmUsagePath, 'utf8'));
+      const usageList = Array.isArray(parsed) ? parsed : [parsed];
+      return usageList.map((u) => {
+        const usage = {
+          model_provider:    u.model_provider || u.provider || 'unknown',
+          model_name:        u.model_name || u.model || 'unknown',
+          prompt_tokens:     Number(u.prompt_tokens ?? u.input ?? 0),
+          completion_tokens: Number(u.completion_tokens ?? u.output ?? 0),
+          total_tokens:      Number(u.total_tokens ?? u.total ?? 0),
+          cost_usd:          Number(u.cost_usd ?? 0),
+        };
+        if (!usage.total_tokens) usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+        if (!usage.cost_usd) usage.cost_usd = costUsdFor(usage, costMap);
+        return usage;
+      });
+    } catch (err) {
+      console.error('db_writer: failed to parse llm usage:', err.message);
+      return [];
+    }
+  }
+
   try {
     const raw = execSync('/home/nunuopc/.npm-global/bin/openclaw sessions --json 2>/dev/null', {
       timeout: 10000,
@@ -103,25 +160,8 @@ function getTokenUsage() {
     const sessions = data.sessions || [];
     if (!sessions.length) return [];
 
-    // Load pricing dari openclaw.json
-    const configPath = '/home/nunuopc/.openclaw/openclaw.json';
-    let costMap = {};
-    if (fs.existsSync(configPath)) {
-      try {
-        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const providers = (cfg.models || {}).providers || {};
-        for (const [providerName, providerCfg] of Object.entries(providers)) {
-          for (const m of (providerCfg.models || [])) {
-            const key = `${providerName}/${m.id}`;
-            costMap[key] = {
-              input:  (m.cost || {}).input  || 0,
-              output: (m.cost || {}).output || 0,
-            };
-          }
-        }
-      } catch (_) {}
-    }
-
+    // Historical fallback only. Queue worker should pass --llm-usage for
+    // per-job accounting; deterministic fallback passes --skip-llm-usage.
     // Aggregate per model
     const byModel = {};
     for (const s of sessions) {
@@ -141,9 +181,7 @@ function getTokenUsage() {
     }
 
     return Object.entries(byModel).map(([key, m]) => {
-      const pricing = costMap[key] || { input: 0, output: 0 };
-      const costUsd = (m.prompt_tokens * pricing.input + m.completion_tokens * pricing.output) / 1_000_000;
-      return { ...m, cost_usd: Math.round(costUsd * 1_000_000) / 1_000_000 };
+      return { ...m, cost_usd: costUsdFor(m, costMap) };
     });
   } catch (_) {
     return [];

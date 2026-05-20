@@ -139,12 +139,13 @@ async function processDeterministic(job) {
 
 async function processWithOpenClawAgent(job) {
   const agentOutput = await runOpenClawAgent(job);
-  const reportText = extractAgentText(agentOutput);
+  const agentResult = extractAgentResult(agentOutput);
+  const reportText = agentResult.text;
   if (!reportText) {
     throw new Error('openclaw agent did not return report text');
   }
 
-  const finishOutput = await runFinishInvestigation(job, reportText);
+  const finishOutput = await runFinishInvestigation(job, reportText, agentResult.usage);
   return parseJobId(finishOutput);
 }
 
@@ -167,7 +168,7 @@ async function runDbWriter(job, reportText = '') {
   }
 
   try {
-    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'deterministic_fallback'];
+    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'deterministic_fallback', '--skip-llm-usage'];
     if (reportText) commandArgs.push('--ai-report', reportFile);
     if (job.full_name) commandArgs.push('--full-name', job.full_name);
     if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
@@ -192,14 +193,17 @@ async function runOpenClawAgent(job) {
   });
 }
 
-async function runFinishInvestigation(job, reportText) {
+async function runFinishInvestigation(job, reportText, usage = null) {
   const script = path.join(WORKSPACE, 'scripts', 'finish_investigation.sh');
   const reportFile = path.join(WORKSPACE, 'reports', `register-intake-${job.id}.txt`);
+  const usageFile = path.join(WORKSPACE, 'reports', `register-intake-${job.id}-usage.json`);
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
   fs.writeFileSync(reportFile, reportText, 'utf8');
+  if (usage) fs.writeFileSync(usageFile, JSON.stringify(usage), 'utf8');
 
   try {
-  const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'ai_reasoning', '--report-file', reportFile];
+    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'ai_reasoning', '--report-file', reportFile];
+    if (usage) commandArgs.push('--llm-usage', usageFile);
     if (job.full_name) commandArgs.push('--full-name', job.full_name);
     if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
     const phone = extractPhone(job.payload_json);
@@ -207,6 +211,7 @@ async function runFinishInvestigation(job, reportText) {
     return await runCommand('bash', commandArgs, { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
   } finally {
     fs.rmSync(reportFile, { force: true });
+    fs.rmSync(usageFile, { force: true });
   }
 }
 
@@ -269,19 +274,35 @@ function buildAgentPrompt(job) {
   return lines.join('\n');
 }
 
-function extractAgentText(output) {
+function extractAgentResult(output) {
   const raw = String(output || '').trim();
-  if (!raw) return '';
+  if (!raw) return { text: '', usage: null };
 
   try {
     const parsed = JSON.parse(raw);
     const found = findText(parsed);
-    if (found) return found.trim();
+    return { text: found.trim(), usage: findAgentUsage(parsed) };
   } catch (_) {
     // Plain-text fallback.
   }
 
-  return raw;
+  return { text: raw, usage: null };
+}
+
+function findAgentUsage(parsed) {
+  const meta = parsed?.result?.meta?.agentMeta || parsed?.meta?.agentMeta || {};
+  const last = meta.lastCallUsage || meta.usage || {};
+  if (!meta.provider && !meta.model && !last.input && !last.output && !last.total) return null;
+  const promptTokens = Number(last.input ?? meta.promptTokens ?? 0);
+  const completionTokens = Number(last.output ?? 0);
+  const totalTokens = Number(last.total ?? (promptTokens + completionTokens));
+  return {
+    model_provider: meta.provider || 'unknown',
+    model_name: meta.model || 'unknown',
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: totalTokens,
+  };
 }
 
 function findText(value) {

@@ -10,6 +10,7 @@
 #     [--source "<telegram|webhook|...>"] \
 #     [--report-file "<path>"] \
 #     [--report-source "<ai_reasoning|deterministic_fallback>"] \
+#     [--llm-usage "<path>"] \
 #     --report "<report_text>"
 #
 # Yang dilakukan:
@@ -32,6 +33,7 @@ REPORT_TEXT=""
 REPORT_FILE=""
 SOURCE="telegram"
 REPORT_SOURCE="ai_reasoning"
+LLM_USAGE_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
     --source)     SOURCE="$2";     shift 2 ;;
     --report-file) REPORT_FILE="$2"; shift 2 ;;
     --report-source) REPORT_SOURCE="$2"; shift 2 ;;
+    --llm-usage) LLM_USAGE_FILE="$2"; shift 2 ;;
     --report)     REPORT_TEXT="$2"; shift 2 ;;
     *) shift ;;
   esac
@@ -84,6 +87,7 @@ echo "finish_investigation: Slack realtime delivery disabled — daily digest wi
 # Step 4: Insert ke Postgres
 echo "finish_investigation: writing to database"
 DB_ARGS=(--email "${EMAIL}" --source "${SOURCE}" --report-source "${REPORT_SOURCE}")
+[[ -n "${LLM_USAGE_FILE}" ]] && DB_ARGS+=(--llm-usage "${LLM_USAGE_FILE}")
 [[ -n "${FULL_NAME}" ]]  && DB_ARGS+=(--full-name "${FULL_NAME}")
 [[ -n "${BRAND_NAME}" ]] && DB_ARGS+=(--brand-name "${BRAND_NAME}")
 node "${SCRIPT_DIR}/db_writer.js" "${DB_ARGS[@]}" 2>&1 | grep -E "db_writer:" || true
