@@ -36,9 +36,20 @@
 - [ ] Confirm Slack channel ID and bot token env names.
 - [ ] Confirm timezone target is `Asia/Jakarta`.
 - [ ] Confirm platform register payload fields and whether it has `external_id`.
+- [ ] Confirm local test fixture exists:
+  - `/Users/nununugraha/Downloads/All Parter User.xlsx`
 - [ ] Confirm digest window rule:
   - preferred: since last successful digest run
   - fallback: last 24 hours
+
+Known test fixture shape:
+
+- Sheet: `Result 1`
+- Columns: `email`, `full_name`, `no_hp`, `brand_name`
+- Data rows when last inspected: `117711`
+- Non-empty email rows when last inspected: `117711`
+- Non-empty phone rows when last inspected: `117579`
+- Non-empty brand rows when last inspected: `28302`
 
 Exit criteria:
 
@@ -277,6 +288,20 @@ Exit criteria:
 ---
 
 ## 9. Phase 7 - End-To-End Test Matrix
+
+Fixture strategy:
+
+- [ ] Use `/Users/nununugraha/Downloads/All Parter User.xlsx` as register payload simulation data.
+- [ ] Start with 10 rows.
+- [ ] Then test 100 rows to match expected daily register volume.
+- [ ] Only run larger batches after queue locking, retry, and digest dedupe are proven.
+- [ ] Map fixture columns directly:
+  - `email` -> `email`
+  - `full_name` -> `full_name`
+  - `no_hp` -> `no_hp`
+  - `brand_name` -> `brand_name`
+- [ ] Do not use `no_hp` as public search seed.
+- [ ] Treat missing `brand_name` as valid optional input.
 
 Webhook tests:
 

@@ -175,6 +175,19 @@ Slack must not include raw evidence, AI reasoning detail, scraping/search logic,
 | `brand_name` | No | Business hint |
 | `no_hp` | No | Confirmation only, never public search seed |
 
+Testing fixture for webhook queue simulation:
+
+```text
+/Users/nununugraha/Downloads/All Parter User.xlsx
+```
+
+Known shape when last inspected:
+
+- Sheet: `Result 1`
+- Columns: `email`, `full_name`, `no_hp`, `brand_name`
+- Data rows: `117711`
+- Use subset batches first: 10 rows, then 100 rows, then larger batches only after queue/worker/digest dedupe are proven.
+
 ---
 
 ## 9. Common Commands
