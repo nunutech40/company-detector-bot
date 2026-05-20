@@ -21,7 +21,10 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const testRun = args.includes('--test-run');
+const includeSent = args.includes('--include-sent') || testRun;
 const windowHours = readIntArg('--window-hours', 24);
+const minConfidence = readIntArg('--min-confidence', parseInt(process.env.SLACK_DIGEST_MIN_CONFIDENCE || '60', 10));
 
 if (!DATABASE_URL) {
   console.error('slack_daily_digest: DATABASE_URL is required');
@@ -40,11 +43,18 @@ async function main() {
   try {
     const window = await getDigestWindow(client);
     const prospects = await getProspects(client, window);
-    const message = buildMessage(prospects, window);
+    const message = buildMessage(prospects, window, { testRun });
 
     if (dryRun) {
       console.log(message);
       console.log(`\nslack_daily_digest: dry_run prospect_count=${prospects.length}`);
+      return;
+    }
+
+    if (testRun) {
+      const sent = await sendToSlack(message);
+      console.log(`slack_daily_digest: test_run sent=${sent} prospect_count=${prospects.length}`);
+      process.exitCode = sent ? 0 : 1;
       return;
     }
 
@@ -67,6 +77,14 @@ async function main() {
 }
 
 async function getDigestWindow(client) {
+  if (testRun || args.includes('--ignore-last-run')) {
+    const end = new Date();
+    return {
+      start: new Date(end.getTime() - windowHours * 60 * 60 * 1000),
+      end,
+    };
+  }
+
   const last = await client.query(`
     SELECT window_end
     FROM slack_digest_runs
@@ -97,13 +115,16 @@ async function getProspects(client, window) {
         COALESCE(j.finished_at, j.created_at) AS event_time
       FROM investigation_jobs j
       WHERE j.classification = 'possible_company_affiliated'
-        AND COALESCE(j.confidence_score, 0) >= 75
+        AND COALESCE(j.confidence_score, 0) >= $3
         AND COALESCE(j.finished_at, j.created_at) >= $1
         AND COALESCE(j.finished_at, j.created_at) < $2
-        AND NOT EXISTS (
+        AND (
+          $4::boolean = TRUE
+          OR NOT EXISTS (
           SELECT 1
           FROM slack_digest_items i
           WHERE i.investigation_job_id = j.id
+          )
         )
     ),
     deduped AS (
@@ -134,15 +155,15 @@ async function getProspects(client, window) {
     FROM deduped
     ORDER BY COALESCE(confidence_score, 0) DESC, event_time DESC
     LIMIT 50
-  `, [window.start, window.end]);
+  `, [window.start, window.end, minConfidence, includeSent]);
   return result.rows;
 }
 
-function buildMessage(prospects, window) {
+function buildMessage(prospects, window, options = {}) {
   const titleDate = formatJakarta(new Date());
   const windowText = `${formatJakarta(window.start)} - ${formatJakarta(window.end)}`;
   const lines = [
-    `Prospect Digest - ${titleDate}`,
+    `${options.testRun ? '[TEST] ' : ''}Prospect Digest - ${titleDate}`,
     `Dashboard: ${DASHBOARD_BASE_URL}`,
     `Window: ${windowText}`,
     '',
@@ -158,17 +179,46 @@ function buildMessage(prospects, window) {
   lines.push('');
 
   prospects.forEach((job, index) => {
-    const name = job.business_name || job.brand_name || job.full_name || job.email;
+    const name = displayName(job);
     const contact = job.email;
     const detailUrl = `${DASHBOARD_BASE_URL}/jobs/${job.id}`;
+    const tier = prospectTier(job.confidence_score);
     lines.push(`${index + 1}. ${name}`);
     lines.push(`   Kontak: ${contact}`);
-    lines.push(`   Sinyal: Terindikasi akun bisnis`);
+    lines.push(`   Prioritas: ${tier}`);
+    if (job.business_website) lines.push(`   Website: ${job.business_website}`);
     lines.push(`   Detail: ${detailUrl}`);
     if (index !== prospects.length - 1) lines.push('');
   });
 
   return lines.join('\n');
+}
+
+function displayName(job) {
+  const candidates = [
+    job.brand_name,
+    cleanBusinessName(job.business_name),
+    job.full_name,
+    job.email,
+  ];
+  return candidates.find(Boolean) || job.email;
+}
+
+function cleanBusinessName(value) {
+  const text = String(value || '')
+    .replace(/\*\*/g, '')
+    .replace(/^nama:\s*/i, '')
+    .trim();
+  if (!text) return '';
+  if (text.length > 60) return '';
+  if (/alat:|web_search|web_fetch|location:|education:/i.test(text)) return '';
+  return text;
+}
+
+function prospectTier(confidence) {
+  const score = Number(confidence || 0);
+  if (score >= 75) return 'Hot prospect';
+  return 'Warm prospect';
 }
 
 async function createDigestRun(client, window, prospectCount, status) {
