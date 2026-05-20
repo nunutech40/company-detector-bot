@@ -769,8 +769,8 @@ If changing:
 - search behavior → check search cascade (orchestrator), evidence reliability, AI tool catalog.
 - scoring → check `scoring_engine`, `scoring_rules.yaml`, report examples.
 - report wording → check `report_formatter` (fallback mode), `AGENTS.md`, Telegram screenshots/results.
-- storage → check `evidence_store` and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
-- Slack → check `slack_reporter`, alert decision rules, and [Product Workflow and Storage Plan](../product/PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md).
+- storage → check `evidence_store`, [TRD](TRD.md), and [Flow Map](FLOW_MAP.md).
+- Slack → check `slack_reporter`, alert decision rules, [PRD](../product/PRD.md), and [Flow Map](FLOW_MAP.md).
 - AI reasoning behavior → check `AGENTS.md`, stop conditions, evidence chain examples.
 - tool catalog → check `tool_catalog.yaml`, `TOOLS.md`, [Flow Map](FLOW_MAP.md).
 - multi-agent → check [Flow Map](FLOW_MAP.md), [Next Level Enrichment Plan](../product/NEXT_LEVEL_ENRICHMENT_PLAN.md), and [TRD](TRD.md).

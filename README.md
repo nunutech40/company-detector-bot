@@ -39,7 +39,7 @@ For humans:
 
 1. [PRD](docs/product/PRD.md) — product source of truth.
 2. [TRD](docs/technical/TRD.md) — technical source of truth.
-3. [Flow Map](docs/technical/FLOW_MAP.md) — runtime flow.
+3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
 4. [Documentation Index](docs/README.md) — all docs.
 5. [Backlog](BACKLOG.md) — status and next work.
 
@@ -137,18 +137,12 @@ bash deploy.sh
 │   ├── README.md
 │   ├── product/
 │   │   ├── PRD.md
-│   │   ├── HIGH_LEVEL_BUSINESS_FLOW.md
-│   │   ├── PRODUCT_WORKFLOW_AND_STORAGE_PLAN.md
-│   │   └── NEXT_LEVEL_ENRICHMENT_PLAN.md
 │   ├── technical/
 │   │   ├── TRD.md
 │   │   ├── FLOW_MAP.md
-│   │   ├── DB_AND_DASHBOARD_PLAN.md
-│   │   ├── WEBHOOK_API.md
 │   │   ├── TOOLS_AND_ALGORITHMS.md
 │   │   └── migration_v1.sql
-│   ├── reviews/
-│   └── archive/
+│   └── archive/       ← plan/review/checklist/flow lama
 ├── go-service/
 │   ├── cmd/
 │   └── internal/

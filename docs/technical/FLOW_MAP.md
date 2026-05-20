@@ -9,18 +9,72 @@
 
 ## 1. Fungsi Dokumen Ini
 
-Dokumen ini menjelaskan **alur runtime teknis**: komponen mana yang dipanggil, bagaimana orchestrator melakukan loop investigasi, kapan stop, dan bagaimana finalizer menyimpan report ke DB.
+Ini adalah **satu-satunya dokumen flow aktif**.
 
-Bedanya dengan [High Level Business Flow](../product/HIGH_LEVEL_BUSINESS_FLOW.md):
+Dokumen ini menggabungkan:
 
-| Dokumen | Fokus | Pembaca |
-|---|---|---|
-| High Level Business Flow | Alur bisnis dari input akun sampai dashboard/Slack | Product, operator, business |
-| Flow Map | Runtime teknis, orchestrator, loop, stop condition, storage path | Developer, AI agent |
+- sequence bisnis dari input data akun sampai report/dashboard,
+- sequence runtime teknis,
+- loop investigasi di orchestra,
+- cabang stop/continue,
+- finalization ke report, DB, dashboard,
+- status webhook dan Slack sebagai final integration pending.
+
+Source of truth tetap:
+
+- `PRD.md` untuk arah produk,
+- `TRD.md` untuk arsitektur teknis,
+- `FLOW_MAP.md` untuk alur.
 
 ---
 
-## 2. Runtime Sequence Utama
+## 2. End-To-End Business Sequence
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Operator as Operator / Telegram
+  participant Account as Data Akun Register
+  participant Orchestra as Investigation Orchestra
+  participant Tools as Tools & Evidence Sources
+  participant Finalizer as Finalizer
+  participant DB as PostgreSQL
+  participant Dashboard as Dashboard
+  participant Slack as Slack
+
+  Operator->>Account: Input manual /check
+  Note over Operator,Account: Bisa email saja, atau email + full_name + brand_name + no_hp
+  Account->>Orchestra: Mulai investigasi data akun
+
+  Orchestra->>Tools: Baseline check dari email + field register
+  Tools-->>Orchestra: Evidence awal + score awal
+
+  loop Investigation rounds
+    Orchestra->>Orchestra: Evaluasi confidence, brand hint, nama, no_hp confirmation, dan gap evidence
+    alt Evidence belum cukup dan masih ada tool yang berguna
+      Orchestra->>Tools: Panggil tool berikutnya
+      Tools-->>Orchestra: Evidence baru / tool error / skipped
+    else Confidence cukup / budget habis / no gain
+      Orchestra->>Orchestra: Stop loop dan tetapkan classification
+    end
+  end
+
+  Orchestra->>Finalizer: Final report + classification + confidence
+  Finalizer->>DB: Save investigation, report, token/cost
+  DB-->>Dashboard: Job muncul untuk review
+
+  alt Bisnis high-confidence dan Slack sudah final
+    Finalizer->>Slack: Kirim alert
+  else Personal / unknown / Slack belum final
+    Finalizer->>Finalizer: Skip Slack, simpan di DB/dashboard
+  end
+
+  Finalizer-->>Operator: Report akhir
+```
+
+---
+
+## 3. Runtime Sequence Teknis
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +131,7 @@ sequenceDiagram
 
 ---
 
-## 3. Current Validated Path
+## 4. Current Validated Path
 
 ```text
 OpenClaw/Telegram/manual input: email only or full account data
@@ -94,7 +148,7 @@ This is the currently validated persistence path.
 
 ---
 
-## 4. Input Contract
+## 5. Input Contract
 
 | Field | Required | Runtime Rule |
 |---|---:|---|
@@ -120,7 +174,7 @@ company-check --input-json '{"email":"user@gmail.com","full_name":"Nama User","b
 
 ---
 
-## 5. Deterministic Baseline
+## 6. Deterministic Baseline
 
 The baseline runs through Go:
 
@@ -147,7 +201,7 @@ Main Go components:
 
 ---
 
-## 6. AI Reasoning Loop
+## 7. AI Reasoning Loop
 
 The AI loop is controlled by OpenClaw and `AGENTS.md`.
 
@@ -180,7 +234,7 @@ Rules:
 
 ---
 
-## 7. Finalization Sequence
+## 8. Finalization Sequence
 
 ```mermaid
 sequenceDiagram
@@ -219,7 +273,7 @@ scripts/finish_investigation.sh --email <email>
 
 ---
 
-## 8. Storage Map
+## 9. Storage Map
 
 ```text
 Go evidence/report files
@@ -243,7 +297,7 @@ PostgreSQL is the operational source of truth. File evidence remains the audit/d
 
 ---
 
-## 9. Webhook Path Status
+## 10. Webhook Path Status
 
 Webhook is a final integration path, not the currently validated persistence path.
 
@@ -269,7 +323,7 @@ sequenceDiagram
 
 ---
 
-## 10. Classification Outputs
+## 11. Classification Outputs
 
 | Classification | Meaning |
 |---|---|
@@ -280,7 +334,7 @@ sequenceDiagram
 
 ---
 
-## 11. Current Status
+## 12. Current Status
 
 Validated:
 
