@@ -94,8 +94,8 @@ sequenceDiagram
   end
 
   Human->>AI: /check atau manual input data akun
-  Note over Human,AI: Minimum email; optional full_name, brand_name, no_hp
-  Platform-->>AI: Future webhook path, final integration pending
+  Note over Human,AI: Minimum email or full account data
+  Platform-->>AI: Future webhook path - final integration pending
 
   AI->>Orchestra: Start investigation
   Orchestra->>Go: Run deterministic baseline
@@ -203,8 +203,8 @@ sequenceDiagram
   end
 
   Operator->>Session: /check atau manual input
-  Note over Operator,Session: Bisa email saja atau email + full_name + brand_name + no_hp
-  Platform-->>Session: Future webhook path, final integration pending
+  Note over Operator,Session: Bisa email saja atau data akun lengkap
+  Platform-->>Session: Future webhook path - final integration pending
   Session->>Orchestra: Start investigation with account data
 ```
 
@@ -252,8 +252,8 @@ sequenceDiagram
 
   Orchestra->>Wrapper: Run baseline check
   Wrapper->>Go: Pass RegisterInput
-  Go->>Tools: emailintel, domaincheck, crawler, search, scraper
-  Tools-->>Go: evidence, skipped tools, tool errors
+  Go->>Tools: Run email domain crawler search scraper
+  Tools-->>Go: evidence plus skipped tools plus tool errors
   Go->>Scoring: Score valid evidence only
   Scoring-->>Go: classification + confidence
   Go-->>Orchestra: baseline result
@@ -293,15 +293,15 @@ sequenceDiagram
   end
 
   loop Reasoning rounds
-    Orchestra->>Orchestra: Observe score, account fields, evidence gaps
-    Orchestra->>Catalog: Check available tools, cost, and limits
+    Orchestra->>Orchestra: Observe score account fields and evidence gaps
+    Orchestra->>Catalog: Check available tools cost and limits
 
     alt confidence target reached
-      Orchestra->>Orchestra: Stop, enough evidence
+      Orchestra->>Orchestra: Stop enough evidence
     else tool budget exhausted
-      Orchestra->>Orchestra: Stop, preserve current result
+      Orchestra->>Orchestra: Stop preserve current result
     else no useful information gain
-      Orchestra->>Orchestra: Stop, avoid wasting tools
+      Orchestra->>Orchestra: Stop avoid wasting tools
     else evidence gap remains
       Orchestra->>External: Call selected safe tool/search/fetch
       External-->>Orchestra: evidence OR tool_error OR skipped
@@ -355,7 +355,7 @@ sequenceDiagram
   alt business high-confidence and Slack final routing enabled
     Finalizer->>Slack: Send alert
   else personal / unknown / Slack pending
-    Finalizer->>Finalizer: Skip Slack, DB only
+    Finalizer->>Finalizer: Skip Slack and keep DB only
   end
 ```
 
