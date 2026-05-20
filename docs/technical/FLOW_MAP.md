@@ -11,131 +11,35 @@
 
 Ini adalah **satu-satunya dokumen flow aktif**.
 
-Dokumen ini menggabungkan:
+Source of truth:
 
-- sequence bisnis dari input data akun sampai report/dashboard,
-- sequence runtime teknis,
-- loop investigasi di orchestra,
-- cabang stop/continue,
-- finalization ke report, DB, dashboard,
-- status webhook dan Slack sebagai final integration pending.
+- `PRD.md` untuk arah produk.
+- `TRD.md` untuk arsitektur teknis.
+- `FLOW_MAP.md` untuk alur dari input sampai output.
 
-Source of truth tetap:
-
-- `PRD.md` untuk arah produk,
-- `TRD.md` untuk arsitektur teknis,
-- `FLOW_MAP.md` untuk alur.
+Dokumen plan, review, checklist, dan flow lama ada di `docs/archive/` dan tidak dipakai sebagai acuan aktif.
 
 ---
 
-## 2. End-To-End Business Sequence
+## 2. Reality Check
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Operator as Operator / Telegram
-  participant Account as Data Akun Register
-  participant Orchestra as Investigation Orchestra
-  participant Tools as Tools & Evidence Sources
-  participant Finalizer as Finalizer
-  participant DB as PostgreSQL
-  participant Dashboard as Dashboard
-  participant Slack as Slack
+Status yang sesuai kondisi project sekarang:
 
-  Operator->>Account: Input manual /check
-  Note over Operator,Account: Bisa email saja, atau email + full_name + brand_name + no_hp
-  Account->>Orchestra: Mulai investigasi data akun
+| Area | Status Aktual |
+|---|---|
+| Input manual / Telegram | Jalur utama yang dipakai untuk investigasi |
+| Go deterministic pipeline | Sudah jalan |
+| OpenClaw AI reasoning loop | Sudah jalan sebagai layer investigasi |
+| Finalizer `finish_investigation.sh` | Jalur valid untuk save evidence, DB writer, token usage |
+| PostgreSQL + Dashboard | Sudah jalan |
+| Webhook | Service scaffold sudah ada; final DB persistence masih fase akhir |
+| Slack routing | Policy ada; final enable/routing masih fase akhir |
 
-  Orchestra->>Tools: Baseline check dari email + field register
-  Tools-->>Orchestra: Evidence awal + score awal
-
-  loop Investigation rounds
-    Orchestra->>Orchestra: Evaluasi confidence, brand hint, nama, no_hp confirmation, dan gap evidence
-    alt Evidence belum cukup dan masih ada tool yang berguna
-      Orchestra->>Tools: Panggil tool berikutnya
-      Tools-->>Orchestra: Evidence baru / tool error / skipped
-    else Confidence cukup / budget habis / no gain
-      Orchestra->>Orchestra: Stop loop dan tetapkan classification
-    end
-  end
-
-  Orchestra->>Finalizer: Final report + classification + confidence
-  Finalizer->>DB: Save investigation, report, token/cost
-  DB-->>Dashboard: Job muncul untuk review
-
-  alt Bisnis high-confidence dan Slack sudah final
-    Finalizer->>Slack: Kirim alert
-  else Personal / unknown / Slack belum final
-    Finalizer->>Finalizer: Skip Slack, simpan di DB/dashboard
-  end
-
-  Finalizer-->>Operator: Report akhir
-```
-
----
-
-## 3. Runtime Sequence Teknis
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor User as Manual / Telegram Input
-  participant Account as Account Input Normalizer
-  participant OpenClaw as OpenClaw Agent
-  participant Orchestra as Investigation Orchestra
-  participant Go as Go company-check
-  participant Catalog as Tool Catalog
-  participant External as External Sources
-  participant Scoring as Scoring Engine
-  participant Finalizer as finish_investigation.sh
-  participant Writer as db_writer.js
-  participant DB as PostgreSQL
-  participant Dashboard as Dashboard
-
-  User->>Account: email only OR email + full_name + brand_name + no_hp
-  Account->>Account: Normalize aliases and mask no_hp
-  Account->>OpenClaw: RegisterInput
-  OpenClaw->>Orchestra: Start investigation goal with account data
-
-  Orchestra->>Go: Baseline deterministic check
-  Go->>Scoring: emailintel + input evidence + domain/search/scoring
-  Scoring-->>Go: baseline result + evidence
-  Go-->>Orchestra: classification, confidence, evidence, tool status
-
-  loop AI reasoning rounds
-    Orchestra->>Orchestra: Observe score, account fields, evidence, missing facts
-    Orchestra->>Catalog: Check available tools and cost
-
-    alt confidence >= target threshold
-      Orchestra->>Orchestra: Stop: enough confidence
-    else tool budget exhausted
-      Orchestra->>Orchestra: Stop: budget exhausted
-    else no new information gain
-      Orchestra->>Orchestra: Stop: no useful next step
-    else evidence gap remains
-      Orchestra->>External: Call selected tool/search/fetch using safe signals
-      External-->>Orchestra: tool result / skipped / error
-      Orchestra->>Scoring: Add valid evidence only
-      Scoring-->>Orchestra: updated score + classification
-    end
-  end
-
-  Orchestra-->>OpenClaw: Final finding + AI report text
-  OpenClaw->>Finalizer: Run finalization command
-  Finalizer->>Go: Save latest evidence/report snapshot
-  Finalizer->>Writer: Insert investigation result
-  Writer->>DB: investigation_jobs + final_reports + llm_calls
-  DB-->>Dashboard: Job visible for review
-  Finalizer-->>OpenClaw: Token/cost summary + delivery result
-```
-
----
-
-## 4. Current Validated Path
+Jalur persistence yang sudah divalidasi:
 
 ```text
-OpenClaw/Telegram/manual input: email only or full account data
-  -> Investigation Orchestra
+Manual/Telegram input
+  -> OpenClaw / Investigation Orchestra
   -> Go deterministic baseline
   -> AI reasoning loop
   -> finish_investigation.sh
@@ -144,20 +48,107 @@ OpenClaw/Telegram/manual input: email only or full account data
   -> Dashboard
 ```
 
-This is the currently validated persistence path.
+---
+
+## 3. Actor Boundaries
+
+| Boundary | Isi | Tanggung Jawab |
+|---|---|---|
+| Human / Platform | Operator Telegram, manual check, future register webhook | Mengirim data akun |
+| OpenClaw AI | Telegram session, agent prompt, investigation orchestra, reasoning loop | Memutuskan langkah investigasi dan final report |
+| Machine / Go Tools | Go CLI, email/domain/search/crawler/scoring/report/evidence packages | Mengeksekusi check deterministik dan menghasilkan evidence |
+| Finalization | `finish_investigation.sh`, `db_writer.js`, token usage, Slack policy | Menutup investigasi dan menyimpan hasil |
+| Storage / Output | PostgreSQL, file evidence, dashboard, Slack | Menjadi tempat review dan delivery hasil |
 
 ---
 
-## 5. Input Contract
+## 4. End-To-End Flow Dengan Pemisah Area
+
+```mermaid
+flowchart TB
+  subgraph human["Human / Platform Input"]
+    H1["Operator Telegram / manual check"]
+    H2["Future platform webhook"]
+    H3["Data akun: email wajib; full_name, brand_name, no_hp opsional"]
+  end
+
+  subgraph openclaw["OpenClaw AI Layer"]
+    O1["OpenClaw session"]
+    O2["Investigation Orchestra"]
+    O3["AI reasoning loop"]
+    O4{"Stop atau lanjut?"}
+  end
+
+  subgraph machine["Machine / Go Tools"]
+    G1["company_check_go.sh"]
+    G2["Go company-check"]
+    G3["emailintel / domaincheck / crawler / search / scraper"]
+    G4["scoring + evidence + report"]
+  end
+
+  subgraph finalization["Finalization"]
+    F1["finish_investigation.sh"]
+    F2["db_writer.js"]
+    F3["token_usage.sh"]
+    F4{"Slack final routing?"}
+  end
+
+  subgraph output["Storage / Output"]
+    S1["evidence/*.json + reports/*.txt"]
+    S2["PostgreSQL: investigation_jobs, final_reports, llm_calls"]
+    S3["Dashboard"]
+    S4["Slack alert"]
+    S5["Telegram/report response"]
+  end
+
+  H1 --> H3 --> O1
+  H2 -. "final integration pending" .-> O1
+  O1 --> O2 --> G1 --> G2 --> G3 --> G4 --> O2
+  O2 --> O3 --> O4
+  O4 -- "butuh evidence lagi" --> G3
+  O4 -- "confidence cukup / budget habis / no gain" --> F1
+  F1 --> S1
+  F1 --> F2 --> S2 --> S3
+  F1 --> F3
+  F1 --> F4
+  F4 -- "bisnis high-confidence dan Slack sudah final" --> S4
+  F4 -- "lainnya" --> S2
+  F1 --> S5
+```
+
+---
+
+## 5. Sequence 1 — Input Masuk
+
+```mermaid
+sequenceDiagram
+  autonumber
+  box Human / Platform
+    actor Operator as Operator / Manual
+    participant Platform as Future Platform Webhook
+  end
+
+  box OpenClaw AI
+    participant Session as OpenClaw Session
+    participant Orchestra as Investigation Orchestra
+  end
+
+  Operator->>Session: /check atau manual input
+  Note over Operator,Session: Bisa email saja atau email + full_name + brand_name + no_hp
+  Platform-->>Session: Future webhook path, final integration pending
+  Session->>Orchestra: Start investigation with account data
+```
+
+Input contract:
 
 | Field | Required | Runtime Rule |
 |---|---:|---|
-| `email` | Yes | Primary signal; can be passed as `--email`, positional arg, or JSON |
-| `full_name` | No | Identity hint; can also arrive as `fullName`, `name`, or `nama` |
-| `brand_name` | No | Business hint; can also arrive as `brandName`, `company_field`, `company`, or `brand` |
-| `no_hp` | No | Confirmation only; can also arrive as `noHp`, `phone`, or `hp`; stored masked in reports |
+| `email` | Yes | Primary signal; bisa `--email`, positional arg, atau JSON |
+| `full_name` | No | Identity hint; alias: `fullName`, `name`, `nama` |
+| `brand_name` | No | Business hint; alias: `brandName`, `company_field`, `company`, `brand` |
+| `no_hp` | No | Confirmation only; alias: `noHp`, `phone`, `hp`; dimasking di report |
 
-Accepted input modes:
+Accepted modes:
 
 ```bash
 company-check --email user@gmail.com
@@ -174,13 +165,29 @@ company-check --input-json '{"email":"user@gmail.com","full_name":"Nama User","b
 
 ---
 
-## 6. Deterministic Baseline
+## 6. Sequence 2 — Baseline Go Check
 
-The baseline runs through Go:
+```mermaid
+sequenceDiagram
+  autonumber
+  box OpenClaw AI
+    participant Orchestra as Investigation Orchestra
+  end
 
-```text
-openclaw_workspace/scripts/company_check_go.sh
-  -> go-service/cmd/company-check
+  box Machine / Go Tools
+    participant Wrapper as company_check_go.sh
+    participant Go as Go company-check
+    participant Tools as Deterministic Tools
+    participant Scoring as Scoring Engine
+  end
+
+  Orchestra->>Wrapper: Run baseline check
+  Wrapper->>Go: Pass RegisterInput
+  Go->>Tools: emailintel, domaincheck, crawler, search, scraper
+  Tools-->>Go: evidence, skipped tools, tool errors
+  Go->>Scoring: Score valid evidence only
+  Scoring-->>Go: classification + confidence
+  Go-->>Orchestra: baseline result
 ```
 
 Main Go components:
@@ -201,70 +208,89 @@ Main Go components:
 
 ---
 
-## 7. AI Reasoning Loop
-
-The AI loop is controlled by OpenClaw and `AGENTS.md`.
-
-Each round:
-
-1. Observe current result.
-2. Identify evidence gaps.
-3. Decide whether another tool is worth the cost.
-4. Call tool if useful.
-5. Accept only valid evidence.
-6. Re-score deterministically.
-7. Stop or loop.
-
-Stop branches:
-
-| Stop Branch | Meaning |
-|---|---|
-| Confidence target reached | Enough evidence to classify |
-| Tool budget exhausted | Stop to control cost |
-| No new information gain | More tools likely wasteful |
-| Evidence remains weak | Classify as `unknown_needs_more_evidence` |
-| Suspicious/invalid signal found | Classify as `suspicious_or_invalid` |
-
-Rules:
-
-- Failed tools are `tool_errors`, not evidence.
-- Skipped tools are `tools_skipped`.
-- AI must not invent evidence.
-- `no_hp` must not be used for public search.
-
----
-
-## 8. Finalization Sequence
+## 7. Sequence 3 — AI / Orchestra Loop
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Agent as OpenClaw Agent
-  participant Finalizer as finish_investigation.sh
-  participant Go as company_check_go.sh
-  participant Files as evidence/ + reports/
-  participant Writer as db_writer.js
-  participant DB as PostgreSQL
-  participant Slack as Slack
-
-  Agent->>Finalizer: --email + optional fields + AI report
-  Finalizer->>Files: Save ai_report_latest.txt
-  Finalizer->>Go: Run --save
-  Go->>Files: Write latest.json and per-email evidence/report
-  Finalizer->>Finalizer: Evaluate classification + confidence
-
-  alt possible_company_affiliated and confidence >= 75 and Slack enabled
-    Finalizer->>Slack: Send alert
-  else not high-confidence business or Slack finalization pending
-    Finalizer->>Finalizer: Skip Slack
+  box OpenClaw AI
+    participant Orchestra as Investigation Orchestra
+    participant Catalog as Tool Catalog
   end
 
-  Finalizer->>Writer: Run DB writer
-  Writer->>DB: Insert job/report/llm cost
-  Finalizer-->>Agent: Print token usage and completion
+  box Machine / External
+    participant External as Search / Fetch / Tools
+    participant Scoring as Scoring Engine
+  end
+
+  loop Reasoning rounds
+    Orchestra->>Orchestra: Observe score, account fields, evidence gaps
+    Orchestra->>Catalog: Check available tools, cost, and limits
+
+    alt confidence target reached
+      Orchestra->>Orchestra: Stop, enough evidence
+    else tool budget exhausted
+      Orchestra->>Orchestra: Stop, preserve current result
+    else no useful information gain
+      Orchestra->>Orchestra: Stop, avoid wasting tools
+    else evidence gap remains
+      Orchestra->>External: Call selected safe tool/search/fetch
+      External-->>Orchestra: evidence OR tool_error OR skipped
+      Orchestra->>Scoring: Add only valid evidence
+      Scoring-->>Orchestra: updated classification + confidence
+    end
+  end
 ```
 
-Command:
+Rules:
+
+- AI boleh memilih tool dan merangkum evidence.
+- AI tidak boleh mengarang evidence.
+- Failed tools masuk `tool_errors`, bukan evidence negatif.
+- Skipped tools masuk `tools_skipped`.
+- `no_hp` hanya untuk konfirmasi, bukan public search seed.
+- Classification final tetap evidence-based dan deterministik.
+
+---
+
+## 8. Sequence 4 — Finalization, DB, Dashboard
+
+```mermaid
+sequenceDiagram
+  autonumber
+  box OpenClaw AI
+    participant Agent as OpenClaw Agent
+  end
+
+  box Finalization
+    participant Finalizer as finish_investigation.sh
+    participant Writer as db_writer.js
+    participant Token as token_usage.sh
+  end
+
+  box Storage / Output
+    participant Files as evidence/ + reports/
+    participant DB as PostgreSQL
+    participant Dashboard as Dashboard
+    participant Slack as Slack
+  end
+
+  Agent->>Finalizer: Final report + email + optional account fields
+  Finalizer->>Files: Save ai_report_latest.txt
+  Finalizer->>Files: Save latest evidence/report snapshot
+  Finalizer->>Writer: Insert investigation result
+  Writer->>DB: investigation_jobs + final_reports + llm_calls
+  DB-->>Dashboard: Job visible for review
+  Finalizer->>Token: Print model token/cost summary
+
+  alt business high-confidence and Slack final routing enabled
+    Finalizer->>Slack: Send alert
+  else personal / unknown / Slack pending
+    Finalizer->>Finalizer: Skip Slack, DB only
+  end
+```
+
+Command wajib setelah investigasi:
 
 ```bash
 cd openclaw_workspace
@@ -276,9 +302,9 @@ scripts/finish_investigation.sh --email <email>
 ## 9. Storage Map
 
 ```text
-Go evidence/report files
-  evidence/latest.json
-  reports/ai_report_latest.txt
+File evidence/report
+  openclaw_workspace/evidence/latest.json
+  openclaw_workspace/reports/ai_report_latest.txt
         |
         v
 db_writer.js
@@ -293,22 +319,30 @@ PostgreSQL
 Dashboard
 ```
 
-PostgreSQL is the operational source of truth. File evidence remains the audit/debug artifact.
+PostgreSQL adalah source of truth operasional. File evidence tetap dipakai untuk audit/debug.
 
 ---
 
 ## 10. Webhook Path Status
 
-Webhook is a final integration path, not the currently validated persistence path.
+Webhook adalah jalur final integration, bukan jalur persistence utama yang sudah divalidasi.
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Platform as Platform Register
-  participant Webhook as company-webhook
-  participant Go as Go company-check
-  participant DB as PostgreSQL
-  participant Dashboard as Dashboard
+  box Platform
+    participant Platform as Platform Register
+  end
+
+  box Webhook Service
+    participant Webhook as company-webhook
+    participant Go as Go company-check
+  end
+
+  box Storage / Output
+    participant DB as PostgreSQL
+    participant Dashboard as Dashboard
+  end
 
   Platform->>Webhook: POST /webhook/check
   Webhook->>Webhook: Validate secret + sanitize input
@@ -316,7 +350,7 @@ sequenceDiagram
   Go-->>Webhook: Fast classification response
   Webhook-->>Platform: JSON classification + dashboard_url
 
-  Note over Webhook,DB: Final-phase work: align evidence path and persist exact webhook result
+  Note over Webhook,DB: Final-phase work: persist exact webhook result to DB/dashboard
   Webhook-->>DB: Pending final integration
   DB-->>Dashboard: Pending final integration
 ```
@@ -338,7 +372,8 @@ sequenceDiagram
 
 Validated:
 
-- Go baseline.
+- Manual/Telegram input path.
+- Go deterministic baseline.
 - OpenClaw reasoning loop.
 - `finish_investigation.sh`.
 - PostgreSQL storage through finalizer.
@@ -349,3 +384,4 @@ Final integration pending:
 - Webhook DB persistence path.
 - Slack high-confidence routing.
 - Platform register validation.
+
