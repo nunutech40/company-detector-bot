@@ -19,13 +19,15 @@ Primary responsibilities:
 - Produce deterministic classification and confidence score.
 - Persist evidence to files and PostgreSQL.
 - Expose operator dashboard and platform webhook API.
+- Queue platform register payloads and process them sequentially.
+- Send one daily Slack prospect digest at 09:00 Asia/Jakarta.
 
 ---
 
 ## 2. Runtime Architecture
 
 ```text
-Telegram / Webhook / Manual CLI
+Telegram / Manual CLI
         |
         v
 OpenClaw workspace + Go binary
@@ -49,14 +51,37 @@ go-service/cmd/company-check
 finish_investigation.sh
         |
         +--> db_writer.js --> PostgreSQL
-        +--> smart Slack routing
         +--> token_usage.sh
         |
         v
-Dashboard / Telegram / Slack
+Dashboard / Telegram
+
+Platform Register
+        |
+        v
+Webhook intake service
+        |
+        v
+PostgreSQL intake queue
+        |
+        v
+Sequential worker
+        |
+        v
+OpenClaw workspace + Go binary
+
+Daily 09:00 cron
+        |
+        v
+Slack prospect digest reads PostgreSQL
+        |
+        v
+Slack channel + dashboard links
 ```
 
 AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
+
+Slack delivery is not part of the AI reasoning loop. Slack reads finalized data from PostgreSQL and sends a sales-ready digest once per day.
 
 ---
 
@@ -182,6 +207,54 @@ Tracks model usage and estimated cost:
 
 Schema source: `docs/technical/migration_v1.sql`.
 
+### Planned Final-Phase Tables
+
+Webhook queue and Slack digest require a small schema extension. The exact migration should be created during implementation, but the expected model is:
+
+#### `register_intake_jobs`
+
+One row per payload received from platform register.
+
+Key fields:
+
+- `id`
+- `source`
+- `external_id` or `idempotency_key`
+- `payload_json`
+- `email`, `full_name`, `brand_name`, `no_hp_masked`
+- `status`: `pending`, `processing`, `completed`, `failed`, `skipped`
+- `attempt_count`
+- `last_error`
+- `locked_at`, `processed_at`, `created_at`, `updated_at`
+- `investigation_job_id`
+
+#### `slack_digest_runs`
+
+One row per daily Slack digest execution.
+
+Key fields:
+
+- `id`
+- `window_start`, `window_end`
+- `prospect_count`
+- `status`: `sent`, `failed`
+- `slack_message_ts`
+- `dashboard_url`
+- `error`
+- `created_at`
+
+#### `slack_digest_items`
+
+Join table that records which investigation jobs have already appeared in a digest.
+
+Key fields:
+
+- `digest_run_id`
+- `investigation_job_id`
+- `created_at`
+
+This prevents repeated Slack prospect items across days.
+
 ---
 
 ## 7. Database Writer
@@ -230,7 +303,7 @@ Stack: Node.js, Express
 Port: `3002`  
 Service: `company-webhook`
 
-Status: service scaffold is live, but production DB integration is part of the final webhook/Slack phase. The already validated persistence path is `finish_investigation.sh -> db_writer.js -> PostgreSQL`.
+Status: service scaffold is live. The final webhook/Slack phase changes webhook behavior from direct check to async queue intake. The already validated persistence path is `finish_investigation.sh -> db_writer.js -> PostgreSQL`.
 
 Routes:
 
@@ -249,41 +322,90 @@ Request body:
 }
 ```
 
-Response includes:
+Final intake response should include:
 
 - `ok`
 - `email`
-- `classification`
-- `confidence_score`
-- `confidence_label`
-- `automation_action`
-- `company_detected`
-- `summary`
+- `queued`
+- `intake_job_id`
+- `status`
 - `dashboard_url`
 
-Current webhook runs the deterministic Go binary and returns a fast JSON response. The final production step is to align webhook evidence output with `db_writer.js` so the exact webhook request is persisted reliably. Full async queue/worker is future work.
+Final webhook rules:
+
+- Do not run the full investigation inside the HTTP request.
+- Validate auth and payload.
+- Normalize fields.
+- Insert into `register_intake_jobs`.
+- Return quickly to the caller.
+- Let the worker process pending jobs one at a time.
+
+The current deterministic response behavior is acceptable as a scaffold/test path only. Production platform register integration should use queue mode.
 
 ---
 
-## 10. Delivery
+## 10. Queue Worker
+
+The worker processes `register_intake_jobs` sequentially.
+
+Responsibilities:
+
+- Select the oldest `pending` job.
+- Lock it by marking `processing` with `locked_at`.
+- Run the existing investigation/finalization path.
+- Store output through `db_writer.js`.
+- Attach resulting `investigation_job_id` to the intake job.
+- Mark `completed`, `failed`, or `skipped`.
+- Retry transient failures with a max attempt limit.
+
+Concurrency:
+
+- Default concurrency is `1`.
+- A job must complete or fail before the next job starts.
+- This protects search/API limits and keeps AI/tool cost predictable for around 100 register payloads per day.
+
+Failure handling:
+
+- Tool failure inside investigation is not automatically queue failure if a valid classification/report is produced.
+- Infrastructure failure should increment `attempt_count`.
+- After max attempts, keep the payload as `failed` for dashboard/developer review.
+
+---
+
+## 11. Delivery
 
 | Surface | Current Behavior |
 |---|---|
 | Telegram | Main interactive testing/AI delivery channel |
 | Dashboard | Persistent operator interface |
-| Slack | Intended only for high-confidence business alerts |
-| Webhook response | Fast deterministic result; final DB integration pending |
+| Slack | Daily 09:00 prospect digest for sales/stakeholders |
+| Webhook response | Fast queue acknowledgement; no direct investigation in final design |
 
-Smart Slack routing rule:
+Slack digest prospect selection rule:
 
 ```text
 possible_company_affiliated AND confidence_score >= 75 => Slack
-otherwise => DB/dashboard only
+otherwise => not listed as prospect
 ```
+
+Slack digest behavior:
+
+- Runs every day at `09:00 Asia/Jakarta`.
+- Sends one message per day.
+- Always sends a heartbeat, even if no prospects are found.
+- Includes dashboard home link.
+- Includes detail links per prospect when jobs exist.
+- Does not include raw evidence, AI reasoning, tool traces, scraping logic, or internal score breakdown.
+- Records sent jobs in `slack_digest_items` so prospects are not repeated.
+
+Scheduler options:
+
+- Preferred deterministic implementation: system cron or systemd timer runs a Node.js digest script.
+- OpenClaw Gateway cron is acceptable if the deployed gateway has `cron` enabled and Slack delivery configured. OpenClaw docs describe built-in `cron` scheduling, `--tz`, and Slack announce delivery.
 
 ---
 
-## 11. Deployment
+## 12. Deployment
 
 Current production deployment is VPS + systemd, not Docker Compose.
 
@@ -311,7 +433,7 @@ bash deploy.sh
 
 ---
 
-## 12. Configuration
+## 13. Configuration
 
 Credentials live on VPS env files and must not be committed.
 
@@ -323,11 +445,13 @@ Important variables:
 - `SLACK_REPORT_CHANNEL`
 - `WEBHOOK_SECRET`
 - `OPENCLAW_BASE_URL`
+- `DASHBOARD_BASE_URL`
+- `SLACK_DIGEST_CRON`
 - Optional: `GOOGLE_CSE_KEY`, `GOOGLE_CSE_ID`
 
 ---
 
-## 13. Security Requirements
+## 14. Security Requirements
 
 - Keep secrets in environment files only.
 - Webhook must validate shared secret.
@@ -335,10 +459,11 @@ Important variables:
 - Dashboard is internal; add auth before exposing broadly.
 - Avoid storing unnecessary PII beyond investigation requirement.
 - Reports must preserve evidence source so decisions are auditable.
+- Slack digest must hide internal evidence-gathering logic and only show sales-ready prospect summaries.
 
 ---
 
-## 14. Observability
+## 15. Observability
 
 Current:
 
@@ -346,6 +471,7 @@ Current:
 - `llm_calls` stores token and estimated cost.
 - Dashboard shows cost per job.
 - Script logs are available through shell/systemd.
+- Daily Slack digest sends an operational heartbeat even when no prospect is found.
 
 Future:
 
@@ -356,7 +482,7 @@ Future:
 
 ---
 
-## 15. Test Requirements
+## 16. Test Requirements
 
 Core verification:
 
@@ -371,11 +497,16 @@ Manual E2E:
 - Confirm dashboard row appears.
 - Confirm job detail contains report, social/marketplace where available, and LLM cost.
 - Webhook `POST /webhook/check`.
-- Confirm response classification and DB insert.
+- Confirm response is queued/accepted quickly.
+- Confirm queue worker processes one pending item at a time.
+- Confirm completed webhook jobs appear in dashboard.
+- Confirm Slack digest sends prospect list plus dashboard links at 09:00.
+- Confirm Slack digest sends a no-prospect heartbeat when the window is empty.
+- Confirm non-prospect investigations do not appear as Slack prospect items.
 
 ---
 
-## 16. Roadmap
+## 17. Roadmap
 
 ### Done
 
@@ -388,13 +519,14 @@ Manual E2E:
 ### Next
 
 - E2E Telegram validation.
-- Finalize webhook DB path and validate from Komerce platform register.
+- Build webhook intake queue.
+- Build sequential worker with retry and idempotency.
+- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
+- Validate from Komerce platform register.
 - Improve `db_writer.js` extraction quality.
-- Finalize Slack hook with smart routing after validation.
 
 ### Later
 
-- Queue/worker with retry and idempotency.
 - Dashboard authentication.
 - Paid enrichment/search tools.
 - Multi-agent parallel investigation.

@@ -5,7 +5,8 @@ Dokumentasi aktif dibuat sederhana:
 1. [PRD](product/PRD.md) — source of truth produk.
 2. [TRD](technical/TRD.md) — source of truth teknis.
 3. [Flow Map](technical/FLOW_MAP.md) — satu-satunya flow aktif: sequence bisnis + runtime/orchestrator + finalization.
-4. [Backlog](../BACKLOG.md) — status kerja berikutnya.
+4. [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — plan fitur berikutnya.
+5. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -20,6 +21,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [PRD](product/PRD.md) | Product direction, goals, classifications, roadmap |
 | [TRD](technical/TRD.md) | Architecture, services, storage, deployment, security |
 | [Flow Map](technical/FLOW_MAP.md) | Alur detail dari input data akun, orchestra loop, stop branches, finalizer, DB/dashboard |
+| [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) | Rencana final webhook queue, sequential worker, dan Slack digest jam 09:00 |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL aktual |
 
@@ -60,5 +62,4 @@ Yang termasuk archive:
 - Update `PRD.md` kalau arah produk berubah.
 - Update `TRD.md` kalau arsitektur/komponen/deployment berubah.
 - Update `FLOW_MAP.md` kalau alur runtime berubah.
-- Jangan tambah dokumen planning baru kalau fiturnya sudah jadi; update source of truth saja.
-
+- Untuk fitur baru yang belum jadi, boleh tambah plan singkat; setelah selesai, serap kembali ke PRD/TRD/FLOW_MAP.

@@ -32,8 +32,8 @@ Status yang sesuai kondisi project sekarang:
 | OpenClaw AI reasoning loop | Sudah jalan sebagai layer investigasi |
 | Finalizer `finish_investigation.sh` | Jalur valid untuk save evidence, DB writer, token usage |
 | PostgreSQL + Dashboard | Sudah jalan |
-| Webhook | Service scaffold sudah ada; final DB persistence masih fase akhir |
-| Slack routing | Policy ada; final enable/routing masih fase akhir |
+| Webhook | Service scaffold sudah ada; target final adalah intake queue async |
+| Slack routing | Target final adalah daily prospect digest jam 09:00 |
 
 Jalur persistence yang sudah divalidasi:
 
@@ -46,6 +46,16 @@ Manual/Telegram input
   -> db_writer.js
   -> PostgreSQL
   -> Dashboard
+
+Fase berikutnya:
+
+Platform register
+  -> webhook intake
+  -> queue
+  -> sequential worker
+  -> same investigation path
+  -> DB/dashboard
+  -> Slack digest jam 09:00
 ```
 
 ---
@@ -54,11 +64,13 @@ Manual/Telegram input
 
 | Boundary | Isi | Tanggung Jawab |
 |---|---|---|
-| Human / Platform | Operator Telegram, manual check, future register webhook | Mengirim data akun |
-| OpenClaw AI | Telegram session, agent prompt, investigation orchestra, reasoning loop | Memutuskan langkah investigasi dan final report |
+| Human / Platform | Operator Telegram, manual check, platform register webhook | Mengirim data akun |
+| Webhook / Queue | Webhook service, intake DB, sequential worker | Menampung payload platform dan memproses satu per satu |
+| OpenClaw AI | Telegram session, agent prompt, investigation orchestra, reasoning loop | Memutuskan langkah investigasi dan final report; tidak menulis storage langsung |
 | Machine / Go Tools | Go CLI, email/domain/search/crawler/scoring/report/evidence packages | Mengeksekusi check deterministik dan menghasilkan evidence |
-| Finalization | `finish_investigation.sh`, `db_writer.js`, token usage, Slack policy | Menutup investigasi dan menyimpan hasil |
-| Storage / Output | PostgreSQL, file evidence, dashboard, Slack | Menjadi tempat review dan delivery hasil |
+| Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
+| Storage / Output | PostgreSQL, file evidence, dashboard | Menjadi tempat review dan source data operasional |
+| Slack Digest | Cron/digest script, Slack channel | Mengirim ringkasan prospect jam 09:00 dari data final di DB |
 
 ---
 
@@ -67,9 +79,15 @@ Manual/Telegram input
 ```mermaid
 sequenceDiagram
   autonumber
-  box Human / Platform Input
+  box Human Platform Input
     actor Human as Operator / Manual
-    participant Platform as Future Platform
+    participant Platform as Platform Register
+  end
+
+  box Webhook Queue Layer
+    participant Webhook as Webhook Intake
+    participant Queue as Intake Queue
+    participant Worker as Sequential Worker
   end
 
   box OpenClaw AI Layer
@@ -77,7 +95,7 @@ sequenceDiagram
     participant Orchestra as Investigation Orchestra
   end
 
-  box Machine / Go Tools
+  box Machine Go Tools
     participant Go as Go company-check
     participant Tools as Tools + Scoring
   end
@@ -87,43 +105,59 @@ sequenceDiagram
     participant Writer as db_writer.js
   end
 
-  box Storage / Output
+  box Storage Output
     participant DB as PostgreSQL
     participant Dashboard as Dashboard
-    participant Slack as Slack
+  end
+
+  box Slack Digest
+    participant Digest as Daily Digest
+    participant Slack as Slack Channel
   end
 
   Human->>AI: /check atau manual input data akun
-  Note over Human,AI: Minimum email or full account data
-  Platform-->>AI: Future webhook path - final integration pending
+  Note over Human,AI: Minimum email atau data akun lengkap
+
+  Platform->>Webhook: POST register payload
+  Webhook->>Queue: Save pending payload
+  Queue-->>Webhook: intake_job_id
+  Webhook-->>Platform: Accepted queued
+  Worker->>Queue: Take oldest pending job
+  Worker->>Orchestra: Process one queued job
 
   AI->>Orchestra: Start investigation
   Orchestra->>Go: Run deterministic baseline
-  Go->>Tools: email/domain/crawler/search/scoring
-  Tools-->>Go: evidence + skipped + tool_errors
-  Go-->>Orchestra: baseline classification + confidence
+  Go->>Tools: email domain crawler search scoring
+  Tools-->>Go: evidence skipped tool_errors
+  Go-->>Orchestra: baseline classification confidence
 
   loop AI reasoning rounds
     Orchestra->>Orchestra: Evaluate evidence gaps and confidence
     alt Butuh evidence lagi
       Orchestra->>Tools: Call selected safe tool
-      Tools-->>Orchestra: new evidence / skipped / error
+      Tools-->>Orchestra: new evidence skipped error
       Orchestra->>Orchestra: Re-score deterministically
-    else Confidence cukup / budget habis / no gain
+    else Confidence cukup atau budget habis
       Orchestra->>Orchestra: Stop loop
     end
   end
 
-  Orchestra-->>AI: Final classification + AI report
-  AI->>Finalizer: Run finalization
+  Orchestra-->>AI: Final classification and AI report
+  AI->>Finalizer: OpenClaw executes finalizer
+  Note over AI,Finalizer: AI decides report. Finalizer writes output.
   Finalizer->>Writer: Insert result
-  Writer->>DB: jobs + reports + llm_calls
+  Writer->>DB: jobs reports llm_calls
   DB-->>Dashboard: Job visible for review
 
-  alt Business high-confidence and Slack finalized
-    Finalizer->>Slack: Send alert
-  else Personal / unknown / Slack pending
-    Finalizer->>DB: DB only
+  loop Daily at 09:00
+    Digest->>DB: Read prospect jobs not yet sent
+    DB-->>Digest: Prospect list or empty result
+    Digest->>Dashboard: Include dashboard links
+    alt Prospects found
+      Digest->>Slack: Send prospect digest
+    else No prospects found
+      Digest->>Slack: Send heartbeat digest
+    end
   end
 ```
 
@@ -137,8 +171,14 @@ Diagram ini cuma peta ringkas area. Sequence utama tetap ada di section 4.
 flowchart TB
   subgraph human["Human / Platform Input"]
     H1["Operator Telegram / manual check"]
-    H2["Future platform webhook"]
+    H2["Platform register webhook"]
     H3["Data akun: email wajib; full_name, brand_name, no_hp opsional"]
+  end
+
+  subgraph intake["Webhook / Queue"]
+    Q1["Webhook intake"]
+    Q2["register_intake_jobs"]
+    Q3["Sequential worker"]
   end
 
   subgraph openclaw["OpenClaw AI Layer"]
@@ -159,19 +199,18 @@ flowchart TB
     F1["finish_investigation.sh"]
     F2["db_writer.js"]
     F3["token_usage.sh"]
-    F4{"Slack final routing?"}
   end
 
   subgraph output["Storage / Output"]
     S1["evidence/*.json + reports/*.txt"]
     S2["PostgreSQL: investigation_jobs, final_reports, llm_calls"]
     S3["Dashboard"]
-    S4["Slack alert"]
+    S4["Slack daily digest jam 09:00"]
     S5["Telegram/report response"]
   end
 
   H1 --> H3 --> O1
-  H2 -. "final integration pending" .-> O1
+  H2 --> Q1 --> Q2 --> Q3 --> O1
   O1 --> O2 --> G1 --> G2 --> G3 --> G4 --> O2
   O2 --> O3 --> O4
   O4 -- "butuh evidence lagi" --> G3
@@ -179,10 +218,8 @@ flowchart TB
   F1 --> S1
   F1 --> F2 --> S2 --> S3
   F1 --> F3
-  F1 --> F4
-  F4 -- "bisnis high-confidence dan Slack sudah final" --> S4
-  F4 -- "lainnya" --> S2
   F1 --> S5
+  S2 --> S4
 ```
 
 ---
@@ -192,9 +229,9 @@ flowchart TB
 ```mermaid
 sequenceDiagram
   autonumber
-  box Human / Platform
+  box Human Platform
     actor Operator as Operator / Manual
-    participant Platform as Future Platform Webhook
+    participant Platform as Platform Register
   end
 
   box OpenClaw AI
@@ -202,9 +239,20 @@ sequenceDiagram
     participant Orchestra as Investigation Orchestra
   end
 
+  box Webhook Queue
+    participant Webhook as Webhook Intake
+    participant Queue as Intake Queue
+    participant Worker as Sequential Worker
+  end
+
   Operator->>Session: /check atau manual input
   Note over Operator,Session: Bisa email saja atau data akun lengkap
-  Platform-->>Session: Future webhook path - final integration pending
+  Platform->>Webhook: POST register payload
+  Webhook->>Queue: Save pending payload
+  Queue-->>Webhook: queued
+  Webhook-->>Platform: accepted
+  Worker->>Queue: Take oldest pending job
+  Worker->>Session: Start queued investigation
   Session->>Orchestra: Start investigation with account data
 ```
 
@@ -337,11 +385,10 @@ sequenceDiagram
     participant Token as token_usage.sh
   end
 
-  box Storage / Output
+  box Storage Output
     participant Files as evidence/ + reports/
     participant DB as PostgreSQL
     participant Dashboard as Dashboard
-    participant Slack as Slack
   end
 
   Agent->>Finalizer: Final report + email + optional account fields
@@ -351,13 +398,14 @@ sequenceDiagram
   Writer->>DB: investigation_jobs + final_reports + llm_calls
   DB-->>Dashboard: Job visible for review
   Finalizer->>Token: Print model token/cost summary
-
-  alt business high-confidence and Slack final routing enabled
-    Finalizer->>Slack: Send alert
-  else personal / unknown / Slack pending
-    Finalizer->>Finalizer: Skip Slack and keep DB only
-  end
 ```
+
+Important boundary:
+
+- AI/OpenClaw Agent produces reasoning, classification narrative, and final report.
+- OpenClaw runtime executes the finalizer command.
+- `finish_investigation.sh` and `db_writer.js` perform file and database writes.
+- Slack digest later reads from PostgreSQL; AI does not write directly to Slack or storage.
 
 Command wajib setelah investigasi:
 
@@ -392,9 +440,9 @@ PostgreSQL adalah source of truth operasional. File evidence tetap dipakai untuk
 
 ---
 
-## 11. Webhook Path Status
+## 11. Webhook Queue Path
 
-Webhook adalah jalur final integration, bukan jalur persistence utama yang sudah divalidasi.
+Webhook adalah jalur final integration berikutnya. Targetnya bukan direct check, tetapi intake queue.
 
 ```mermaid
 sequenceDiagram
@@ -405,28 +453,85 @@ sequenceDiagram
 
   box Webhook Service
     participant Webhook as company-webhook
-    participant Go as Go company-check
+    participant Queue as register_intake_jobs
+    participant Worker as Queue Worker
   end
 
-  box Storage / Output
+  box Investigation
+    participant OpenClaw as OpenClaw Runtime
+    participant Finalizer as Finalizer
+  end
+
+  box Storage Output
     participant DB as PostgreSQL
     participant Dashboard as Dashboard
   end
 
   Platform->>Webhook: POST /webhook/check
   Webhook->>Webhook: Validate secret + sanitize input
-  Webhook->>Go: Run deterministic check
-  Go-->>Webhook: Fast classification response
-  Webhook-->>Platform: JSON classification + dashboard_url
-
-  Note over Webhook,DB: Final-phase work: persist exact webhook result to DB/dashboard
-  Webhook-->>DB: Pending final integration
-  DB-->>Dashboard: Pending final integration
+  Webhook->>Queue: Insert pending job
+  Queue-->>Webhook: intake_job_id
+  Webhook-->>Platform: queued response + dashboard_url
+  Worker->>Queue: Lock oldest pending job
+  Worker->>OpenClaw: Run investigation one by one
+  OpenClaw->>Finalizer: Execute finalizer
+  Finalizer->>DB: Persist investigation result
+  DB-->>Dashboard: Job visible
 ```
+
+Worker rule:
+
+- Default concurrency is one job at a time.
+- A job must finish, fail, or be skipped before the next payload starts.
+- Around 100 register payloads per day is small enough for sequential processing.
 
 ---
 
-## 12. Classification Outputs
+## 12. Slack Daily Digest Flow
+
+Slack bukan output raw investigasi. Slack hanya daily handoff untuk sales/stakeholders.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  box Scheduler
+    participant Cron as 09:00 Cron
+  end
+
+  box Storage
+    participant DB as PostgreSQL
+    participant Dashboard as Dashboard
+  end
+
+  box Slack
+    participant Digest as Digest Script
+    participant Channel as Slack Channel
+  end
+
+  Cron->>Digest: Run daily prospect digest
+  Digest->>DB: Query unsent prospect jobs
+  DB-->>Digest: prospect list or empty result
+  Digest->>Dashboard: Build dashboard home and detail links
+
+  alt Prospect list found
+    Digest->>Channel: Send prospect list and links
+    Digest->>DB: Mark digest run and sent items
+  else No prospect found
+    Digest->>Channel: Send no prospect heartbeat
+    Digest->>DB: Mark empty digest run
+  end
+```
+
+Slack content rule:
+
+- Include dashboard home link in every digest.
+- Include detail link per prospect if available.
+- Show business-friendly summary only.
+- Hide raw evidence, AI reasoning detail, scraping flow, tool errors, and scoring internals.
+
+---
+
+## 13. Classification Outputs
 
 | Classification | Meaning |
 |---|---|
@@ -437,7 +542,7 @@ sequenceDiagram
 
 ---
 
-## 13. Current Status
+## 14. Current Status
 
 Validated:
 
@@ -450,6 +555,7 @@ Validated:
 
 Final integration pending:
 
-- Webhook DB persistence path.
-- Slack high-confidence routing.
+- Webhook intake queue.
+- Sequential worker.
+- Slack daily prospect digest at 09:00.
 - Platform register validation.

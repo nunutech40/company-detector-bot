@@ -52,8 +52,8 @@ Status per 20 Mei 2026:
 | Telegram flow | Active | Channel testing dan operasional AI loop |
 | PostgreSQL storage | Done | 3-table MVP schema |
 | Dashboard | Done | Express + EJS, port 3001 |
-| Webhook API | Scaffold ready | Express API port 3002 tersedia; final DB path dan platform validation masih pengembangan akhir |
-| Slack delivery | Final integration pending | Smart routing policy ada; hook diaktifkan setelah validasi akhir |
+| Webhook API | Final phase planned | Express API port 3002 tersedia; target berikutnya berubah menjadi intake queue, bukan direct check |
+| Slack delivery | Final phase planned | Target berubah menjadi daily prospect digest jam 09:00, bukan realtime alert per investigasi |
 | End-to-end validation | Pending | Telegram and platform webhook tests masih next priority |
 
 ---
@@ -73,7 +73,7 @@ Status per 20 Mei 2026:
 
 | Classification | Meaning | Default Product Action |
 |---|---|---|
-| `possible_company_affiliated` | Evidence cukup kuat bahwa user terkait bisnis/perusahaan | Route ke company/B2B segment atau Slack alert jika confidence tinggi |
+| `possible_company_affiliated` | Evidence cukup kuat bahwa user terkait bisnis/perusahaan | Route ke company/B2B segment dan kandidat Slack digest jika confidence tinggi |
 | `likely_personal_email` | Sinyal lebih cocok personal, tidak ada business evidence kuat | Continue personal flow |
 | `unknown_needs_more_evidence` | Data belum cukup untuk keputusan aman | Store, review, retry/enrich later |
 | `suspicious_or_invalid` | Email invalid, disposable, atau pola risk tinggi | Risk review |
@@ -89,7 +89,7 @@ Confidence score memakai rentang `0-100`:
 ## 7. Product Flow
 
 ```text
-Input register / Telegram / Webhook
+Input manual / Telegram
         |
         v
 Deterministic Go pipeline
@@ -108,10 +108,23 @@ Deterministic Go pipeline
 File evidence + PostgreSQL + dashboard
         |
         +--> Telegram response
-        +--> Slack alert only for high-confidence business cases
+        +--> Slack daily digest reads prospect results at 09:00
+
+Platform register webhook
+        |
+        v
+Webhook intake queue
+        |
+        v
+Sequential worker
+        |
+        v
+Same investigation + finalization path above
 ```
 
-Webhook response saat ini mengembalikan hasil deterministik cepat. Jalur production webhook sampai DB/dashboard masih bagian pengembangan akhir bersama Slack routing; jalur yang sudah valid adalah OpenClaw/Telegram finalization melalui `finish_investigation.sh`.
+Webhook production target adalah menerima data register cepat, menyimpan ke queue, lalu worker memproses satu per satu. Webhook tidak perlu langsung menjalankan investigasi karena volume register harian sekitar 100 data dan Slack hanya mengirim digest sekali sehari.
+
+Jalur yang sudah valid tetap OpenClaw/Telegram finalization melalui `finish_investigation.sh`. Jalur webhook queue dan Slack digest adalah fase pengembangan berikutnya.
 
 ---
 
@@ -170,8 +183,8 @@ Rules:
 
 - Telegram report for interactive investigation.
 - Dashboard list and detail views.
-- Slack alert for high-confidence business detections.
-- Webhook JSON response for platform integration.
+- Slack daily prospect digest for sales/stakeholders.
+- Webhook JSON acknowledgement for platform integration.
 
 ### Stored Output
 
@@ -228,7 +241,7 @@ Authentication is not part of current MVP; access is controlled at VPS/network l
 
 ## 13. Webhook Requirements
 
-Webhook API enables platform register integration. The service and contract exist, but production integration is not the primary live workflow until the final DB path and Komerce validation are complete.
+Webhook API enables platform register integration. The final product requirement is **async intake**, not direct investigation on request.
 
 Current endpoints:
 
@@ -238,43 +251,68 @@ Current endpoints:
 Final webhook integration must:
 
 - Validate shared secret.
-- Require valid email.
+- Accept register payload with at least `email` or another agreed identifier.
 - Accept optional `full_name`, `no_hp`, and `brand_name`.
-- Run deterministic Go pipeline with `--save`.
-- Store the matching request result through `db_writer.js`.
-- Return JSON with classification, confidence, action, and dashboard URL.
+- Normalize and sanitize input.
+- Store payload in an intake queue with status `pending`.
+- Return fast JSON acknowledgement with queue/job ID.
+- Avoid running investigation inside the HTTP request.
+- Let a background worker process queued data sequentially.
+- Store completed investigation output through the existing DB/dashboard path.
 
-Future high-volume version should add queue/worker, retry, rate limit, and idempotency key.
+The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing must be one-at-a-time by default, with retry, idempotency, and failure tracking.
 
 ---
 
-## 14. Slack Alert Policy
+## 14. Slack Prospect Digest Policy
 
-Slack should be used for important business opportunities, not every investigation.
+Slack is for sales/stakeholder handoff, not debugging and not raw investigation output.
 
-Target routing:
+Target behavior:
+
+```text
+Every day at 09:00 Asia/Jakarta
+=> send one prospect digest to Slack
+```
+
+Digest content:
+
+- Always send a daily message, even when there are no prospects.
+- Include dashboard home link in every digest.
+- If prospects exist, include a list of prospect-ready accounts from the previous window.
+- Each prospect item should include a detail/dashboard job link when available.
+- Hide raw evidence, tool logic, AI reasoning, scraping details, and internal scoring explanation from Slack.
+- Keep full investigation detail in dashboard and DB.
+
+Prospect filter target:
 
 ```text
 classification = possible_company_affiliated
 AND confidence_score >= 75
-=> send Slack alert
-
-all other cases
-=> DB/dashboard only
+AND not yet included in a previous digest
 ```
 
-This avoids alert fatigue while preserving all data in dashboard.
+If no prospects exist, Slack should still send an operational heartbeat:
+
+```text
+No new prospects in the last window.
+Pipeline is still running.
+Dashboard: <dashboard-url>
+```
+
+This keeps Slack clean for sales while still confirming to stakeholders and developers that the pipeline is alive.
 
 ---
 
 ## 15. Success Metrics
 
-- High-confidence business detections are routed or surfaced quickly.
+- High-confidence business detections are surfaced in the daily 09:00 prospect digest.
 - Personal/unknown users do not spam Slack.
 - Operators can inspect every investigation in dashboard.
 - AI reports include enough evidence to justify classification.
 - Token/cost tracking exists for each investigation.
-- Platform register can call webhook without needing Telegram.
+- Platform register can enqueue data through webhook without needing Telegram.
+- Webhook ingestion can handle around 100 register payloads per day without losing jobs.
 
 ---
 
@@ -289,13 +327,13 @@ This avoids alert fatigue while preserving all data in dashboard.
 ### Next
 
 - End-to-end Telegram validation.
-- Finalize webhook DB path and validate with Komerce register flow.
+- Build webhook intake queue and sequential worker.
+- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
+- Validate with Komerce register flow.
 - Improve `db_writer.js` extraction for social/marketplace/role evidence.
-- Finalize Slack hook with smart routing once validation is stable.
 
 ### Later
 
-- Queue/worker for high volume.
 - Google CSE key, Firecrawl, Tavily, enrichment APIs.
 - Multi-agent parallel investigation.
 - Auth layer for dashboard.

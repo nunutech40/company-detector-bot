@@ -19,7 +19,7 @@ Done:
 - 3-table storage: `investigation_jobs`, `final_reports`, `llm_calls`.
 - `db_writer.js` integrated with `finish_investigation.sh`.
 - Dashboard Express + EJS at port `3001`.
-- Webhook API Express at port `3002` as final integration scaffold, not production route yet.
+- Webhook API Express at port `3002` as final integration scaffold; target final is queue intake.
 - Tool packages: `brandhint`, `sociallinks`, `rolesignal`.
 - Token/cost tracking.
 - One-command deploy via `deploy.sh`.
@@ -27,9 +27,9 @@ Done:
 Next validation:
 
 - Telegram end-to-end test.
-- Finish webhook DB path and validate from Komerce register flow.
+- Build webhook intake queue and sequential worker for Komerce register flow.
 - Improve `db_writer.js` social/marketplace extraction.
-- Finalize Slack smart routing and re-enable hook after validation.
+- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 
 ---
 
@@ -40,8 +40,9 @@ For humans:
 1. [PRD](docs/product/PRD.md) — product source of truth.
 2. [TRD](docs/technical/TRD.md) — technical source of truth.
 3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
-4. [Documentation Index](docs/README.md) — all docs.
-5. [Backlog](BACKLOG.md) — status and next work.
+4. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — plan fitur berikutnya.
+5. [Documentation Index](docs/README.md) — all docs.
+6. [Backlog](BACKLOG.md) — status and next work.
 
 For another AI agent:
 
@@ -175,11 +176,12 @@ scripts/finish_investigation.sh --email <email>
 
 This finalizer handles evidence saving, DB write, delivery routing, and token usage.
 
-Slack routing target:
+Slack daily digest target:
 
 ```text
-possible_company_affiliated + confidence >= 75 => Slack
-otherwise => DB/dashboard only
+09:00 Asia/Jakarta every day
+possible_company_affiliated + confidence >= 75 => listed as prospect
+empty prospect window => send heartbeat digest
 ```
 
 Input rule:
