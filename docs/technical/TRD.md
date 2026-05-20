@@ -62,7 +62,7 @@ Platform Register
 Webhook intake service
         |
         v
-PostgreSQL intake queue
+PostgreSQL table register_intake_jobs
         |
         v
 Sequential worker
@@ -209,7 +209,7 @@ Schema source: `docs/technical/migration_v1.sql`.
 
 ### Planned Final-Phase Tables
 
-Webhook queue and Slack digest require a small schema extension. The exact migration should be created during implementation, but the expected model is:
+Webhook queue and Slack digest require a small schema extension. The queue is a PostgreSQL-backed queue table, not a separate Redis/RabbitMQ service. The exact migration should be created during implementation, but the expected model is:
 
 #### `register_intake_jobs`
 
@@ -336,7 +336,7 @@ Final webhook rules:
 - Do not run the full investigation inside the HTTP request.
 - Validate auth and payload.
 - Normalize fields.
-- Insert into `register_intake_jobs`.
+- Insert into PostgreSQL table `register_intake_jobs`.
 - Return quickly to the caller.
 - Let the worker process pending jobs one at a time.
 
@@ -346,7 +346,7 @@ The current deterministic response behavior is acceptable as a scaffold/test pat
 
 ## 10. Queue Worker
 
-The worker processes `register_intake_jobs` sequentially.
+The worker processes PostgreSQL table `register_intake_jobs` sequentially.
 
 Responsibilities:
 
@@ -519,7 +519,7 @@ Manual E2E:
 ### Next
 
 - E2E Telegram validation.
-- Build webhook intake queue.
+- Build webhook PostgreSQL intake queue.
 - Build sequential worker with retry and idempotency.
 - Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 - Validate from Komerce platform register.

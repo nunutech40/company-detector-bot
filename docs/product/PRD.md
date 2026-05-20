@@ -52,7 +52,7 @@ Status per 20 Mei 2026:
 | Telegram flow | Active | Channel testing dan operasional AI loop |
 | PostgreSQL storage | Done | 3-table MVP schema |
 | Dashboard | Done | Express + EJS, port 3001 |
-| Webhook API | Final phase planned | Express API port 3002 tersedia; target berikutnya berubah menjadi intake queue, bukan direct check |
+| Webhook API | Final phase planned | Express API port 3002 tersedia; target berikutnya berubah menjadi PostgreSQL-backed intake queue, bukan direct check |
 | Slack delivery | Final phase planned | Target berubah menjadi daily prospect digest jam 09:00, bukan realtime alert per investigasi |
 | End-to-end validation | Pending | Telegram and platform webhook tests masih next priority |
 
@@ -113,7 +113,7 @@ File evidence + PostgreSQL + dashboard
 Platform register webhook
         |
         v
-Webhook intake queue
+PostgreSQL table: register_intake_jobs
         |
         v
 Sequential worker
@@ -254,13 +254,13 @@ Final webhook integration must:
 - Accept register payload with at least `email` or another agreed identifier.
 - Accept optional `full_name`, `no_hp`, and `brand_name`.
 - Normalize and sanitize input.
-- Store payload in an intake queue with status `pending`.
+- Store payload in PostgreSQL table `register_intake_jobs` with status `pending`.
 - Return fast JSON acknowledgement with queue/job ID.
 - Avoid running investigation inside the HTTP request.
 - Let a background worker process queued data sequentially.
 - Store completed investigation output through the existing DB/dashboard path.
 
-The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing must be one-at-a-time by default, with retry, idempotency, and failure tracking.
+The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing uses PostgreSQL-backed status rows and must be one-at-a-time by default, with retry, idempotency, and failure tracking.
 
 ---
 
@@ -327,7 +327,7 @@ This keeps Slack clean for sales while still confirming to stakeholders and deve
 ### Next
 
 - End-to-end Telegram validation.
-- Build webhook intake queue and sequential worker.
+- Build webhook PostgreSQL intake queue and sequential worker.
 - Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 - Validate with Komerce register flow.
 - Improve `db_writer.js` extraction for social/marketplace/role evidence.

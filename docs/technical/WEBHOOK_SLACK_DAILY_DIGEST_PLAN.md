@@ -37,7 +37,7 @@ Target behavior:
 ```text
 Platform Register
   -> Webhook intake
-  -> register_intake_jobs pending
+  -> PostgreSQL table register_intake_jobs pending
   -> sequential worker
   -> investigation and finalizer
   -> PostgreSQL and dashboard
@@ -75,7 +75,7 @@ Webhook behavior:
 - Normalize email and optional account fields.
 - Mask phone before storage where possible.
 - Generate or read an idempotency key.
-- Insert into `register_intake_jobs`.
+- Insert into PostgreSQL table `register_intake_jobs`.
 - Return `202 Accepted` style response.
 
 Example response:
@@ -92,7 +92,9 @@ Example response:
 
 ---
 
-## 5. Queue Schema Plan
+## 5. PostgreSQL Queue Schema Plan
+
+The intake queue is a PostgreSQL-backed queue table. It is not an OpenClaw plugin, Redis, or RabbitMQ in this phase.
 
 ### `register_intake_jobs`
 
@@ -276,7 +278,7 @@ Pipeline tetap berjalan.
 
 ## 10. Implementation Steps
 
-1. Add DB migration for intake queue and digest tracking.
+1. Add DB migration for PostgreSQL intake queue and digest tracking.
 2. Change webhook final mode to enqueue-only.
 3. Add worker script/service for sequential queue processing.
 4. Add digest query and Slack formatter.

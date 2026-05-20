@@ -19,7 +19,7 @@ Done:
 - 3-table storage: `investigation_jobs`, `final_reports`, `llm_calls`.
 - `db_writer.js` integrated with `finish_investigation.sh`.
 - Dashboard Express + EJS at port `3001`.
-- Webhook API Express at port `3002` as final integration scaffold; target final is queue intake.
+- Webhook API Express at port `3002` as final integration scaffold; target final is PostgreSQL-backed queue intake.
 - Tool packages: `brandhint`, `sociallinks`, `rolesignal`.
 - Token/cost tracking.
 - One-command deploy via `deploy.sh`.
@@ -27,7 +27,7 @@ Done:
 Next validation:
 
 - Telegram end-to-end test.
-- Build webhook intake queue and sequential worker for Komerce register flow.
+- Build webhook PostgreSQL intake queue and sequential worker for Komerce register flow.
 - Improve `db_writer.js` social/marketplace extraction.
 - Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 

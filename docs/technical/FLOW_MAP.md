@@ -65,7 +65,7 @@ Platform register
 | Boundary | Isi | Tanggung Jawab |
 |---|---|---|
 | Human / Platform | Operator Telegram, manual check, platform register webhook | Mengirim data akun |
-| Webhook / Queue | Webhook service, intake DB, sequential worker | Menampung payload platform dan memproses satu per satu |
+| Webhook / Queue | Webhook service, PostgreSQL table `register_intake_jobs`, sequential worker | Menampung payload platform dan memproses satu per satu |
 | OpenClaw AI | Telegram session, agent prompt, investigation orchestra, reasoning loop | Memutuskan langkah investigasi dan final report; tidak menulis storage langsung |
 | Machine / Go Tools | Go CLI, email/domain/search/crawler/scoring/report/evidence packages | Mengeksekusi check deterministik dan menghasilkan evidence |
 | Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
@@ -86,7 +86,7 @@ sequenceDiagram
 
   box Webhook Queue Layer
     participant Webhook as Webhook Intake
-    participant Queue as Intake Queue
+    participant Queue as PostgreSQL register_intake_jobs
     participant Worker as Sequential Worker
   end
 
@@ -119,10 +119,10 @@ sequenceDiagram
   Note over Human,AI: Minimum email atau data akun lengkap
 
   Platform->>Webhook: POST register payload
-  Webhook->>Queue: Save pending payload
+  Webhook->>Queue: Insert pending register payload
   Queue-->>Webhook: intake_job_id
   Webhook-->>Platform: Accepted queued
-  Worker->>Queue: Take oldest pending job
+  Worker->>Queue: Lock oldest pending job
   Worker->>Orchestra: Process one queued job
 
   AI->>Orchestra: Start investigation
@@ -177,7 +177,7 @@ flowchart TB
 
   subgraph intake["Webhook / Queue"]
     Q1["Webhook intake"]
-    Q2["register_intake_jobs"]
+    Q2["PostgreSQL table: register_intake_jobs"]
     Q3["Sequential worker"]
   end
 
@@ -241,15 +241,15 @@ sequenceDiagram
 
   box Webhook Queue
     participant Webhook as Webhook Intake
-    participant Queue as Intake Queue
+    participant Queue as PostgreSQL register_intake_jobs
     participant Worker as Sequential Worker
   end
 
   Operator->>Session: /check atau manual input
   Note over Operator,Session: Bisa email saja atau data akun lengkap
   Platform->>Webhook: POST register payload
-  Webhook->>Queue: Save pending payload
-  Queue-->>Webhook: queued
+  Webhook->>Queue: Insert pending register payload
+  Queue-->>Webhook: intake_job_id
   Webhook-->>Platform: accepted
   Worker->>Queue: Take oldest pending job
   Worker->>Session: Start queued investigation
@@ -442,7 +442,7 @@ PostgreSQL adalah source of truth operasional. File evidence tetap dipakai untuk
 
 ## 11. Webhook Queue Path
 
-Webhook adalah jalur final integration berikutnya. Targetnya bukan direct check, tetapi intake queue.
+Webhook adalah jalur final integration berikutnya. Targetnya bukan direct check, tetapi DB-backed queue lewat PostgreSQL table `register_intake_jobs`.
 
 ```mermaid
 sequenceDiagram
@@ -453,7 +453,7 @@ sequenceDiagram
 
   box Webhook Service
     participant Webhook as company-webhook
-    participant Queue as register_intake_jobs
+    participant Queue as PostgreSQL register_intake_jobs
     participant Worker as Queue Worker
   end
 
@@ -469,7 +469,7 @@ sequenceDiagram
 
   Platform->>Webhook: POST /webhook/check
   Webhook->>Webhook: Validate secret + sanitize input
-  Webhook->>Queue: Insert pending job
+  Webhook->>Queue: Insert pending register job
   Queue-->>Webhook: intake_job_id
   Webhook-->>Platform: queued response + dashboard_url
   Worker->>Queue: Lock oldest pending job
