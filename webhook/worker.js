@@ -5,7 +5,9 @@
  * webhook/worker.js — sequential worker for register_intake_jobs
  *
  * Processes one PostgreSQL-backed queue item at a time:
- *   register_intake_jobs -> company_check_go.sh --save -> db_writer.js -> investigation_jobs
+ *   register_intake_jobs -> OpenClaw agent -> finish_investigation.sh -> investigation_jobs
+ *
+ * Set REGISTER_WORKER_MODE=deterministic to use the Go baseline-only path.
  */
 
 const { execFile } = require('child_process');
@@ -25,6 +27,9 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 const MAX_ATTEMPTS = parseInt(process.env.REGISTER_WORKER_MAX_ATTEMPTS || '3', 10);
 const IDLE_MS = parseInt(process.env.REGISTER_WORKER_IDLE_MS || '10000', 10);
 const RUN_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_RUN_TIMEOUT_MS || '120000', 10);
+const WORKER_MODE = process.env.REGISTER_WORKER_MODE || 'agent';
+const OPENCLAW_BIN = process.env.OPENCLAW_BIN || '/home/nunuopc/.npm-global/bin/openclaw';
+const AGENT_TIMEOUT_SEC = parseInt(process.env.REGISTER_WORKER_AGENT_TIMEOUT_SEC || '900', 10);
 
 const args = process.argv.slice(2);
 const once = args.includes('--once');
@@ -101,11 +106,12 @@ async function lockNextJob() {
 async function processJob(job) {
   console.log(`register_worker: processing id=${job.id} email=${job.email} attempt=${job.attempt_count}`);
   try {
-    await runCompanyCheck(job);
-    const dbWriterOutput = await runDbWriter(job);
-    const investigationJobId = parseJobId(dbWriterOutput);
+    const investigationJobId = WORKER_MODE === 'deterministic'
+      ? await processDeterministic(job)
+      : await processWithOpenClawAgent(job);
+
     if (!investigationJobId) {
-      throw new Error('db_writer did not return job_id');
+      throw new Error('investigation did not return job_id');
     }
 
     await pool.query(`
@@ -125,6 +131,23 @@ async function processJob(job) {
   }
 }
 
+async function processDeterministic(job) {
+  await runCompanyCheck(job);
+  const dbWriterOutput = await runDbWriter(job);
+  return parseJobId(dbWriterOutput);
+}
+
+async function processWithOpenClawAgent(job) {
+  const agentOutput = await runOpenClawAgent(job);
+  const reportText = extractAgentText(agentOutput);
+  if (!reportText) {
+    throw new Error('openclaw agent did not return report text');
+  }
+
+  const finishOutput = await runFinishInvestigation(job, reportText);
+  return parseJobId(finishOutput);
+}
+
 async function runCompanyCheck(job) {
   const script = path.join(WORKSPACE, 'scripts', 'company_check_go.sh');
   const commandArgs = ['--email', job.email, '--save', '--json'];
@@ -141,6 +164,39 @@ async function runDbWriter(job) {
   if (job.full_name) commandArgs.push('--full-name', job.full_name);
   if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
   return runCommand('node', commandArgs, { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
+}
+
+async function runOpenClawAgent(job) {
+  const sessionId = `register-intake-${job.id}`;
+  const prompt = buildAgentPrompt(job);
+  return runCommand(OPENCLAW_BIN, [
+    'agent',
+    '--session-id', sessionId,
+    '--message', prompt,
+    '--json',
+    '--timeout', String(AGENT_TIMEOUT_SEC),
+  ], {
+    cwd: WORKSPACE,
+    timeout: (AGENT_TIMEOUT_SEC + 60) * 1000,
+  });
+}
+
+async function runFinishInvestigation(job, reportText) {
+  const script = path.join(WORKSPACE, 'scripts', 'finish_investigation.sh');
+  const reportFile = path.join(WORKSPACE, 'reports', `register-intake-${job.id}.txt`);
+  fs.mkdirSync(path.dirname(reportFile), { recursive: true });
+  fs.writeFileSync(reportFile, reportText, 'utf8');
+
+  try {
+    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-file', reportFile];
+    if (job.full_name) commandArgs.push('--full-name', job.full_name);
+    if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
+    const phone = extractPhone(job.payload_json);
+    if (phone) commandArgs.push('--no-hp', phone);
+    return await runCommand('bash', commandArgs, { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
+  } finally {
+    fs.rmSync(reportFile, { force: true });
+  }
 }
 
 async function markFailedOrPending(job, err) {
@@ -175,6 +231,76 @@ function runCommand(cmd, commandArgs, opts = {}) {
 function parseJobId(output) {
   const match = String(output || '').match(/job_id=([0-9a-f-]{36})/i);
   return match ? match[1] : null;
+}
+
+function buildAgentPrompt(job) {
+  const phone = extractPhone(job.payload_json);
+  const lines = [
+    'Investigasi satu data register untuk Company Detector.',
+    '',
+    'Pakai aturan di AGENTS.md dan STANDING_ORDERS.md sebagai panduan investigasi, tapi untuk job queue ini JANGAN menjalankan finish_investigation.sh sendiri. Worker akan menyimpan final report setelah jawabanmu selesai.',
+    '',
+    'Input:',
+    `- email: ${job.email}`,
+    `- full_name: ${job.full_name || '-'}`,
+    `- brand_name: ${job.brand_name || '-'}`,
+    `- no_hp: ${phone || '-'}`,
+    `- source: ${job.source || 'platform_register'}`,
+    '',
+    'Cara kerja wajib:',
+    '1. Jalankan baseline check dengan scripts/company_check_go.sh --save.',
+    '2. Kalau baseline belum cukup dan ada sinyal brand/nama/domain, lanjutkan investigasi memakai search/fetch/browser yang tersedia.',
+    '3. Stop kalau confidence cukup, evidence tidak bertambah, atau budget tool habis.',
+    '4. Jangan kirim ke Slack. Jangan expose logic internal sales di output.',
+    '',
+    'Balas dengan final report lengkap saja, format Company Detection Report, berisi classification, confidence, evidence ringkas, source URL kalau ada, stop reason, dan rekomendasi. Jangan bungkus dalam markdown fence.',
+  ];
+  return lines.join('\n');
+}
+
+function extractAgentText(output) {
+  const raw = String(output || '').trim();
+  if (!raw) return '';
+
+  try {
+    const parsed = JSON.parse(raw);
+    const found = findText(parsed);
+    if (found) return found.trim();
+  } catch (_) {
+    // Plain-text fallback.
+  }
+
+  return raw;
+}
+
+function findText(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return looksLikeReport(value) ? value : '';
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findText(item);
+      if (found) return found;
+    }
+    return '';
+  }
+  if (typeof value !== 'object') return '';
+
+  for (const key of ['reply', 'text', 'message', 'content', 'output', 'result', 'response']) {
+    const found = findText(value[key]);
+    if (found) return found;
+  }
+  for (const item of Object.values(value)) {
+    const found = findText(item);
+    if (found) return found;
+  }
+  return '';
+}
+
+function looksLikeReport(text) {
+  const normalized = String(text || '').toLowerCase();
+  return normalized.includes('company detection report')
+    || (normalized.includes('classification') && normalized.includes('confidence'))
+    || normalized.length > 400;
 }
 
 function extractPhone(payload) {

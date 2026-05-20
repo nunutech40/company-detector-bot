@@ -361,7 +361,9 @@ Responsibilities:
 
 - Select the oldest `pending` job.
 - Lock it by marking `processing` with `locked_at`.
-- Run the existing investigation/finalization path.
+- Run the OpenClaw agent investigation path by default.
+- Use the Go deterministic path only when `REGISTER_WORKER_MODE=deterministic` is set for scaffold/debug.
+- Execute `finish_investigation.sh --source webhook` after OpenClaw returns the final report.
 - Store output through `db_writer.js`.
 - Attach resulting `investigation_job_id` to the intake job.
 - Mark `completed`, `failed`, or `skipped`.

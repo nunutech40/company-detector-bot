@@ -142,8 +142,9 @@ sequenceDiagram
   end
 
   Orchestra-->>AI: Final classification and AI report
-  AI->>Finalizer: OpenClaw executes finalizer
-  Note over AI,Finalizer: AI decides report. Finalizer writes output.
+  AI-->>Worker: Return final report
+  Worker->>Finalizer: Execute finalizer with source=webhook
+  Note over AI,Finalizer: AI decides report. Worker/finalizer writes output.
   Finalizer->>Writer: Insert result
   Writer->>DB: Insert investigation_jobs final_reports llm_calls
   DB-->>Dashboard: Job visible for review
@@ -378,6 +379,10 @@ sequenceDiagram
     participant Agent as OpenClaw Agent
   end
 
+  box Queue Runtime
+    participant Worker as Sequential Worker
+  end
+
   box Finalization
     participant Finalizer as finish_investigation.sh
     participant Writer as db_writer.js
@@ -390,7 +395,8 @@ sequenceDiagram
     participant Dashboard as Dashboard
   end
 
-  Agent->>Finalizer: Final report + email + optional account fields
+  Agent-->>Worker: Final report + classification narrative
+  Worker->>Finalizer: email + optional account fields + report + source
   Finalizer->>Files: Save ai_report_latest.txt
   Finalizer->>Files: Save latest evidence/report snapshot
   Finalizer->>Writer: Insert investigation result
@@ -402,7 +408,8 @@ sequenceDiagram
 Important boundary:
 
 - AI/OpenClaw Agent produces reasoning, classification narrative, and final report.
-- OpenClaw runtime executes the finalizer command.
+- Telegram manual flow may let OpenClaw execute the finalizer directly.
+- Webhook queue flow lets the sequential worker execute the finalizer after OpenClaw returns the final report.
 - `finish_investigation.sh` and `db_writer.js` perform file and database writes.
 - Slack digest later reads from PostgreSQL; AI does not write directly to Slack or storage.
 
@@ -472,7 +479,8 @@ sequenceDiagram
   Webhook-->>Platform: queued response + dashboard_url
   Worker->>DB: Lock oldest pending register_intake_jobs row
   Worker->>OpenClaw: Run investigation one by one
-  OpenClaw->>Finalizer: Execute finalizer
+  OpenClaw-->>Worker: Return final report
+  Worker->>Finalizer: Execute finalizer
   Finalizer->>DB: Persist investigation_jobs final_reports llm_calls
   DB-->>Dashboard: Job visible
 ```

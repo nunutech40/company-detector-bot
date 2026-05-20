@@ -7,6 +7,8 @@
 #     [--full-name "<name>"] \
 #     [--no-hp "<phone>"] \
 #     [--brand-name "<brand>"] \
+#     [--source "<telegram|webhook|...>"] \
+#     [--report-file "<path>"] \
 #     --report "<report_text>"
 #
 # Yang dilakukan:
@@ -26,6 +28,8 @@ FULL_NAME=""
 NO_HP=""
 BRAND_NAME=""
 REPORT_TEXT=""
+REPORT_FILE=""
+SOURCE="telegram"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -33,6 +37,8 @@ while [[ $# -gt 0 ]]; do
     --full-name)  FULL_NAME="$2";  shift 2 ;;
     --no-hp)      NO_HP="$2";      shift 2 ;;
     --brand-name) BRAND_NAME="$2"; shift 2 ;;
+    --source)     SOURCE="$2";     shift 2 ;;
+    --report-file) REPORT_FILE="$2"; shift 2 ;;
     --report)     REPORT_TEXT="$2"; shift 2 ;;
     *) shift ;;
   esac
@@ -49,7 +55,10 @@ echo "finish_investigation: saving for ${EMAIL}"
 rm -f "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
 
 # Step 1: Save AI report ke file
-if [[ -n "${REPORT_TEXT}" ]]; then
+if [[ -n "${REPORT_FILE}" && -f "${REPORT_FILE}" ]]; then
+  cp "${REPORT_FILE}" "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
+  echo "finish_investigation: AI report saved from ${REPORT_FILE}"
+elif [[ -n "${REPORT_TEXT}" ]]; then
   echo "${REPORT_TEXT}" > "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
   echo "finish_investigation: AI report saved to reports/ai_report_latest.txt"
 else
@@ -71,7 +80,7 @@ echo "finish_investigation: Slack realtime delivery disabled — daily digest wi
 
 # Step 4: Insert ke Postgres
 echo "finish_investigation: writing to database"
-DB_ARGS=(--email "${EMAIL}")
+DB_ARGS=(--email "${EMAIL}" --source "${SOURCE}")
 [[ -n "${FULL_NAME}" ]]  && DB_ARGS+=(--full-name "${FULL_NAME}")
 [[ -n "${BRAND_NAME}" ]] && DB_ARGS+=(--brand-name "${BRAND_NAME}")
 node "${SCRIPT_DIR}/db_writer.js" "${DB_ARGS[@]}" 2>&1 | grep -E "db_writer:" || true

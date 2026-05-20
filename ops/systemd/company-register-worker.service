@@ -7,6 +7,8 @@ Type=simple
 WorkingDirectory=/home/nunuopc/.openclaw/webhook
 EnvironmentFile=/home/nunuopc/.openclaw/gateway.systemd.env
 Environment=OPENCLAW_WORKSPACE=/home/nunuopc/.openclaw/workspace
+Environment=REGISTER_WORKER_MODE=agent
+Environment=REGISTER_WORKER_AGENT_TIMEOUT_SEC=900
 ExecStart=/usr/bin/env node worker.js
 Restart=always
 RestartSec=10

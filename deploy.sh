@@ -130,6 +130,22 @@ ssh_cmd "chmod +x /home/nunuopc/.openclaw/webhook/worker.js"
 ssh_cmd "cd /home/nunuopc/.openclaw/webhook && npm install --omit=dev"
 ssh_cmd "systemctl --user restart company-webhook"
 echo "      ✓ webhook deployed"
+
+# 5d. Deploy user systemd units used by webhook queue and daily Slack digest
+echo "[5d] Deploying systemd units..."
+for unit in \
+  company-register-worker.service \
+  company-slack-digest.service \
+  company-slack-digest.timer; do
+  if [[ -f "${REPO_DIR}/ops/systemd/${unit}" ]]; then
+    scp_file "${REPO_DIR}/ops/systemd/${unit}" "/home/nunuopc/.config/systemd/user/${unit}"
+    echo "      ✓ ${unit}"
+  fi
+done
+ssh_cmd "systemctl --user daemon-reload"
+ssh_cmd "systemctl --user restart company-register-worker"
+ssh_cmd "systemctl --user enable --now company-slack-digest.timer"
+echo "      ✓ queue/digest units reloaded"
 echo ""
 echo "=== Deploy complete ==="
 echo ""

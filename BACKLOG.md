@@ -26,6 +26,8 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [x] Return queued response with `intake_job_id`.
 - [x] Build sequential worker for `register_intake_jobs`.
 - [x] Ensure worker processes one job at a time.
+- [x] Worker default path uses OpenClaw agent investigation; deterministic Go mode remains scaffold/debug only.
+- [x] Worker executes finalizer with `source=webhook` after OpenClaw returns the final report.
 - [x] Link completed queue jobs to `investigation_jobs`.
 - [x] Build Slack daily digest script.
 - [x] Configure digest timer for every day at 09:00 Asia/Jakarta.
@@ -42,6 +44,7 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [ ] Validate Telegram/OpenClaw path still works.
 - [x] Validate webhook enqueue with sample payload.
 - [x] Validate worker drains queued payloads sequentially.
+- [x] Validate known business smoke test through webhook queue + OpenClaw agent + DB/dashboard (`nawaystore@yahoo.com`).
 - [x] Validate dashboard row appears after worker processing.
 - [x] Validate Slack digest with prospects in dry-run.
 - [x] Validate Slack digest empty heartbeat in dry-run.
