@@ -18,6 +18,7 @@ Done:
 - PostgreSQL 16 database `company_detection`.
 - 3-table storage: `investigation_jobs`, `final_reports`, `llm_calls`.
 - `db_writer.js` integrated with `finish_investigation.sh`.
+- Report provenance in DB/dashboard: AI reasoning vs deterministic fallback.
 - Dashboard Express + EJS at port `3001`.
 - Webhook API Express at port `3002` with PostgreSQL-backed queue intake.
 - Sequential register worker: `register_intake_jobs` -> OpenClaw agent investigation -> finalizer -> DB/dashboard.

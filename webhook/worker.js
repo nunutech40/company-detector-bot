@@ -132,8 +132,8 @@ async function processJob(job) {
 }
 
 async function processDeterministic(job) {
-  await runCompanyCheck(job);
-  const dbWriterOutput = await runDbWriter(job);
+  const fallbackReport = await runCompanyCheck(job);
+  const dbWriterOutput = await runDbWriter(job, fallbackReport);
   return parseJobId(dbWriterOutput);
 }
 
@@ -150,20 +150,31 @@ async function processWithOpenClawAgent(job) {
 
 async function runCompanyCheck(job) {
   const script = path.join(WORKSPACE, 'scripts', 'company_check_go.sh');
-  const commandArgs = ['--email', job.email, '--save', '--json'];
+  const commandArgs = ['--email', job.email, '--save'];
   if (job.full_name) commandArgs.push('--full-name', job.full_name);
   if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
   const phone = extractPhone(job.payload_json);
   if (phone) commandArgs.push('--no-hp', phone);
-  await runCommand('bash', [script, ...commandArgs], { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
+  return runCommand('bash', [script, ...commandArgs], { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
 }
 
-async function runDbWriter(job) {
+async function runDbWriter(job, reportText = '') {
   const script = path.join(WORKSPACE, 'scripts', 'db_writer.js');
-  const commandArgs = [script, '--email', job.email, '--source', 'webhook'];
-  if (job.full_name) commandArgs.push('--full-name', job.full_name);
-  if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
-  return runCommand('node', commandArgs, { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
+  const reportFile = path.join(WORKSPACE, 'reports', `deterministic-${job.id}.txt`);
+  if (reportText) {
+    fs.mkdirSync(path.dirname(reportFile), { recursive: true });
+    fs.writeFileSync(reportFile, reportText, 'utf8');
+  }
+
+  try {
+    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'deterministic_fallback'];
+    if (reportText) commandArgs.push('--ai-report', reportFile);
+    if (job.full_name) commandArgs.push('--full-name', job.full_name);
+    if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
+    return await runCommand('node', commandArgs, { cwd: WORKSPACE, timeout: RUN_TIMEOUT_MS });
+  } finally {
+    if (reportText) fs.rmSync(reportFile, { force: true });
+  }
 }
 
 async function runOpenClawAgent(job) {
@@ -188,7 +199,7 @@ async function runFinishInvestigation(job, reportText) {
   fs.writeFileSync(reportFile, reportText, 'utf8');
 
   try {
-    const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-file', reportFile];
+  const commandArgs = [script, '--email', job.email, '--source', 'webhook', '--report-source', 'ai_reasoning', '--report-file', reportFile];
     if (job.full_name) commandArgs.push('--full-name', job.full_name);
     if (job.brand_name) commandArgs.push('--brand-name', job.brand_name);
     const phone = extractPhone(job.payload_json);

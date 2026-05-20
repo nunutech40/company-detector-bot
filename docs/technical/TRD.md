@@ -197,6 +197,8 @@ Stores full report text and raw JSON:
 - `telegram_text`
 - `slack_text`
 - `json_result`
+- `report_source`: `ai_reasoning`, `deterministic_fallback`, or `unknown`
+- `report_quality`: `full_investigation`, `fallback`, or `unknown`
 - `sent_to_slack_at`
 
 #### `llm_calls`

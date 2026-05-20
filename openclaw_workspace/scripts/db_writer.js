@@ -15,6 +15,7 @@
  *     [--brand-name "<brand>"] \
  *     [--ai-report "<path>"]     (default: reports/ai_report_latest.txt)
  *     [--evidence "<path>"]      (default: evidence/latest.json)
+ *     [--report-source "<source>"] (ai_reasoning | deterministic_fallback)
  *
  * Output: job_id yang baru dibuat (stdout)
  */
@@ -37,6 +38,12 @@ const email      = get('--email');
 const fullName   = get('--full-name');
 const brandName  = get('--brand-name');
 const source     = get('--source') || 'telegram';
+const reportSource = get('--report-source') || 'unknown';
+const reportQuality = get('--report-quality') || (
+  reportSource === 'ai_reasoning' ? 'full_investigation' :
+  reportSource === 'deterministic_fallback' ? 'fallback' :
+  'unknown'
+);
 
 if (!email) {
   console.error('db_writer: --email is required');
@@ -579,15 +586,19 @@ async function main() {
 
     // Insert final_reports
     await client.query(`
-      INSERT INTO final_reports (job_id, telegram_text, json_result)
-      VALUES ($1, $2, $3)
+      INSERT INTO final_reports (job_id, telegram_text, json_result, report_source, report_quality)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (job_id) DO UPDATE
         SET telegram_text = EXCLUDED.telegram_text,
-            json_result   = EXCLUDED.json_result
+            json_result   = EXCLUDED.json_result,
+            report_source = EXCLUDED.report_source,
+            report_quality = EXCLUDED.report_quality
     `, [
       jobId,
       reportText,
       fields.json_result ? JSON.stringify(fields.json_result) : null,
+      reportSource,
+      reportQuality,
     ]);
 
     // Insert llm_calls

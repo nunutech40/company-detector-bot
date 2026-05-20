@@ -6,6 +6,17 @@ const rev = Array.isArray(job.role_evidence_json) ? job.role_evidence_json : [];
 const dt  = job.finished_at ? new Date(job.finished_at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta'}) : '—';
 const reviewLabels = {unreviewed:'Belum direview',reviewed:'Reviewed',high_value:'High Value',false_positive:'False Positive',needs_retry:'Needs Retry'};
 const reviewColors = {unreviewed:'gray',reviewed:'blue',high_value:'green',false_positive:'red',needs_retry:'yellow'};
+const reportSource = report && report.report_source ? report.report_source : 'unknown';
+const reportSourceLabels = {
+  ai_reasoning: 'AI Reasoning Report',
+  deterministic_fallback: 'Deterministic Fallback Report',
+  unknown: 'Unknown Report Source'
+};
+const reportSourceColors = {
+  ai_reasoning: 'green',
+  deterministic_fallback: 'yellow',
+  unknown: 'gray'
+};
 %>
 
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
@@ -168,7 +179,11 @@ const reviewColors = {unreviewed:'gray',reviewed:'blue',high_value:'green',false
   <!-- AI Report -->
   <% if (report && report.telegram_text) { %>
   <div class="detail-card full-width">
-    <h3>AI Report</h3>
+    <h3>Report</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <span class="badge badge-<%= reportSourceColors[reportSource] || 'gray' %>"><%= reportSourceLabels[reportSource] || reportSource %></span>
+      <% if (report.report_quality) { %><span style="color:#64748b;font-size:12px"><%= report.report_quality %></span><% } %>
+    </div>
     <div class="report-text"><%= report.telegram_text %></div>
   </div>
   <% } %>
