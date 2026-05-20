@@ -186,7 +186,8 @@ Known shape when last inspected:
 - Sheet: `Result 1`
 - Columns: `email`, `full_name`, `no_hp`, `brand_name`
 - Data rows: `117711`
-- Use subset batches first: 10 rows, then 100 rows, then larger batches only after queue/worker/digest dedupe are proven.
+- Use only 10-20 selected rows for implementation testing.
+- Do not enqueue the whole workbook or run large batch/load testing unless explicitly requested.
 
 ---
 

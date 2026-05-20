@@ -50,6 +50,7 @@ Known test fixture shape:
 - Non-empty email rows when last inspected: `117711`
 - Non-empty phone rows when last inspected: `117579`
 - Non-empty brand rows when last inspected: `28302`
+- Use this file only as a source for small simulation samples, not as a mass enqueue/load test.
 
 Exit criteria:
 
@@ -292,9 +293,9 @@ Exit criteria:
 Fixture strategy:
 
 - [ ] Use `/Users/nununugraha/Downloads/All Parter User.xlsx` as register payload simulation data.
-- [ ] Start with 10 rows.
-- [ ] Then test 100 rows to match expected daily register volume.
-- [ ] Only run larger batches after queue locking, retry, and digest dedupe are proven.
+- [ ] Use only 10-20 selected rows for implementation testing.
+- [ ] Do not enqueue the whole workbook.
+- [ ] Do not run large batch/load testing unless explicitly requested later.
 - [ ] Map fixture columns directly:
   - `email` -> `email`
   - `full_name` -> `full_name`
