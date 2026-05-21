@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Version:** v7  
 **Status:** Active product source of truth  
-**Last updated:** 20 Mei 2026
+**Last updated:** 21 Mei 2026
 
 ---
 
@@ -43,7 +43,7 @@ Hasil investigasi disimpan dalam dua bentuk:
 
 ## 4. Current Product Status
 
-Status per 20 Mei 2026:
+Status per 21 Mei 2026:
 
 | Area | Status | Catatan |
 |---|---|---|
@@ -52,9 +52,10 @@ Status per 20 Mei 2026:
 | Telegram flow | Active | Channel testing dan operasional AI loop |
 | PostgreSQL storage | Done | 3-table MVP schema |
 | Dashboard | Done | Express + EJS, port 3001 |
-| Webhook API | Final phase planned | Express API port 3002 tersedia; target berikutnya berubah menjadi PostgreSQL-backed intake queue, bukan direct check |
-| Slack delivery | Final phase planned | Target berubah menjadi daily prospect digest jam 09:00, bukan realtime alert per investigasi |
-| End-to-end validation | Pending | Telegram and platform webhook tests masih next priority |
+| Webhook API | Done | Express API port 3002, enqueue-only ke PostgreSQL `register_intake_jobs` |
+| Queue worker | Done | Sequential worker memproses satu job per waktu via OpenClaw agent dan finalizer |
+| Slack delivery | Done | Daily prospect digest jam 09:00 WIB; realtime raw report disabled |
+| End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
 
 ---
 
@@ -73,7 +74,7 @@ Status per 20 Mei 2026:
 
 | Classification | Meaning | Default Product Action |
 |---|---|---|
-| `possible_company_affiliated` | Evidence cukup kuat bahwa user terkait bisnis/perusahaan | Route ke company/B2B segment dan kandidat Slack digest jika confidence tinggi |
+| `possible_company_affiliated` | Evidence cukup kuat bahwa user terkait bisnis/perusahaan | Route ke company/B2B segment dan kandidat Slack digest jika confidence >= 60 |
 | `likely_personal_email` | Sinyal lebih cocok personal, tidak ada business evidence kuat | Continue personal flow |
 | `unknown_needs_more_evidence` | Data belum cukup untuk keputusan aman | Store, review, retry/enrich later |
 | `suspicious_or_invalid` | Email invalid, disposable, atau pola risk tinggi | Risk review |
@@ -122,9 +123,13 @@ Sequential worker
 Same investigation + finalization path above
 ```
 
-Webhook production target adalah menerima data register cepat, menyimpan ke queue, lalu worker memproses satu per satu. Webhook tidak perlu langsung menjalankan investigasi karena volume register harian sekitar 100 data dan Slack hanya mengirim digest sekali sehari.
+Webhook production target adalah menerima data register cepat, menyimpan ke queue, lalu worker memproses satu per satu. Webhook tidak langsung menjalankan investigasi karena volume register harian sekitar 100 data dan Slack hanya mengirim digest sekali sehari.
 
-Jalur yang sudah valid tetap OpenClaw/Telegram finalization melalui `finish_investigation.sh`. Jalur webhook queue dan Slack digest adalah fase pengembangan berikutnya.
+Jalur yang sudah valid:
+
+- Manual/Telegram investigation.
+- Webhook queue -> sequential worker -> OpenClaw agent -> Telegram delivery -> finalizer -> DB/dashboard.
+- Slack daily prospect digest dari row final PostgreSQL.
 
 ---
 
@@ -259,6 +264,7 @@ Final webhook integration must:
 - Avoid running investigation inside the HTTP request.
 - Let a background worker process queued data sequentially.
 - Store completed investigation output through the existing DB/dashboard path.
+- Deliver each queued investigation result to Telegram as part of the workflow.
 
 The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing uses PostgreSQL-backed status rows and must be one-at-a-time by default, with retry, idempotency, and failure tracking.
 
@@ -288,8 +294,15 @@ Prospect filter target:
 
 ```text
 classification = possible_company_affiliated
-AND confidence_score >= 75
+AND confidence_score >= 60
 AND not yet included in a previous digest
+```
+
+Priority tiers:
+
+```text
+75-100 => Hot prospect
+60-74  => Warm prospect
 ```
 
 If no prospects exist, Slack should still send an operational heartbeat:
@@ -307,6 +320,7 @@ This keeps Slack clean for sales while still confirming to stakeholders and deve
 ## 15. Success Metrics
 
 - High-confidence business detections are surfaced in the daily 09:00 prospect digest.
+- Medium-confidence business detections appear as Warm prospects.
 - Personal/unknown users do not spam Slack.
 - Operators can inspect every investigation in dashboard.
 - AI reports include enough evidence to justify classification.
@@ -322,15 +336,13 @@ This keeps Slack clean for sales while still confirming to stakeholders and deve
 
 - Phase A: AI reasoning loop on top of deterministic Go pipeline.
 - Phase B: PostgreSQL + dashboard.
-- Phase C scaffold: Webhook API service and contract.
+- Phase C: Webhook enqueue queue, sequential worker, Telegram delivery, and Slack daily prospect digest.
 
 ### Next
 
-- End-to-end Telegram validation.
-- Build webhook PostgreSQL intake queue and sequential worker.
-- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 - Validate with Komerce register flow.
 - Improve `db_writer.js` extraction for social/marketplace/role evidence.
+- Add dashboard queue visibility if operationally needed.
 
 ### Later
 

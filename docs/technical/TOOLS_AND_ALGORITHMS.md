@@ -497,14 +497,15 @@ Limit:
 
 Role:
 
-- Optional Slack sender.
+- Legacy/explicit Slack sender for deterministic CLI experiments.
 - Uses webhook or Slack bot token if configured.
 
 Important:
 
 - Not automatic.
 - `company_check` calls it when `--send-slack` is present, for **all classification results**.
-- After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
+- Production Slack routing does not use raw Go reports. Production Slack reads finalized PostgreSQL rows through `scripts/slack_daily_digest.js` at 09:00 WIB.
+- Realtime Slack forwarding from Telegram messages is disabled.
 
 ---
 
@@ -679,22 +680,18 @@ llm-task(
 
 ---
 
-### `hooks` — Event-driven Delivery
+### `hooks` — Event Guard
 
-**Status:** ✅ Hooks enabled di `openclaw.json`, workspace hooks directory dibuat
+**Status:** ✅ Hook directory exists; realtime Slack forwarding is intentionally no-op.
 
-**Fungsi:** Trigger script otomatis saat event tertentu terjadi di gateway.
+**Fungsi:** Menjaga agar event `message:sent` tidak mengirim raw AI report ke Slack.
 
-**Use case untuk app ini:**
-- `message:sent` → trigger `deliver_report_with_env.sh` setiap kali AI kirim reply ke Telegram
-- Memastikan Slack selalu dapat report yang sama dengan Telegram tanpa bergantung AI
+**Current behavior untuk app ini:**
+- Telegram tetap menjadi delivery wajib per investigasi.
+- Slack hanya menerima daily prospect digest dari PostgreSQL.
+- `openclaw_workspace/hooks/deliver-on-message-sent/handler.ts` adalah no-op guard.
 
-**Rencana implementasi:**
-- Buat `workspace/hooks/deliver-on-message-sent/handler.ts`
-- Filter: hanya trigger kalau message mengandung "Company Detection Report"
-- Action: jalankan `deliver_report_with_env.sh` di background
-
-**File placeholder:** `openclaw_workspace/hooks/deliver-on-message-sent/HOOK.md`
+**File:** `openclaw_workspace/hooks/deliver-on-message-sent/HOOK.md`
 
 ---
 

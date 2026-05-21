@@ -1,7 +1,7 @@
 # Fetch Context
 
 **Purpose:** Fast orientation for any AI agent continuing this project.  
-**Last updated:** 20 Mei 2026
+**Last updated:** 21 Mei 2026
 
 ---
 
@@ -25,8 +25,8 @@ Canonical docs:
 1. `docs/product/PRD.md` — product source of truth.
 2. `docs/technical/TRD.md` — technical source of truth.
 3. `docs/technical/FLOW_MAP.md` — runtime flow.
-4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — next feature plan.
-5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — execution checklist.
+4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — implemented workflow note for webhook queue + Slack digest.
+5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
 6. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
@@ -99,7 +99,7 @@ Important boundary: AI/OpenClaw does not write directly to storage or Slack. Fin
 |---|---:|---|---|
 | OpenClaw gateway | 18789 | VPS service | AI runtime |
 | Dashboard | 3001 | `dashboard/` | Express + EJS |
-| Webhook API | 3002 | `webhook/` | Express scaffold; final target is enqueue-only |
+| Webhook API | 3002 | `webhook/` | Express enqueue-only API backed by PostgreSQL queue |
 | PostgreSQL | 5432 | VPS service | DB `company_detection` |
 
 VPS:
@@ -112,10 +112,13 @@ VPS:
 
 ## 5. Database
 
-Schema source:
+Schema sources:
 
 ```text
 docs/technical/migration_v1.sql
+docs/technical/migration_v2_webhook_slack_queue.sql
+docs/technical/migration_v3_report_provenance.sql
+docs/technical/migration_v4_llm_usage_provenance.sql
 ```
 
 Current tables:
@@ -123,14 +126,11 @@ Current tables:
 - `investigation_jobs`: main investigation row, searchable columns and JSONB findings.
 - `final_reports`: full report text and raw JSON.
 - `llm_calls`: model token usage and estimated cost.
-
-Do not resurrect the older 7/8-table plan unless the user explicitly asks for a normalized analytics schema.
-
-Planned next tables for webhook + Slack:
-
 - `register_intake_jobs`: PostgreSQL-backed queue for platform register payloads.
 - `slack_digest_runs`: one row per daily Slack digest execution.
 - `slack_digest_items`: sent prospect item tracking so jobs are not repeated.
+
+Do not resurrect the older 7/8-table plan unless the user explicitly asks for a normalized analytics schema.
 
 ---
 
@@ -158,11 +158,22 @@ Slack daily digest target:
 
 ```text
 09:00 Asia/Jakarta every day
-possible_company_affiliated + confidence_score >= 75 => listed as prospect
+possible_company_affiliated + confidence_score >= 60 => listed as prospect
+75-100 => Hot prospect
+60-74 => Warm prospect
 empty prospect window => send heartbeat digest
 ```
 
 Slack must not include raw evidence, AI reasoning detail, scraping/search logic, tool traces, or internal scoring breakdown. Slack is for sales/stakeholder handoff only.
+
+Slack test mode:
+
+```bash
+cd openclaw_workspace
+node scripts/slack_daily_digest.js --test-run --window-hours 999
+```
+
+`--test-run` sends a `[TEST]` Slack preview from existing DB rows and does not insert `slack_digest_runs` or `slack_digest_items`.
 
 ---
 
@@ -239,6 +250,20 @@ Expected final webhook behavior is queued response, not direct investigation:
 }
 ```
 
+Process one queued webhook job:
+
+```bash
+cd webhook
+npm run worker:once
+```
+
+Preview Slack digest without sending:
+
+```bash
+cd openclaw_workspace
+node scripts/slack_daily_digest.js --dry-run --test-run --window-hours 999
+```
+
 Deploy:
 
 ```bash
@@ -251,11 +276,9 @@ bash deploy.sh
 
 Current next priorities:
 
-1. Telegram E2E validation.
-2. Build webhook PostgreSQL intake queue.
-3. Build sequential worker for queued register payloads.
-4. Build Slack daily prospect digest at 09:00 Asia/Jakarta.
-5. Validate from Komerce platform register flow.
-6. Improve `db_writer.js` extraction.
+1. Validate from Komerce platform register flow.
+2. Improve `db_writer.js` extraction for social/marketplace/role evidence.
+3. Add dashboard queue visibility if operationally needed.
+4. Add dashboard authentication before broader exposure.
 
 Avoid broad rewrites. This project already has the core implementation; most near-term work is validation, polish, and operational hardening.

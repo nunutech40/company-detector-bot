@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Audience:** Developer / AI agent penerus  
 **Status:** Active runtime map  
-**Last updated:** 20 Mei 2026
+**Last updated:** 21 Mei 2026
 
 ---
 
@@ -32,8 +32,10 @@ Status yang sesuai kondisi project sekarang:
 | OpenClaw AI reasoning loop | Sudah jalan sebagai layer investigasi |
 | Finalizer `finish_investigation.sh` | Jalur valid untuk save evidence, DB writer, token usage |
 | PostgreSQL + Dashboard | Sudah jalan |
-| Webhook | Service scaffold sudah ada; target final adalah intake queue async |
-| Slack routing | Target final adalah daily prospect digest jam 09:00 |
+| Webhook | Enqueue-only API sudah jalan dengan PostgreSQL `register_intake_jobs` |
+| Queue worker | Sequential worker sudah jalan; satu job per waktu |
+| Telegram delivery | Wajib untuk tiap investigasi queue/manual |
+| Slack routing | Daily prospect digest jam 09:00 sudah jalan; realtime raw report disabled |
 
 Jalur persistence yang sudah divalidasi:
 
@@ -47,12 +49,11 @@ Manual/Telegram input
   -> PostgreSQL
   -> Dashboard
 
-Fase berikutnya:
-
 Platform register
   -> webhook intake
   -> queue
   -> sequential worker
+  -> OpenClaw agent + Telegram delivery
   -> same investigation path
   -> DB/dashboard
   -> Slack digest jam 09:00
@@ -155,8 +156,10 @@ sequenceDiagram
     Digest->>Digest: Build dashboard home and detail URLs
     alt Prospects found
       Digest->>Slack: Send prospect digest
+      Digest->>DB: Mark sent digest items
     else No prospects found
       Digest->>Slack: Send heartbeat digest
+      Digest->>DB: Mark empty digest run
     end
   end
 ```
@@ -206,7 +209,7 @@ flowchart TB
     S2["PostgreSQL: investigation_jobs, final_reports, llm_calls"]
     S3["Dashboard"]
     S4["Slack daily digest jam 09:00"]
-    S5["Telegram/report response"]
+    S5["Telegram/report delivery"]
   end
 
   H1 --> H3 --> O1
@@ -448,7 +451,7 @@ PostgreSQL adalah source of truth operasional. File evidence tetap dipakai untuk
 
 ## 11. Webhook Queue Path
 
-Webhook adalah jalur final integration berikutnya. Targetnya bukan direct check, tetapi DB-backed queue lewat PostgreSQL table `register_intake_jobs`.
+Webhook adalah jalur platform register aktif. Targetnya bukan direct check, tetapi DB-backed queue lewat PostgreSQL table `register_intake_jobs`.
 
 ```mermaid
 sequenceDiagram
@@ -479,6 +482,7 @@ sequenceDiagram
   Webhook-->>Platform: queued response + dashboard_url
   Worker->>DB: Lock oldest pending register_intake_jobs row
   Worker->>OpenClaw: Run investigation one by one
+  OpenClaw->>OpenClaw: Deliver final report to Telegram
   OpenClaw-->>Worker: Return final report
   Worker->>Finalizer: Execute finalizer
   Finalizer->>DB: Persist investigation_jobs final_reports llm_calls
@@ -490,6 +494,7 @@ Worker rule:
 - Default concurrency is one job at a time.
 - A job must finish, fail, or be skipped before the next payload starts.
 - Around 100 register payloads per day is small enough for sequential processing.
+- Queue rows are persistent in PostgreSQL; they do not disappear daily.
 
 ---
 
@@ -531,8 +536,16 @@ Slack content rule:
 
 - Include dashboard home link in every digest.
 - Include detail link per prospect if available.
+- Include Hot/Warm priority, not internal scoring explanation.
 - Show business-friendly summary only.
 - Hide raw evidence, AI reasoning detail, scraping flow, tool errors, and scoring internals.
+
+Prospect rule:
+
+- `possible_company_affiliated` with confidence `>= 60`.
+- `>= 75` is Hot prospect.
+- `60-74` is Warm prospect.
+- `--test-run` can send a `[TEST]` preview without marking production digest rows.
 
 ---
 
@@ -557,10 +570,10 @@ Validated:
 - `finish_investigation.sh`.
 - PostgreSQL storage through finalizer.
 - Dashboard.
-
-Final integration pending:
-
 - Webhook intake queue.
 - Sequential worker.
 - Slack daily prospect digest at 09:00.
+
+Pending external validation:
+
 - Platform register validation.

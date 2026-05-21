@@ -1,20 +1,21 @@
 # Webhook Queue + Slack Daily Digest Plan
 
-**Status:** Proposed final-phase implementation  
-**Last updated:** 20 Mei 2026  
+**Status:** Implemented workflow note  
+**Last updated:** 21 Mei 2026  
 **Source of truth:** PRD + TRD  
 
 ---
 
 ## 1. Goal
 
-Build the final platform integration without disturbing the working Telegram/OpenClaw/dashboard path.
+Document the implemented platform integration without disturbing the working Telegram/OpenClaw/dashboard path.
 
 Target behavior:
 
 - Platform register sends account data to webhook.
 - Webhook stores payload in a queue and returns quickly.
 - Worker processes queued payloads one by one.
+- Worker sends each queued investigation result to Telegram.
 - Final results still go to PostgreSQL and dashboard.
 - Slack sends one daily digest at 09:00 Asia/Jakarta.
 - Slack only shows sales-ready prospect data and dashboard links.
@@ -187,8 +188,15 @@ Prospect filter:
 
 ```text
 classification = possible_company_affiliated
-AND confidence_score >= 75
+AND confidence_score >= 60
 AND not already sent in a digest
+```
+
+Priority tiers:
+
+```text
+confidence_score >= 75 => Hot prospect
+confidence_score 60-74 => Warm prospect
 ```
 
 Digest always sends:
@@ -260,7 +268,7 @@ Ada 5 prospect baru siap follow up.
 
 1. Brand A
    Kontak: owner@example.com
-   Sinyal: Terindikasi akun bisnis
+   Prioritas: Hot prospect
    Detail: http://103.226.139.107:3001/jobs/<id>
 ```
 
@@ -276,24 +284,23 @@ Pipeline tetap berjalan.
 
 ---
 
-## 10. Implementation Steps
+## 10. Implementation Status
 
-1. Add DB migration for PostgreSQL intake queue and digest tracking.
-2. Change webhook final mode to enqueue-only.
-3. Add worker script/service for sequential queue processing.
-4. Add digest query and Slack formatter.
-5. Add cron/systemd timer for 09:00 Asia/Jakarta.
-6. Add dry-run command for digest preview.
-7. Test webhook enqueue with dummy payloads.
-8. Test worker one-by-one processing.
-9. Test Slack digest with prospect and empty windows.
-10. Update README and operational notes after implementation.
+- [x] DB migration for PostgreSQL intake queue and digest tracking.
+- [x] Webhook final mode is enqueue-only.
+- [x] Worker script/service processes one queue row at a time.
+- [x] Worker uses OpenClaw agent by default and deterministic mode only for scaffold/debug.
+- [x] Worker delivers each queued investigation to Telegram.
+- [x] Worker finalizes into DB/dashboard through `finish_investigation.sh`.
+- [x] Slack digest query and formatter.
+- [x] systemd timer for 09:00 Asia/Jakarta.
+- [x] `--dry-run` preview.
+- [x] `--test-run` Slack preview without marking production digest rows.
+- [x] 14-row queue simulation completed successfully.
+- [x] Slack test digest sent 4 potential prospects from existing DB rows.
 
----
+## 11. Remaining Questions / Next Refinement
 
-## 11. Review Questions
-
-- Should the digest window be strict last 24 hours or since last successful digest run?
-- What exact Slack channel ID should receive the digest?
-- Is `confidence_score >= 75` enough, or should review status `high_value` also qualify?
-- Should failed queue jobs appear in dashboard stats before investigation completes?
+- Validate Komerce platform register payload in the real integration path.
+- Add dashboard queue visibility if the operator needs non-SQL failed/pending inspection.
+- Improve `db_writer.js` extraction for cleaner business names/social/marketplace fields.

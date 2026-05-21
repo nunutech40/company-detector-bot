@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Version:** v7  
 **Status:** Active technical source of truth  
-**Last updated:** 20 Mei 2026
+**Last updated:** 21 Mei 2026
 
 ---
 
@@ -320,7 +320,7 @@ Stack: Node.js, Express
 Port: `3002`  
 Service: `company-webhook`
 
-Status: service scaffold is live. The final webhook/Slack phase changes webhook behavior from direct check to async queue intake. The already validated persistence path is `finish_investigation.sh -> db_writer.js -> PostgreSQL`.
+Status: live enqueue-only API. The webhook stores register payloads in PostgreSQL and returns quickly; the sequential worker performs the heavy investigation later. The validated persistence path is `OpenClaw agent -> finish_investigation.sh -> db_writer.js -> PostgreSQL`.
 
 Routes:
 
@@ -339,7 +339,7 @@ Request body:
 }
 ```
 
-Final intake response should include:
+Intake response includes:
 
 - `ok`
 - `email`
@@ -348,7 +348,7 @@ Final intake response should include:
 - `status`
 - `dashboard_url`
 
-Final webhook rules:
+Webhook rules:
 
 - Do not run the full investigation inside the HTTP request.
 - Validate auth and payload.
@@ -356,8 +356,6 @@ Final webhook rules:
 - Insert into PostgreSQL table `register_intake_jobs`.
 - Return quickly to the caller.
 - Let the worker process pending jobs one at a time.
-
-The current deterministic response behavior is acceptable as a scaffold/test path only. Production platform register integration should use queue mode.
 
 ---
 
@@ -403,7 +401,9 @@ Failure handling:
 Slack digest prospect selection rule:
 
 ```text
-possible_company_affiliated AND confidence_score >= 75 => Slack
+possible_company_affiliated AND confidence_score >= 60 => Slack
+confidence_score >= 75 => Hot prospect
+confidence_score 60-74 => Warm prospect
 otherwise => not listed as prospect
 ```
 
@@ -414,6 +414,7 @@ Slack digest behavior:
 - Always sends a heartbeat, even if no prospects are found.
 - Includes dashboard home link.
 - Includes detail links per prospect when jobs exist.
+- Supports `--test-run` for Slack preview without inserting `slack_digest_runs` or `slack_digest_items`.
 - Does not include raw evidence, AI reasoning, tool traces, scraping logic, or internal score breakdown.
 - Records sent jobs in `slack_digest_items` so prospects are not repeated.
 - Realtime Slack forwarding from Telegram messages is disabled; Slack must read finalized DB rows only.
@@ -534,16 +535,17 @@ Manual E2E:
 - AI reasoning loop.
 - Tool catalog expansion.
 - PostgreSQL + dashboard.
-- Webhook API scaffold.
+- Webhook enqueue API.
+- Sequential queue worker with retry/idempotency.
+- Mandatory Telegram delivery for queued investigations.
+- Slack daily prospect digest at 09:00 Asia/Jakarta.
+- Slack `--test-run` preview mode.
 
 ### Next
 
-- E2E Telegram validation.
-- Build webhook PostgreSQL intake queue.
-- Build sequential worker with retry and idempotency.
-- Build Slack daily prospect digest at 09:00 Asia/Jakarta.
 - Validate from Komerce platform register.
 - Improve `db_writer.js` extraction quality.
+- Add dashboard queue visibility if operationally needed.
 
 ### Later
 

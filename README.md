@@ -8,7 +8,7 @@ Sistem ini memakai deterministic Go pipeline sebagai fondasi dan OpenClaw AI rea
 
 ## Current Status
 
-Status per 20 Mei 2026:
+Status per 21 Mei 2026:
 
 Done:
 
@@ -22,14 +22,15 @@ Done:
 - Dashboard Express + EJS at port `3001`.
 - Webhook API Express at port `3002` with PostgreSQL-backed queue intake.
 - Sequential register worker: `register_intake_jobs` -> OpenClaw agent investigation -> finalizer -> DB/dashboard.
+- Telegram delivery is mandatory for each queued investigation.
 - Slack daily prospect digest at 09:00 Asia/Jakarta.
+- Slack digest test mode: `--test-run` sends a preview without marking production digest rows.
 - Tool packages: `brandhint`, `sociallinks`, `rolesignal`.
 - Token/cost tracking.
 - One-command deploy via `deploy.sh`.
 
 Next validation:
 
-- Telegram end-to-end test.
 - Improve `db_writer.js` social/marketplace extraction.
 - Validate Komerce platform register flow against the queue webhook.
 
@@ -42,8 +43,8 @@ For humans:
 1. [PRD](docs/product/PRD.md) — product source of truth.
 2. [TRD](docs/technical/TRD.md) — technical source of truth.
 3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
-4. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — plan fitur berikutnya.
-5. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist build fitur berikutnya.
+4. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — implemented workflow note untuk webhook queue + Slack digest.
+5. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist implementasi dan validasi terbaru.
 6. [Documentation Index](docs/README.md) — all docs.
 7. [Backlog](BACKLOG.md) — status and next work.
 
@@ -127,6 +128,13 @@ cd openclaw_workspace
 npm run slack:digest:dry-run
 ```
 
+Send Slack test digest without marking production items:
+
+```bash
+cd openclaw_workspace
+node scripts/slack_daily_digest.js --test-run --window-hours 999
+```
+
 Run Go tests:
 
 ```bash
@@ -200,8 +208,16 @@ Slack daily digest target:
 
 ```text
 09:00 Asia/Jakarta every day
-possible_company_affiliated + confidence >= 75 => listed as prospect
+possible_company_affiliated + confidence >= 60 => listed as prospect
+75-100 => Hot prospect
+60-74 => Warm prospect
 empty prospect window => send heartbeat digest
+```
+
+Slack test mode:
+
+```text
+--test-run sends a [TEST] digest and does not insert slack_digest_runs/slack_digest_items.
 ```
 
 Input rule:
