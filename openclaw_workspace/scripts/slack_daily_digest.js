@@ -16,7 +16,7 @@ const path = require('path');
 const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
 loadEnv(ENV_FILE);
 
-const { sendToSlack } = require('./slack_reporter');
+const { sendToSlack, uploadFileToSlack } = require('./slack_reporter');
 const { writeSalesSheetXlsx, formatChannels } = require('./sales_sheet_exporter');
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
@@ -47,24 +47,25 @@ async function main() {
   try {
     const window = await getDigestWindow(client);
     const prospects = await getProspects(client, window);
-    const salesSheetUrl = exportSalesSheet(prospects, window, { testRun });
-    const message = buildMessage(prospects, window, { testRun, salesSheetUrl });
+    const salesSheet = exportSalesSheet(prospects, window, { testRun });
+    const linkMessage = buildMessage(prospects, window, { testRun, salesSheetText: salesSheet.url });
+    const attachmentMessage = buildMessage(prospects, window, { testRun, salesSheetText: 'file Excel terlampir di pesan ini' });
 
     if (dryRun) {
-      console.log(message);
+      console.log(linkMessage);
       console.log(`\nslack_daily_digest: dry_run prospect_count=${prospects.length}`);
       return;
     }
 
     if (testRun) {
-      const sent = await sendToSlack(message);
+      const sent = await sendDigestToSlack(attachmentMessage, linkMessage, salesSheet);
       console.log(`slack_daily_digest: test_run sent=${sent} prospect_count=${prospects.length}`);
       process.exitCode = sent ? 0 : 1;
       return;
     }
 
     const digestRun = await createDigestRun(client, window, prospects.length, 'pending');
-    const sent = await sendToSlack(message);
+    const sent = await sendDigestToSlack(attachmentMessage, linkMessage, salesSheet);
 
     if (!sent) {
       await updateDigestRun(client, digestRun.id, 'failed', null, 'slack_send_failed');
@@ -201,7 +202,7 @@ function buildMessage(prospects, window, options = {}) {
   const windowText = `${formatJakarta(window.start)} - ${formatJakarta(window.end)}`;
   const lines = [
     `${options.testRun ? '[TEST] ' : ''}Prospect Digest - ${titleDate}`,
-    `Sales Sheet: ${options.salesSheetUrl}`,
+    `Sales Sheet: ${options.salesSheetText}`,
     `Window: ${windowText}`,
     '',
   ];
@@ -238,7 +239,22 @@ function exportSalesSheet(prospects, window, options = {}) {
   const filename = `company-detector-prospects-${suffix}-${fileTimestamp(window.end)}.xlsx`;
   const outputPath = path.join(SALES_SHEET_EXPORT_DIR, filename);
   writeSalesSheetXlsx(outputPath, prospects, { dashboardBaseUrl: DASHBOARD_BASE_URL });
-  return `${SALES_SHEET_PUBLIC_BASE_URL}/${filename}`;
+  return {
+    path: outputPath,
+    filename,
+    url: `${SALES_SHEET_PUBLIC_BASE_URL}/${filename}`,
+  };
+}
+
+async function sendDigestToSlack(attachmentMessage, linkMessage, salesSheet) {
+  const uploaded = await uploadFileToSlack(salesSheet.path, {
+    filename: salesSheet.filename,
+    title: 'Company Detector Prospect Sheet',
+    initialComment: attachmentMessage,
+  });
+  if (uploaded) return true;
+
+  return sendToSlack(linkMessage);
 }
 
 function fileTimestamp(value) {

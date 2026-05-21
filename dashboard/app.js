@@ -29,8 +29,20 @@ const pool = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
+
+// Force Excel exports to download instead of relying on browser/Slack preview.
+app.get('/exports/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename || '');
+  if (!/^[a-zA-Z0-9._-]+\.xlsx$/.test(filename)) return res.status(400).send('Invalid export filename');
+
+  const filePath = path.join(__dirname, 'public', 'exports', filename);
+  if (!fs.existsSync(filePath)) return res.status(404).send('Export not found');
+
+  res.download(filePath, filename);
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Render helper — wrap body in layout
 function render(res, view, locals = {}) {
