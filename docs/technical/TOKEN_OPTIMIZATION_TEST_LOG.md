@@ -181,7 +181,7 @@ OpenClaw docs note:
 
 Do not optimize by changing prompt wording, report length, baseline richness, or OpenClaw tool profile directly.
 
-The safer next direction is a separate measurement and evidence-pack layer:
+The safer next direction is a measurement-first layer, then a separate evidence-pack layer only if the measurements prove where the waste is.
 
 1. Keep current production behavior unchanged.
 2. Export OpenClaw trajectory for each AB run.
@@ -197,6 +197,108 @@ The safer next direction is a separate measurement and evidence-pack layer:
    - returns a structured evidence pack with URLs/snippets/source labels;
    - does not ask AI to decide from a shortened narrative.
 5. AB test only after the evidence pack contains the same claims/URLs as current baseline output.
+
+## Instrumentation Trial
+
+Added local analyzer:
+
+```bash
+node scripts/analyze_openclaw_trajectory.js <events.jsonl>
+```
+
+Purpose:
+
+- Count `company_check_go.sh` baseline calls.
+- Count `web_search`, `web_fetch`, `exec`, `process` calls.
+- Measure tool result size by tool.
+- Show largest tool outputs.
+- Compare `model.completed.usage` with final `lastCallUsage`.
+- Separate investigation run from heartbeat run when trajectory contains both.
+
+Sample analyzed trajectory:
+
+- Session: `register-intake-20c1d794-f2db-49f6-a671-f3090b4fec26`
+- Case: `nawaystore@yahoo.com`
+- Source at the time: `optimization_brief_baseline`
+- Event count: 58
+
+Key result:
+
+| Metric | Value |
+| --- | ---: |
+| Tool calls | 14 |
+| Assistant turns | 10 |
+| Turns with tool calls | 8 |
+| Baseline `company_check_go.sh` calls | 1 |
+| `web_search` calls | 7 |
+| `web_fetch` calls | 3 |
+| `process poll` calls | 1 |
+| `exec` calls | 2 |
+
+Tool result sizes:
+
+| Tool | Result chars |
+| --- | ---: |
+| `web_search` | 17,390 |
+| `web_fetch` | 4,209 |
+| `process` | 2,029 |
+| `exec` | 1,022 |
+| `read` | 226 |
+
+Largest observed tool outputs:
+
+| Tool | Query / URL | Result chars |
+| --- | --- | ---: |
+| `web_search` | `"Naway.inc" brand kacamata online store owner` | 3,779 |
+| `web_search` | `"Nawaystore" toko online` | 3,773 |
+| `web_search` | `"Nawaystore" instagram OR facebook OR website official` | 3,572 |
+| `web_search` | `"Tatak Subekti" Nawaystore` | 2,971 |
+| `process` | baseline poll result | 2,029 |
+| `web_fetch` | `https://nawaystore.orderonline.id/products/Thrift-parka-Krem` | 1,589 |
+| `web_fetch` | `https://www.tokopedia.com/nawaystore` | 1,586 |
+
+Important finding:
+
+| Measurement | Tokens |
+| --- | ---: |
+| Investigation `model.completed.usage.total` | 195,183 |
+| Investigation final `lastCallUsage.total` | 31,540 |
+| Heartbeat `model.completed.usage.total` | 62,594 |
+| Heartbeat final `lastCallUsage.total` | 31,347 |
+
+Current queue DB token rows were compared using `llm_calls.total_tokens`, which is populated from the OpenClaw agent result usage. The worker currently prefers `lastCallUsage` when parsing agent usage. That means previous token AB comparisons may be undercounting full multi-turn investigation cost if the OpenClaw CLI exposes cumulative usage separately.
+
+Follow-up smoke check:
+
+```bash
+openclaw agent --session-id usage-meta-smoke-20260521 \
+  --message "Reply exactly OK." \
+  --json
+```
+
+Confirmed `openclaw agent --json` returns both:
+
+- `result.meta.agentMeta.usage`
+- `result.meta.agentMeta.lastCallUsage`
+
+For a one-turn smoke test both values were equal. For multi-turn trajectory, `model.completed.usage.total` was much larger than final `lastCallUsage.total`, so the worker should prefer cumulative `usage` when available.
+
+Implementation note:
+
+- `webhook/worker.js` was updated to prefer `meta.usage` over `meta.lastCallUsage`.
+- This does not change investigation behavior; it only improves future token accounting.
+
+Decision:
+
+- Do not make another token-saving AB decision until at least one new queue test has been measured with the corrected token accounting.
+- If only `lastCallUsage` exists, add a trajectory export/analysis path for AB tests so full-run usage is measured outside `llm_calls`.
+
+Instrumentation conclusion:
+
+- In the analyzed case, `web_search` output is much larger than `web_fetch` output.
+- The agent loop is doing real useful work: search results led to relevant evidence for Nawaystore.
+- The most promising safe optimization is not “fewer searches”, but search-result dedupe/normalization that preserves all unique URLs and snippets.
+- Token accounting must be corrected before judging savings.
 
 Target future queue profile:
 

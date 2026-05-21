@@ -300,11 +300,11 @@ function extractAgentResult(output) {
 
 function findAgentUsage(parsed) {
   const meta = parsed?.result?.meta?.agentMeta || parsed?.meta?.agentMeta || {};
-  const last = meta.lastCallUsage || meta.usage || {};
-  if (!meta.provider && !meta.model && !last.input && !last.output && !last.total) return null;
-  const promptTokens = Number(last.input ?? meta.promptTokens ?? 0);
-  const completionTokens = Number(last.output ?? 0);
-  const totalTokens = Number(last.total ?? (promptTokens + completionTokens));
+  const usage = meta.usage || meta.lastCallUsage || {};
+  if (!meta.provider && !meta.model && !usage.input && !usage.output && !usage.total) return null;
+  const promptTokens = Number(usage.input ?? meta.promptTokens ?? 0);
+  const completionTokens = Number(usage.output ?? 0);
+  const totalTokens = Number(usage.total ?? (promptTokens + completionTokens));
   return {
     model_provider: meta.provider || 'unknown',
     model_name: meta.model || 'unknown',
