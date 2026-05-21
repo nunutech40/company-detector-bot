@@ -35,21 +35,23 @@ Everything else stays in DB/dashboard only.
 
 | Sheet column | Source | Rule |
 | --- | --- | --- |
-| Synced At | `sheet_writer.js` runtime | Current timestamp |
-| Finished At | `investigation_jobs.finished_at` | Investigation completion time |
-| Priority | `confidence_score` | Hot >= 75, Warm 60-74 |
-| Sales Status | Sheet/manual | Default `New`; sales can edit |
-| Prospect Name | DB fields | Prefer `brand_name`, then clean `business_name`, then `full_name`, then email |
+| Tanggal Masuk | `investigation_jobs.finished_at` or sync time | Human-readable Jakarta time, e.g. `21 Mei 2026, 09:00 WIB` |
+| Prioritas | `confidence_score` | Hot >= 75, Warm 60-74 |
+| Status Follow Up | Sheet/manual | Default `New`; sales can edit |
+| Nama Prospect | DB fields | Prefer `brand_name`, then clean `business_name`, then `full_name`, then email |
 | Email | `investigation_jobs.email` | Register email |
-| Phone | `register_intake_jobs.payload_json.no_hp` | If available |
-| Brand | `investigation_jobs.brand_name` | Register brand field |
+| No HP | `register_intake_jobs.payload_json.no_hp` | If available |
+| Brand / Toko | `investigation_jobs.brand_name` | Register brand field |
+| Kategori | `investigation_jobs.business_industry` | Human-readable business category if available |
+| Kota / Area | `investigation_jobs.business_city` | If available |
+| Marketplace | `investigation_jobs.marketplace_json` | Join platform + URL, e.g. `Tokopedia: https://...` |
+| Sosial Media | `investigation_jobs.social_media_json` | Join platform + URL, e.g. `Instagram: https://...` |
 | Website | `investigation_jobs.business_website` | If clean URL exists |
-| Source Register | `investigation_jobs.source` | Source label |
-| Owner Sales | Sheet/manual | Filled by sales |
-| Next Follow Up | Sheet/manual | Filled by sales |
-| Sales Notes | Sheet/manual | Filled by sales |
-| Dashboard Detail | `DASHBOARD_BASE_URL + /jobs/:id` | Link to full internal detail |
-| Job ID | `investigation_jobs.id` | Internal reference |
+| Sumber Data | `investigation_jobs.source` | Human label, e.g. `Register platform` |
+| PIC Sales | Sheet/manual | Filled by sales |
+| Jadwal Follow Up | Sheet/manual | Filled by sales |
+| Catatan Sales | Sheet/manual | Filled by sales |
+| Detail Lengkap | `DASHBOARD_BASE_URL + /jobs/:id` | Link to full internal detail |
 
 ## Do Not Sync
 
@@ -66,8 +68,8 @@ Preferred behavior:
 
 - Dedupe by lowercased email.
 - If existing row is found and new confidence is higher, update sales-facing fields.
-- Do not overwrite manual columns: `Sales Status`, `Owner Sales`, `Next Follow Up`, `Sales Notes`.
-- Always keep `Dashboard Detail` pointing to the latest accepted job if row is updated.
+- Do not overwrite manual columns: `Status Follow Up`, `PIC Sales`, `Jadwal Follow Up`, `Catatan Sales`.
+- Always keep `Detail Lengkap` pointing to the latest accepted job if row is updated.
 
 ## Implementation Options
 
