@@ -21,8 +21,9 @@ const { writeSalesSheetXlsx, formatChannels } = require('./sales_sheet_exporter'
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
+const DASHBOARD_PUBLIC_BASE_URL = (process.env.DASHBOARD_PUBLIC_BASE_URL || DASHBOARD_BASE_URL.replace(':3001', '')).replace(/\/+$/, '');
 const SALES_SHEET_EXPORT_DIR = process.env.SALES_SHEET_EXPORT_DIR || '/home/nunuopc/.openclaw/dashboard/public/exports';
-const SALES_SHEET_PUBLIC_BASE_URL = (process.env.SALES_SHEET_PUBLIC_BASE_URL || `${DASHBOARD_BASE_URL}/exports`).replace(/\/+$/, '');
+const SALES_SHEET_PUBLIC_BASE_URL = (process.env.SALES_SHEET_PUBLIC_BASE_URL || `${DASHBOARD_PUBLIC_BASE_URL}/exports`).replace(/\/+$/, '');
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const testRun = args.includes('--test-run');
@@ -238,7 +239,7 @@ function exportSalesSheet(prospects, window, options = {}) {
   const suffix = options.testRun ? 'test' : 'daily';
   const filename = `company-detector-prospects-${suffix}-${fileTimestamp(window.end)}.xlsx`;
   const outputPath = path.join(SALES_SHEET_EXPORT_DIR, filename);
-  writeSalesSheetXlsx(outputPath, prospects, { dashboardBaseUrl: DASHBOARD_BASE_URL });
+  writeSalesSheetXlsx(outputPath, prospects, { dashboardBaseUrl: DASHBOARD_PUBLIC_BASE_URL });
   return {
     path: outputPath,
     filename,

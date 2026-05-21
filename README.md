@@ -135,7 +135,7 @@ cd openclaw_workspace
 node scripts/slack_daily_digest.js --test-run --window-hours 999
 ```
 
-Slack digest generates a fresh sales `.xlsx` export from the same DB rows used by the digest and serves it from the dashboard `/exports/` path. Override `SALES_SHEET_EXPORT_DIR` and `SALES_SHEET_PUBLIC_BASE_URL` if the export folder or public URL changes.
+Slack digest generates a fresh sales `.xlsx` export from the same DB rows used by the digest and serves it from the dashboard `/exports/` path. On VPS, nginx proxies the dashboard on port 80, so Slack uses `http://103.226.139.107/exports/...xlsx` without `:3001`. Override `DASHBOARD_PUBLIC_BASE_URL`, `SALES_SHEET_EXPORT_DIR`, and `SALES_SHEET_PUBLIC_BASE_URL` if the public URL changes.
 
 Run Go tests:
 
