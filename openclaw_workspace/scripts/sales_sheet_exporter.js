@@ -138,9 +138,8 @@ function prospectRow(job, options) {
 }
 
 function extractPhone(job) {
-  if (job.no_hp_masked) return job.no_hp_masked;
   const payload = parseJsonObject(job.payload_json);
-  return payload.no_hp || payload.phone || payload.phone_number || payload.mobile || '';
+  return payload.no_hp || payload.phone || payload.phone_number || payload.mobile || job.no_hp_masked || '';
 }
 
 function sourceLabel(value) {

@@ -38,7 +38,7 @@
         const marketplace = channelLinks(p.marketplace_json);
         const social = channelLinks(p.social_media_json);
         const payload = p.payload_json && typeof p.payload_json === 'object' ? p.payload_json : {};
-        const phone = p.no_hp_masked || payload.no_hp || payload.phone || '';
+        const phone = payload.no_hp || payload.phone || payload.phone_number || payload.mobile || p.no_hp_masked || '';
       %>
       <tr>
         <td style="white-space:nowrap;color:#cbd5e1"><%= dt %></td>
