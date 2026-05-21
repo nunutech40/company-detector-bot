@@ -177,8 +177,8 @@ function worksheetXml(sheet) {
   ${freezeXml}
   <cols>${colsXml}</cols>
   <sheetData>${rowsXml}</sheetData>
-  ${mergeCellsXml}
   ${filterXml}
+  ${mergeCellsXml}
   ${validationsXml}
 </worksheet>`;
 }
