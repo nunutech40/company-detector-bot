@@ -202,7 +202,7 @@ confidence_score 60-74 => Warm prospect
 Digest always sends:
 
 - Digest title and timestamp.
-- Dashboard home link.
+- Browser Sales Sheet link.
 - Prospect count.
 - Prospect list if any.
 - No-prospect heartbeat if empty.
@@ -211,8 +211,18 @@ Per prospect item:
 
 - Business or brand name if available.
 - Contact field suitable for follow-up.
-- Short sales-friendly signal.
-- Detail dashboard link.
+- Priority.
+- Website if available.
+- Marketplace links if available.
+- Social media links if available.
+
+The message points sales to:
+
+```text
+http://103.226.139.107/sales-sheet
+```
+
+The dashboard detail URL remains available in the Sales Sheet `Detail Lengkap` column for deeper internal review, but the Slack digest should not make dashboard detail links the main sales handoff.
 
 Slack must not include:
 

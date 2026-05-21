@@ -6,8 +6,9 @@ Dokumentasi aktif dibuat sederhana:
 2. [TRD](technical/TRD.md) — source of truth teknis.
 3. [Flow Map](technical/FLOW_MAP.md) — satu-satunya flow aktif: sequence bisnis + runtime/orchestrator + finalization.
 4. [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — workflow note webhook queue + Slack digest yang sudah diimplementasikan.
-5. [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist hasil implementasi, validasi, dan sisa refinement.
-6. [Backlog](../BACKLOG.md) — status kerja berikutnya.
+5. [Register Webhook API](technical/REGISTER_WEBHOOK_API.md) — kontrak REST API untuk platform register.
+6. [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist hasil implementasi, validasi, dan sisa refinement.
+7. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -22,6 +23,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [PRD](product/PRD.md) | Product direction, goals, classifications, roadmap |
 | [TRD](technical/TRD.md) | Architecture, services, storage, deployment, security |
 | [Flow Map](technical/FLOW_MAP.md) | Alur detail dari input data akun, orchestra loop, stop branches, finalizer, DB/dashboard |
+| [Register Webhook API](technical/REGISTER_WEBHOOK_API.md) | Kontrak REST API platform register: auth, payload, response, idempotency, dan queue behavior |
 | [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) | Workflow webhook PostgreSQL queue, sequential worker, Telegram delivery, dan Slack digest jam 09:00 |
 | [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) | Checklist implementasi, test, deploy, dan sisa refinement fitur webhook + Slack |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |

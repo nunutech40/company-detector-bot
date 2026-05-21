@@ -43,10 +43,11 @@ For humans:
 1. [PRD](docs/product/PRD.md) — product source of truth.
 2. [TRD](docs/technical/TRD.md) — technical source of truth.
 3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
-4. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — implemented workflow note untuk webhook queue + Slack digest.
-5. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist implementasi dan validasi terbaru.
-6. [Documentation Index](docs/README.md) — all docs.
-7. [Backlog](BACKLOG.md) — status and next work.
+4. [Register Webhook API](docs/technical/REGISTER_WEBHOOK_API.md) — kontrak REST API untuk tim platform register.
+5. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — implemented workflow note untuk webhook queue + Slack digest.
+6. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist implementasi dan validasi terbaru.
+7. [Documentation Index](docs/README.md) — all docs.
+8. [Backlog](BACKLOG.md) — status and next work.
 
 For another AI agent:
 
@@ -107,11 +108,15 @@ Test webhook:
 ```bash
 curl -X POST http://103.226.139.107:3002/webhook/check \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <shared-secret>" \
   -d '{
     "email": "contact@komerce.id",
     "full_name": "Ragil Setiawan",
     "brand_name": "Komerce",
-    "secret": "<shared-secret>"
+    "no_hp": "08123456789",
+    "source": "platform_register",
+    "external_id": "register-user-id-123",
+    "idempotency_key": "platform_register:register-user-id-123"
   }'
 ```
 
@@ -169,6 +174,7 @@ bash deploy.sh
 │   ├── technical/
 │   │   ├── TRD.md
 │   │   ├── FLOW_MAP.md
+│   │   ├── REGISTER_WEBHOOK_API.md
 │   │   ├── TOOLS_AND_ALGORITHMS.md
 │   │   ├── migration_v1.sql
 │   │   └── migration_v2_webhook_slack_queue.sql
