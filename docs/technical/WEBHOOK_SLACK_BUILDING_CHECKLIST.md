@@ -15,7 +15,7 @@
 - [x] Queued investigations deliver their final report to Telegram.
 - [x] Slack sends one digest every day at 09:00 Asia/Jakarta.
 - [x] Slack sends a heartbeat when no prospects exist.
-- [x] Slack only shows sales-ready summaries and dashboard links.
+- [x] Slack only shows sales-ready summaries and the Sales Sheet link.
 - [x] Slack does not expose raw evidence, search/scrape logic, AI reasoning, tool traces, or scoring internals.
 
 ---
@@ -70,8 +70,8 @@
 
 ## 5. Dashboard
 
-- [x] Dashboard home link works from Slack.
-- [x] Dashboard detail link works from Slack.
+- [x] Dashboard stores completed investigation detail.
+- [x] Slack no longer sends dashboard links; sales continues from the Sales Sheet link.
 - [x] Completed webhook investigations appear in dashboard.
 - [ ] Queue status page/stat card is not built yet; query DB directly for now.
 
@@ -97,8 +97,9 @@ AND not already in slack_digest_items
 60-74  => Warm prospect
 ```
 
-- [x] Includes dashboard home link.
-- [x] Includes dashboard detail link per prospect.
+- [x] Includes Sales Sheet link.
+- [x] Does not include dashboard detail links per prospect.
+- [x] Includes available website, marketplace, and social media summary per prospect.
 - [x] Sends heartbeat when prospect list is empty.
 - [x] Inserts `slack_digest_runs` and `slack_digest_items` for production sends.
 - [x] `--dry-run` previews without sending.

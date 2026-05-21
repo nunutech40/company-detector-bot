@@ -284,9 +284,10 @@ Every day at 09:00 Asia/Jakarta
 Digest content:
 
 - Always send a daily message, even when there are no prospects.
-- Include dashboard home link in every digest.
+- Include Sales Sheet link in every digest.
 - If prospects exist, include a list of prospect-ready accounts from the previous window.
-- Each prospect item should include a detail/dashboard job link when available.
+- Each prospect item may include available website, marketplace, and social media summary.
+- Do not include dashboard detail links in Slack; sales should continue from the Sales Sheet.
 - Hide raw evidence, tool logic, AI reasoning, scraping details, and internal scoring explanation from Slack.
 - Keep full investigation detail in dashboard and DB.
 
@@ -310,7 +311,7 @@ If no prospects exist, Slack should still send an operational heartbeat:
 ```text
 No new prospects in the last window.
 Pipeline is still running.
-Dashboard: <dashboard-url>
+Sales Sheet: <sales-sheet-url>
 ```
 
 This keeps Slack clean for sales while still confirming to stakeholders and developers that the pipeline is alive.

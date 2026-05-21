@@ -18,7 +18,7 @@ Target behavior:
 - Worker sends each queued investigation result to Telegram.
 - Final results still go to PostgreSQL and dashboard.
 - Slack sends one daily digest at 09:00 Asia/Jakarta.
-- Slack only shows sales-ready prospect data and dashboard links.
+- Slack only shows sales-ready prospect data and the Sales Sheet link.
 - Slack hides internal evidence collection, AI reasoning, scraping logic, and tool traces.
 
 ---
@@ -262,21 +262,23 @@ With prospects:
 
 ```text
 Prospect Digest - 20 Mei 2026 09:00 WIB
-Dashboard: http://103.226.139.107:3001
+Sales Sheet: <sales-sheet-url>
 
 Ada 5 prospect baru siap follow up.
 
 1. Brand A
    Kontak: owner@example.com
    Prioritas: Hot prospect
-   Detail: http://103.226.139.107:3001/jobs/<id>
+   Website: https://brand-a.example
+   Marketplace: Tokopedia: https://tokopedia.com/brand-a
+   Sosial Media: Instagram: https://instagram.com/brand-a
 ```
 
 Without prospects:
 
 ```text
 Prospect Digest - 20 Mei 2026 09:00 WIB
-Dashboard: http://103.226.139.107:3001
+Sales Sheet: <sales-sheet-url>
 
 Tidak ada prospect baru dalam window terakhir.
 Pipeline tetap berjalan.

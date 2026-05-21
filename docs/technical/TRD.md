@@ -82,7 +82,7 @@ Daily 09:00 cron
 Slack prospect digest reads PostgreSQL company_detection
         |
         v
-Slack channel + dashboard links
+Slack channel + Sales Sheet link
 ```
 
 AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
@@ -412,8 +412,9 @@ Slack digest behavior:
 - Runs every day at `09:00 Asia/Jakarta`.
 - Sends one message per day.
 - Always sends a heartbeat, even if no prospects are found.
-- Includes dashboard home link.
-- Includes detail links per prospect when jobs exist.
+- Includes Sales Sheet link.
+- Does not include dashboard detail links per prospect.
+- Includes available website, marketplace, and social media summary per prospect.
 - Supports `--test-run` for Slack preview without inserting `slack_digest_runs` or `slack_digest_items`.
 - Does not include raw evidence, AI reasoning, tool traces, scraping logic, or internal score breakdown.
 - Records sent jobs in `slack_digest_items` so prospects are not repeated.
@@ -467,6 +468,7 @@ Important variables:
 - `WEBHOOK_SECRET`
 - `OPENCLAW_BASE_URL`
 - `DASHBOARD_BASE_URL`
+- `SALES_SHEET_URL`
 - `SLACK_DIGEST_CRON`
 - Optional: `GOOGLE_CSE_KEY`, `GOOGLE_CSE_ID`
 
@@ -521,7 +523,7 @@ Manual E2E:
 - Confirm response is queued/accepted quickly.
 - Confirm queue worker processes one pending item at a time.
 - Confirm completed webhook jobs appear in dashboard.
-- Confirm Slack digest sends prospect list plus dashboard links at 09:00.
+- Confirm Slack digest sends prospect list plus Sales Sheet link at 09:00.
 - Confirm Slack digest sends a no-prospect heartbeat when the window is empty.
 - Confirm non-prospect investigations do not appear as Slack prospect items.
 

@@ -19,6 +19,7 @@ const { sendToSlack } = require('./slack_reporter');
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
+const SALES_SHEET_URL = (process.env.SALES_SHEET_URL || 'https://github.com/nunutech40/company-detector-bot/blob/main/docs/templates/company_detector_sales_sheet_template.xlsx').trim();
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const testRun = args.includes('--test-run');
@@ -109,6 +110,8 @@ async function getProspects(client, window) {
         j.brand_name,
         j.business_name,
         j.business_website,
+        j.marketplace_json,
+        j.social_media_json,
         j.confidence_score,
         j.finished_at,
         j.created_at,
@@ -135,6 +138,8 @@ async function getProspects(client, window) {
         brand_name,
         business_name,
         business_website,
+        marketplace_json,
+        social_media_json,
         confidence_score,
         finished_at,
         created_at,
@@ -149,6 +154,8 @@ async function getProspects(client, window) {
       brand_name,
       business_name,
       business_website,
+      marketplace_json,
+      social_media_json,
       confidence_score,
       finished_at,
       created_at
@@ -164,7 +171,7 @@ function buildMessage(prospects, window, options = {}) {
   const windowText = `${formatJakarta(window.start)} - ${formatJakarta(window.end)}`;
   const lines = [
     `${options.testRun ? '[TEST] ' : ''}Prospect Digest - ${titleDate}`,
-    `Dashboard: ${DASHBOARD_BASE_URL}`,
+    `Sales Sheet: ${SALES_SHEET_URL}`,
     `Window: ${windowText}`,
     '',
   ];
@@ -181,17 +188,97 @@ function buildMessage(prospects, window, options = {}) {
   prospects.forEach((job, index) => {
     const name = displayName(job);
     const contact = job.email;
-    const detailUrl = `${DASHBOARD_BASE_URL}/jobs/${job.id}`;
     const tier = prospectTier(job.confidence_score);
+    const marketplace = formatChannels(job.marketplace_json, { maxItems: 2 });
+    const socialMedia = formatChannels(job.social_media_json, { maxItems: 3 });
     lines.push(`${index + 1}. ${name}`);
     lines.push(`   Kontak: ${contact}`);
     lines.push(`   Prioritas: ${tier}`);
     if (job.business_website) lines.push(`   Website: ${job.business_website}`);
-    lines.push(`   Detail: ${detailUrl}`);
+    if (marketplace) lines.push(`   Marketplace: ${marketplace}`);
+    if (socialMedia) lines.push(`   Sosial Media: ${socialMedia}`);
     if (index !== prospects.length - 1) lines.push('');
   });
 
   return lines.join('\n');
+}
+
+function formatChannels(value, options = {}) {
+  const items = parseJsonList(value);
+  const maxItems = options.maxItems || 3;
+  const seen = new Set();
+  const formatted = [];
+
+  for (const item of items) {
+    const url = cleanUrl(item.url || item.link || '');
+    if (!url) continue;
+    const normalized = normalizeUrl(url);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+
+    const platform = cleanPlatform(item.platform || detectPlatform(url));
+    formatted.push(`${platform}: ${url}`);
+    if (formatted.length >= maxItems) break;
+  }
+
+  return formatted.join('; ');
+}
+
+function parseJsonList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return [value];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') return [parsed];
+  } catch (_err) {
+    return [];
+  }
+  return [];
+}
+
+function cleanUrl(value) {
+  return String(value || '').trim().replace(/[.,;:!?]+$/, '');
+}
+
+function normalizeUrl(value) {
+  return cleanUrl(value)
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/+$/, '');
+}
+
+function cleanPlatform(value) {
+  const text = String(value || '').trim();
+  if (!text) return 'Link';
+  const normalized = text.toLowerCase().replace(/[_\s-]+/g, '');
+  const labels = {
+    tokopedia: 'Tokopedia',
+    shopee: 'Shopee',
+    instagram: 'Instagram',
+    tiktok: 'TikTok',
+    linkedin: 'LinkedIn',
+    facebook: 'Facebook',
+    youtube: 'YouTube',
+    pinterest: 'Pinterest',
+    flickr: 'Flickr',
+  };
+  if (labels[normalized]) return labels[normalized];
+  return text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
+}
+
+function detectPlatform(url) {
+  const text = String(url || '').toLowerCase();
+  if (text.includes('tokopedia.')) return 'tokopedia';
+  if (text.includes('shopee.')) return 'shopee';
+  if (text.includes('instagram.')) return 'instagram';
+  if (text.includes('tiktok.')) return 'tiktok';
+  if (text.includes('linkedin.')) return 'linkedin';
+  if (text.includes('facebook.')) return 'facebook';
+  if (text.includes('youtube.')) return 'youtube';
+  return 'link';
 }
 
 function displayName(job) {

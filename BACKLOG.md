@@ -35,8 +35,9 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [x] Always send heartbeat when no prospects exist.
 - [x] Prospect digest includes `possible_company_affiliated` records with confidence >= 60.
 - [x] Slack digest separates Hot prospect (>=75) and Warm prospect (60-74).
-- [x] Include dashboard home link in every digest.
-- [x] Include dashboard detail link per prospect.
+- [x] Include Sales Sheet link in every digest.
+- [x] Remove dashboard detail link per prospect from Slack.
+- [x] Include available website, marketplace, and social media summary per prospect.
 - [x] Hide raw evidence, AI reasoning, search/scrape logic, tool traces, and scoring internals from Slack.
 - [x] Add dry-run command for digest preview.
 - [x] Add `--test-run` Slack digest mode that does not mark production digest rows.

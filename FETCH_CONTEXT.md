@@ -84,7 +84,7 @@ Daily 09:00 Asia/Jakarta
 Slack digest script reads PostgreSQL
         |
         v
-Sales-ready prospect digest + dashboard links
+Sales-ready prospect digest + Sales Sheet link
 ```
 
 Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.

@@ -153,7 +153,7 @@ sequenceDiagram
   loop Daily at 09:00
     Digest->>DB: Read unsent prospect jobs and digest tables
     DB-->>Digest: Prospect list or empty result
-    Digest->>Digest: Build dashboard home and detail URLs
+    Digest->>Digest: Build Sales Sheet link and prospect summaries
     alt Prospects found
       Digest->>Slack: Send prospect digest
       Digest->>DB: Mark sent digest items
@@ -521,7 +521,7 @@ sequenceDiagram
   Cron->>Digest: Run daily prospect digest
   Digest->>DB: Query unsent prospect jobs and digest tables
   DB-->>Digest: prospect list or empty result
-  Digest->>Digest: Build dashboard home and detail links
+  Digest->>Digest: Build Sales Sheet link and prospect summaries
 
   alt Prospect list found
     Digest->>Channel: Send prospect list and links
@@ -534,9 +534,10 @@ sequenceDiagram
 
 Slack content rule:
 
-- Include dashboard home link in every digest.
-- Include detail link per prospect if available.
+- Include Sales Sheet link in every digest.
+- Do not include dashboard detail link per prospect in Slack.
 - Include Hot/Warm priority, not internal scoring explanation.
+- Include available website, marketplace, and social media summary per prospect.
 - Show business-friendly summary only.
 - Hide raw evidence, AI reasoning detail, scraping flow, tool errors, and scoring internals.
 

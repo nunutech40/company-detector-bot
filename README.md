@@ -135,6 +135,8 @@ cd openclaw_workspace
 node scripts/slack_daily_digest.js --test-run --window-hours 999
 ```
 
+Slack digest reads `SALES_SHEET_URL` for the sales handoff link. If it is not set, the script falls back to the committed template file in GitHub.
+
 Run Go tests:
 
 ```bash
