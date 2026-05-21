@@ -3,8 +3,11 @@
     <div class="page-title" style="margin-bottom:6px">Sales Prospect Sheet</div>
     <div style="color:#94a3b8;font-size:13px">Prospect siap follow up. Update kerja sales di sheet eksternal/manual, detail lengkap tetap ada di dashboard.</div>
   </div>
-  <div style="background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:10px 14px;color:#e2e8f0;white-space:nowrap">
-    <strong><%= prospects.length %></strong> prospect
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+    <a href="/sales-sheet/latest.xlsx" style="display:inline-block;background:#3b82f6;color:#fff;border-radius:8px;padding:10px 14px;font-weight:700;white-space:nowrap;text-decoration:none">Download Excel</a>
+    <div style="background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:10px 14px;color:#e2e8f0;white-space:nowrap">
+      <strong><%= prospects.length %></strong> prospect
+    </div>
   </div>
 </div>
 
