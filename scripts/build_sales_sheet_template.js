@@ -49,8 +49,8 @@ const sampleRows = [
     'jenang gemi',
     'Media / e-commerce',
     'Yogyakarta',
-    'Tokopedia: https://tokopedia.com/example',
-    'Instagram: https://instagram.com/example',
+    'Tokopedia: https://tokopedia.com/example\nShopee: https://shopee.co.id/example',
+    'Instagram: https://instagram.com/example\nTikTok: https://tiktok.com/@example',
     '',
     'Register platform',
     '',
@@ -92,20 +92,39 @@ const optionRows = [
 const sheets = [
   {
     name: 'Sales Pipeline',
-    rows: [pipelineHeaders, ...sampleRows],
+    rows: [
+      wideRow('Sales Prospect Pipeline', pipelineHeaders.length),
+      wideRow('Prospect siap follow up dari Company Detector. Sales cukup update status, PIC, jadwal, dan catatan follow up di sheet ini.', pipelineHeaders.length),
+      wideRow('', pipelineHeaders.length),
+      pipelineHeaders,
+      ...sampleRows,
+    ],
     widths: [24, 16, 18, 26, 30, 18, 22, 20, 18, 42, 42, 30, 18, 18, 20, 36, 46],
-    freeze: true,
-    filter: `A1:Q${Math.max(200, sampleRows.length + 1)}`,
+    freezeRows: 4,
+    headerRow: 4,
+    titleRows: [1],
+    subtitleRows: [2],
+    rowHeights: {
+      1: 30,
+      2: 34,
+      3: 8,
+      4: 28,
+      5: 58,
+      6: 40,
+    },
+    mergeCells: ['A1:Q1', 'A2:Q2'],
+    filter: `A4:Q${Math.max(200, sampleRows.length + 4)}`,
     dataValidations: [
-      { range: 'B2:B500', formula: "'Options'!$A$2:$A$3" },
-      { range: 'C2:C500', formula: "'Options'!$B$2:$B$7" },
+      { range: 'B5:B500', formula: "'Options'!$A$2:$A$3" },
+      { range: 'C5:C500', formula: "'Options'!$B$2:$B$7" },
     ],
   },
   {
     name: 'Options',
     rows: optionRows,
     widths: [18, 20, 20],
-    freeze: true,
+    freezeRows: 1,
+    headerRow: 1,
     filter: `A1:C${optionRows.length}`,
   },
 ];
@@ -130,10 +149,17 @@ function addFile(name, content) {
   files.set(name, Buffer.from(content, 'utf8'));
 }
 
+function wideRow(value, width) {
+  return [value, ...Array.from({ length: width - 1 }, () => '')];
+}
+
 function worksheetXml(sheet) {
   const rowsXml = sheet.rows.map((row, rIdx) => {
-    const cells = row.map((value, cIdx) => cellXml(cIdx, rIdx, value, rIdx === 0 ? 1 : 0)).join('');
-    return `<row r="${rIdx + 1}">${cells}</row>`;
+    const rowNumber = rIdx + 1;
+    const cells = row.map((value, cIdx) => cellXml(cIdx, rIdx, value, styleForCell(sheet, rowNumber))).join('');
+    const height = sheet.rowHeights && sheet.rowHeights[rowNumber];
+    const heightAttrs = height ? ` ht="${height}" customHeight="1"` : '';
+    return `<row r="${rowNumber}"${heightAttrs}>${cells}</row>`;
   }).join('');
 
   const colsXml = sheet.widths.map((width, idx) => {
@@ -141,18 +167,33 @@ function worksheetXml(sheet) {
     return `<col min="${col}" max="${col}" width="${width}" customWidth="1"/>`;
   }).join('');
 
-  const freezeXml = sheet.freeze ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' : '';
+  const freezeXml = sheet.freezeRows ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sheet.freezeRows}" topLeftCell="A${sheet.freezeRows + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : '';
   const filterXml = sheet.filter ? `<autoFilter ref="${sheet.filter}"/>` : '';
   const validationsXml = dataValidationsXml(sheet.dataValidations || []);
+  const mergeCellsXml = mergeCellsXmlFor(sheet.mergeCells || []);
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   ${freezeXml}
   <cols>${colsXml}</cols>
   <sheetData>${rowsXml}</sheetData>
+  ${mergeCellsXml}
   ${filterXml}
   ${validationsXml}
 </worksheet>`;
+}
+
+function styleForCell(sheet, rowNumber) {
+  if ((sheet.titleRows || []).includes(rowNumber)) return 2;
+  if ((sheet.subtitleRows || []).includes(rowNumber)) return 3;
+  if (rowNumber === (sheet.headerRow || 1)) return 1;
+  return 0;
+}
+
+function mergeCellsXmlFor(mergeCells) {
+  if (!mergeCells.length) return '';
+  const items = mergeCells.map((ref) => `<mergeCell ref="${ref}"/>`).join('');
+  return `<mergeCells count="${mergeCells.length}">${items}</mergeCells>`;
 }
 
 function dataValidationsXml(validations) {
@@ -167,7 +208,7 @@ function cellXml(cIdx, rIdx, value, style) {
   const ref = `${columnName(cIdx + 1)}${rIdx + 1}`;
   if (value === null || value === undefined || value === '') return `<c r="${ref}" s="${style}"/>`;
   if (typeof value === 'number') return `<c r="${ref}" s="${style}"><v>${value}</v></c>`;
-  return `<c r="${ref}" s="${style}" t="inlineStr"><is><t>${escapeXml(String(value))}</t></is></c>`;
+  return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(String(value))}</t></is></c>`;
 }
 
 function workbookXml(sheetDefs) {
@@ -219,23 +260,29 @@ function rootRelsXml() {
 function stylesXml() {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="2">
+  <fonts count="4">
     <font><sz val="11"/><color rgb="FF111827"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="11"/><color rgb="FF334155"/><name val="Calibri"/></font>
   </fonts>
-  <fills count="3">
+  <fills count="5">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1F2937"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0F172A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border><left style="thin"><color rgb="FFE5E7EB"/></left><right style="thin"><color rgb="FFE5E7EB"/></right><top style="thin"><color rgb="FFE5E7EB"/></top><bottom style="thin"><color rgb="FFE5E7EB"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="2">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+  <cellXfs count="4">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;

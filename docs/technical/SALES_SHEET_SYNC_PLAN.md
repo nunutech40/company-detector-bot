@@ -44,8 +44,8 @@ Everything else stays in DB/dashboard only.
 | Brand / Toko | `investigation_jobs.brand_name` | Register brand field |
 | Kategori | `investigation_jobs.business_industry` | Human-readable business category if available |
 | Kota / Area | `investigation_jobs.business_city` | If available |
-| Marketplace | `investigation_jobs.marketplace_json` | Join platform + URL, e.g. `Tokopedia: https://...` |
-| Sosial Media | `investigation_jobs.social_media_json` | Join platform + URL, e.g. `Instagram: https://...` |
+| Marketplace | `investigation_jobs.marketplace_json` | Join all valid platform + URL pairs as multiline text, e.g. `Tokopedia: https://...` |
+| Sosial Media | `investigation_jobs.social_media_json` | Join all valid platform + URL pairs as multiline text, e.g. `Instagram: https://...` |
 | Website | `investigation_jobs.business_website` | If clean URL exists |
 | Sumber Data | `investigation_jobs.source` | Human label, e.g. `Register platform` |
 | PIC Sales | Sheet/manual | Filled by sales |
@@ -61,6 +61,12 @@ Everything else stays in DB/dashboard only.
 - Tool logs.
 - Internal scoring breakdown.
 - Full report text.
+
+## Link Handling
+
+The database remains the complete source of truth. If one prospect has multiple marketplace or social media profiles, store all valid entries in PostgreSQL JSON fields.
+
+The Sheet should not collapse those links into one winner. For sales, join all usable links into the `Marketplace` or `Sosial Media` cell with one link per line. This keeps the sheet compact while still giving sales every public channel they can inspect before follow-up.
 
 ## Idempotency
 
