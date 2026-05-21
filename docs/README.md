@@ -26,7 +26,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) | Checklist implementasi, test, deploy, dan sisa refinement fitur webhook + Slack |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Token Optimization Test Log](technical/TOKEN_OPTIMIZATION_TEST_LOG.md) | Catatan AB test token, hasil gagal/ditolak, dan arah optimasi berikutnya |
-| [Sales Sheet Sync Plan](technical/SALES_SHEET_SYNC_PLAN.md) | Mapping Sheet untuk sales follow-up dan rencana sync DB -> Sheet |
+| [Sales Sheet Sync Plan](technical/SALES_SHEET_SYNC_PLAN.md) | Browser Sales Sheet untuk sales follow-up, mapping field, dan fallback export |
 | [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL awal: investigation jobs, reports, LLM calls |
 | [Migration v2](technical/migration_v2_webhook_slack_queue.sql) | Schema webhook queue dan Slack daily digest tracking |
 

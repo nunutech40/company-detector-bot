@@ -534,7 +534,7 @@ sequenceDiagram
 
 Slack content rule:
 
-- Include Sales Sheet link in every digest.
+- Include browser Sales Sheet link in every digest (`/sales-sheet`).
 - Do not include dashboard detail link per prospect in Slack.
 - Include Hot/Warm priority, not internal scoring explanation.
 - Include available website, marketplace, and social media summary per prospect.

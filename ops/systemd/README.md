@@ -6,7 +6,7 @@ The VPS also uses nginx on port 80 as a public reverse proxy to the dashboard on
 port 3001. This keeps Slack links simple:
 
 ```text
-http://103.226.139.107/exports/<file>.xlsx
+http://103.226.139.107/sales-sheet
 ```
 
 The nginx config is stored at `ops/nginx/company-detector.conf`. UFW must allow

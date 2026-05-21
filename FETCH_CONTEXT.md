@@ -164,6 +164,14 @@ possible_company_affiliated + confidence_score >= 60 => listed as prospect
 empty prospect window => send heartbeat digest
 ```
 
+Slack links to the browser Sales Sheet:
+
+```text
+http://103.226.139.107/sales-sheet
+```
+
+This is the main sales handoff. The `.xlsx` export still exists as fallback/internal artifact, but Slack should not rely on an Excel-only download path.
+
 Slack must not include raw evidence, AI reasoning detail, scraping/search logic, tool traces, or internal scoring breakdown. Slack is for sales/stakeholder handoff only.
 
 Slack test mode:

@@ -71,8 +71,10 @@
 ## 5. Dashboard
 
 - [x] Dashboard stores completed investigation detail.
-- [x] Slack no longer sends dashboard links; sales continues from the Sales Sheet link.
+- [x] Browser Sales Sheet route exists at `/sales-sheet`.
+- [x] Slack no longer sends dashboard detail links; sales continues from the Sales Sheet link.
 - [x] Completed webhook investigations appear in dashboard.
+- [x] Sales Sheet shows full phone numbers from `payload_json.no_hp` when available; masked phone is fallback only.
 - [ ] Queue status page/stat card is not built yet; query DB directly for now.
 
 ---
@@ -97,7 +99,7 @@ AND not already in slack_digest_items
 60-74  => Warm prospect
 ```
 
-- [x] Includes Sales Sheet link.
+- [x] Includes browser Sales Sheet link (`Open Sales Sheet`).
 - [x] Does not include dashboard detail links per prospect.
 - [x] Includes available website, marketplace, and social media summary per prospect.
 - [x] Sends heartbeat when prospect list is empty.

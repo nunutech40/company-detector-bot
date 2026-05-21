@@ -22,7 +22,13 @@ register_intake_jobs
 
 Sheet sync must be deterministic code, not AI. It should not consume investigation tokens.
 
-For the current VPS workflow, the daily Slack digest generates a fresh `.xlsx` export from the same PostgreSQL rows used by the Slack message. The file is written under the dashboard public export folder and shared as a direct download link, so sales does not need to understand GitHub or download a repository template.
+For the current VPS workflow, the primary sales handoff is a browser page:
+
+```text
+http://103.226.139.107/sales-sheet
+```
+
+The daily Slack digest links to that page as `Open Sales Sheet`, so sales users do not need Excel. The digest still generates a fresh `.xlsx` export from the same PostgreSQL rows as a fallback/internal artifact, but Slack does not rely on Excel download as the main path.
 
 ## Sync Rule
 
@@ -118,4 +124,4 @@ Cons:
 
 ## Recommended Next Step
 
-Use the generated VPS `.xlsx` export for the current Slack handoff. After the columns are approved and a permanent Google Sheet is available, `SALES_SHEET_PUBLIC_BASE_URL` / `SALES_SHEET_EXPORT_DIR` can be replaced by Google Sheets sync.
+Use the browser Sales Sheet for the current Slack handoff. After the columns are approved and a permanent Google Sheet is available, `SALES_SHEET_WEB_URL` can point to that sheet, while `.xlsx` export remains optional fallback.

@@ -413,7 +413,8 @@ Slack digest behavior:
 - Sends one message per day.
 - Always sends a heartbeat, even if no prospects are found.
 - Includes Sales Sheet link.
-- Sales Sheet link points to a generated `.xlsx` export served by the dashboard public `/exports/` path, not a static GitHub template.
+- Sales Sheet link points to the browser-based dashboard route `/sales-sheet`, not a static GitHub template and not an Excel-only download.
+- A generated `.xlsx` export is still produced as fallback/internal artifact under dashboard `/exports/`.
 - Does not include dashboard detail links per prospect.
 - Includes available website, marketplace, and social media summary per prospect.
 - Supports `--test-run` for Slack preview without inserting `slack_digest_runs` or `slack_digest_items`.
@@ -469,7 +470,10 @@ Important variables:
 - `WEBHOOK_SECRET`
 - `OPENCLAW_BASE_URL`
 - `DASHBOARD_BASE_URL`
-- `SALES_SHEET_URL`
+- `DASHBOARD_PUBLIC_BASE_URL`
+- `SALES_SHEET_WEB_URL`
+- `SALES_SHEET_LATEST_URL`
+- `SALES_SHEET_EXPORT_DIR`
 - `SLACK_DIGEST_CRON`
 - Optional: `GOOGLE_CSE_KEY`, `GOOGLE_CSE_ID`
 

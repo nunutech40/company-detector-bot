@@ -284,7 +284,7 @@ Every day at 09:00 Asia/Jakarta
 Digest content:
 
 - Always send a daily message, even when there are no prospects.
-- Include Sales Sheet link in every digest.
+- Include browser Sales Sheet link in every digest; sales users should be able to open it without Excel.
 - If prospects exist, include a list of prospect-ready accounts from the previous window.
 - Each prospect item may include available website, marketplace, and social media summary.
 - Do not include dashboard detail links in Slack; sales should continue from the Sales Sheet.
