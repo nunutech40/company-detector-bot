@@ -11,15 +11,18 @@
 
 const fs = require('fs');
 const { Client } = require('pg');
+const path = require('path');
 
 const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
 loadEnv(ENV_FILE);
 
 const { sendToSlack } = require('./slack_reporter');
+const { writeSalesSheetXlsx, formatChannels } = require('./sales_sheet_exporter');
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
-const SALES_SHEET_URL = (process.env.SALES_SHEET_URL || 'https://github.com/nunutech40/company-detector-bot/blob/main/docs/templates/company_detector_sales_sheet_template.xlsx').trim();
+const SALES_SHEET_EXPORT_DIR = process.env.SALES_SHEET_EXPORT_DIR || '/home/nunuopc/.openclaw/dashboard/public/exports';
+const SALES_SHEET_PUBLIC_BASE_URL = (process.env.SALES_SHEET_PUBLIC_BASE_URL || `${DASHBOARD_BASE_URL}/exports`).replace(/\/+$/, '');
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const testRun = args.includes('--test-run');
@@ -44,7 +47,8 @@ async function main() {
   try {
     const window = await getDigestWindow(client);
     const prospects = await getProspects(client, window);
-    const message = buildMessage(prospects, window, { testRun });
+    const salesSheetUrl = exportSalesSheet(prospects, window, { testRun });
+    const message = buildMessage(prospects, window, { testRun, salesSheetUrl });
 
     if (dryRun) {
       console.log(message);
@@ -109,14 +113,28 @@ async function getProspects(client, window) {
         j.full_name,
         j.brand_name,
         j.business_name,
+        j.business_industry,
         j.business_website,
+        j.business_city,
         j.marketplace_json,
         j.social_media_json,
+        j.source,
         j.confidence_score,
         j.finished_at,
         j.created_at,
+        r.no_hp_masked,
+        r.payload_json,
+        r.source AS register_source,
         COALESCE(j.finished_at, j.created_at) AS event_time
       FROM investigation_jobs j
+      LEFT JOIN LATERAL (
+        SELECT no_hp_masked, payload_json, source
+        FROM register_intake_jobs
+        WHERE investigation_job_id = j.id
+           OR LOWER(email) = LOWER(j.email)
+        ORDER BY processed_at DESC NULLS LAST, created_at DESC
+        LIMIT 1
+      ) r ON true
       WHERE j.classification = 'possible_company_affiliated'
         AND COALESCE(j.confidence_score, 0) >= $3
         AND COALESCE(j.finished_at, j.created_at) >= $1
@@ -137,12 +155,18 @@ async function getProspects(client, window) {
         full_name,
         brand_name,
         business_name,
+        business_industry,
         business_website,
+        business_city,
         marketplace_json,
         social_media_json,
+        source,
         confidence_score,
         finished_at,
         created_at,
+        no_hp_masked,
+        payload_json,
+        register_source,
         event_time
       FROM candidates
       ORDER BY LOWER(email), COALESCE(confidence_score, 0) DESC, event_time DESC
@@ -153,12 +177,18 @@ async function getProspects(client, window) {
       full_name,
       brand_name,
       business_name,
+      business_industry,
       business_website,
+      business_city,
       marketplace_json,
       social_media_json,
+      source,
       confidence_score,
       finished_at,
-      created_at
+      created_at,
+      no_hp_masked,
+      payload_json,
+      register_source
     FROM deduped
     ORDER BY COALESCE(confidence_score, 0) DESC, event_time DESC
     LIMIT 50
@@ -171,7 +201,7 @@ function buildMessage(prospects, window, options = {}) {
   const windowText = `${formatJakarta(window.start)} - ${formatJakarta(window.end)}`;
   const lines = [
     `${options.testRun ? '[TEST] ' : ''}Prospect Digest - ${titleDate}`,
-    `Sales Sheet: ${SALES_SHEET_URL}`,
+    `Sales Sheet: ${options.salesSheetUrl}`,
     `Window: ${windowText}`,
     '',
   ];
@@ -203,82 +233,29 @@ function buildMessage(prospects, window, options = {}) {
   return lines.join('\n');
 }
 
-function formatChannels(value, options = {}) {
-  const items = parseJsonList(value);
-  const maxItems = options.maxItems || 3;
-  const seen = new Set();
-  const formatted = [];
-
-  for (const item of items) {
-    const url = cleanUrl(item.url || item.link || '');
-    if (!url) continue;
-    const normalized = normalizeUrl(url);
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-
-    const platform = cleanPlatform(item.platform || detectPlatform(url));
-    formatted.push(`${platform}: ${url}`);
-    if (formatted.length >= maxItems) break;
-  }
-
-  return formatted.join('; ');
+function exportSalesSheet(prospects, window, options = {}) {
+  const suffix = options.testRun ? 'test' : 'daily';
+  const filename = `company-detector-prospects-${suffix}-${fileTimestamp(window.end)}.xlsx`;
+  const outputPath = path.join(SALES_SHEET_EXPORT_DIR, filename);
+  writeSalesSheetXlsx(outputPath, prospects, { dashboardBaseUrl: DASHBOARD_BASE_URL });
+  return `${SALES_SHEET_PUBLIC_BASE_URL}/${filename}`;
 }
 
-function parseJsonList(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'object') return [value];
-  try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) return parsed;
-    if (parsed && typeof parsed === 'object') return [parsed];
-  } catch (_err) {
-    return [];
-  }
-  return [];
-}
-
-function cleanUrl(value) {
-  return String(value || '').trim().replace(/[.,;:!?]+$/, '');
-}
-
-function normalizeUrl(value) {
-  return cleanUrl(value)
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/+$/, '');
-}
-
-function cleanPlatform(value) {
-  const text = String(value || '').trim();
-  if (!text) return 'Link';
-  const normalized = text.toLowerCase().replace(/[_\s-]+/g, '');
-  const labels = {
-    tokopedia: 'Tokopedia',
-    shopee: 'Shopee',
-    instagram: 'Instagram',
-    tiktok: 'TikTok',
-    linkedin: 'LinkedIn',
-    facebook: 'Facebook',
-    youtube: 'YouTube',
-    pinterest: 'Pinterest',
-    flickr: 'Flickr',
-  };
-  if (labels[normalized]) return labels[normalized];
-  return text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
-}
-
-function detectPlatform(url) {
-  const text = String(url || '').toLowerCase();
-  if (text.includes('tokopedia.')) return 'tokopedia';
-  if (text.includes('shopee.')) return 'shopee';
-  if (text.includes('instagram.')) return 'instagram';
-  if (text.includes('tiktok.')) return 'tiktok';
-  if (text.includes('linkedin.')) return 'linkedin';
-  if (text.includes('facebook.')) return 'facebook';
-  if (text.includes('youtube.')) return 'youtube';
-  return 'link';
+function fileTimestamp(value) {
+  const date = new Date(value);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}`;
 }
 
 function displayName(job) {

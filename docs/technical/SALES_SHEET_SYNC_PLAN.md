@@ -22,6 +22,8 @@ register_intake_jobs
 
 Sheet sync must be deterministic code, not AI. It should not consume investigation tokens.
 
+For the current VPS workflow, the daily Slack digest generates a fresh `.xlsx` export from the same PostgreSQL rows used by the Slack message. The file is written under the dashboard public export folder and shared as a direct download link, so sales does not need to understand GitHub or download a repository template.
+
 ## Sync Rule
 
 Only sync rows that are prospect-ready:
@@ -116,4 +118,4 @@ Cons:
 
 ## Recommended Next Step
 
-Use the `.xlsx` template for review first. After columns are approved, create/import it as Google Sheet, share it with the service account, then implement `sheet_writer.js`.
+Use the generated VPS `.xlsx` export for the current Slack handoff. After the columns are approved and a permanent Google Sheet is available, `SALES_SHEET_PUBLIC_BASE_URL` / `SALES_SHEET_EXPORT_DIR` can be replaced by Google Sheets sync.

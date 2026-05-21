@@ -18,7 +18,7 @@ Target behavior:
 - Worker sends each queued investigation result to Telegram.
 - Final results still go to PostgreSQL and dashboard.
 - Slack sends one daily digest at 09:00 Asia/Jakarta.
-- Slack only shows sales-ready prospect data and the Sales Sheet link.
+- Slack only shows sales-ready prospect data and the generated Sales Sheet link.
 - Slack hides internal evidence collection, AI reasoning, scraping logic, and tool traces.
 
 ---
@@ -262,7 +262,7 @@ With prospects:
 
 ```text
 Prospect Digest - 20 Mei 2026 09:00 WIB
-Sales Sheet: <sales-sheet-url>
+Sales Sheet: http://103.226.139.107:3001/exports/company-detector-prospects-daily-<timestamp>.xlsx
 
 Ada 5 prospect baru siap follow up.
 

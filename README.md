@@ -135,7 +135,7 @@ cd openclaw_workspace
 node scripts/slack_daily_digest.js --test-run --window-hours 999
 ```
 
-Slack digest reads `SALES_SHEET_URL` for the sales handoff link. If it is not set, the script falls back to the committed template file in GitHub.
+Slack digest generates a fresh sales `.xlsx` export from the same DB rows used by the digest and serves it from the dashboard `/exports/` path. Override `SALES_SHEET_EXPORT_DIR` and `SALES_SHEET_PUBLIC_BASE_URL` if the export folder or public URL changes.
 
 Run Go tests:
 

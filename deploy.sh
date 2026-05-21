@@ -87,6 +87,7 @@ for script in \
   finish_investigation.sh \
   token_usage.sh \
   db_writer.js \
+  sales_sheet_exporter.js \
   slack_daily_digest.js; do
   if [[ -f "${REPO_DIR}/openclaw_workspace/scripts/${script}" ]]; then
     scp_file "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
