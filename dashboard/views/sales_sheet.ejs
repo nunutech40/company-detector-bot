@@ -1,0 +1,77 @@
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px">
+  <div>
+    <div class="page-title" style="margin-bottom:6px">Sales Prospect Sheet</div>
+    <div style="color:#94a3b8;font-size:13px">Prospect siap follow up. Update kerja sales di sheet eksternal/manual, detail lengkap tetap ada di dashboard.</div>
+  </div>
+  <div style="background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:10px 14px;color:#e2e8f0;white-space:nowrap">
+    <strong><%= prospects.length %></strong> prospect
+  </div>
+</div>
+
+<div class="table-wrap" style="overflow:auto">
+  <table style="min-width:1500px">
+    <thead>
+      <tr>
+        <th>Tanggal Masuk</th>
+        <th>Prioritas</th>
+        <th>Status Follow Up</th>
+        <th>Nama Prospect</th>
+        <th>Email</th>
+        <th>No HP</th>
+        <th>Brand / Toko</th>
+        <th>Kategori</th>
+        <th>Kota / Area</th>
+        <th>Marketplace</th>
+        <th>Sosial Media</th>
+        <th>Website</th>
+        <th>Sumber Data</th>
+        <th>PIC Sales</th>
+        <th>Jadwal Follow Up</th>
+        <th>Catatan Sales</th>
+        <th>Detail Lengkap</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const p of prospects) { %>
+      <%
+        const dt = p.finished_at ? new Date(p.finished_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' WIB' : '';
+        const marketplace = channelLinks(p.marketplace_json);
+        const social = channelLinks(p.social_media_json);
+        const payload = p.payload_json && typeof p.payload_json === 'object' ? p.payload_json : {};
+        const phone = p.no_hp_masked || payload.no_hp || payload.phone || '';
+      %>
+      <tr>
+        <td style="white-space:nowrap;color:#cbd5e1"><%= dt %></td>
+        <td><span class="badge <%= Number(p.confidence_score || 0) >= 75 ? 'badge-green' : 'badge-yellow' %>"><%= prospectTier(p.confidence_score) %></span></td>
+        <td><span class="badge badge-blue">New</span></td>
+        <td style="font-weight:700;color:#fff"><%= displayName(p) %></td>
+        <td><a href="mailto:<%= p.email %>"><%= p.email %></a></td>
+        <td style="white-space:nowrap"><%= phone || '—' %></td>
+        <td><%= p.brand_name || '—' %></td>
+        <td><%= p.business_industry || '—' %></td>
+        <td><%= p.business_city || '—' %></td>
+        <td>
+          <% if (marketplace.length) { %>
+            <% for (const item of marketplace) { %>
+              <div style="margin-bottom:4px"><a href="<%= item.url %>" target="_blank"><%= item.platform %></a></div>
+            <% } %>
+          <% } else { %>—<% } %>
+        </td>
+        <td>
+          <% if (social.length) { %>
+            <% for (const item of social) { %>
+              <div style="margin-bottom:4px"><a href="<%= item.url %>" target="_blank"><%= item.platform %></a></div>
+            <% } %>
+          <% } else { %>—<% } %>
+        </td>
+        <td><% if (p.business_website) { %><a href="<%= p.business_website %>" target="_blank">Website</a><% } else { %>—<% } %></td>
+        <td><%= (p.source || 'Register platform').replace(/_/g, ' ') %></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td><a href="/jobs/<%= p.id %>" style="display:inline-block;padding:5px 12px;background:#3b82f6;color:#fff;border-radius:6px;font-size:12px;white-space:nowrap">Detail</a></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>

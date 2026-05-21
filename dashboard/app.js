@@ -80,6 +80,49 @@ function classInfo(c) {
   return CLASSIFICATION_LABEL[c] || { label: c || '—', color: 'gray' };
 }
 
+function prospectTier(confidence) {
+  return Number(confidence || 0) >= 75 ? 'Hot prospect' : 'Warm prospect';
+}
+
+function displayName(job) {
+  return job.brand_name || cleanBusinessName(job.business_name) || job.full_name || job.email;
+}
+
+function cleanBusinessName(value) {
+  const text = String(value || '').replace(/\*\*/g, '').replace(/^nama:\s*/i, '').trim();
+  if (!text || text.length > 60) return '';
+  if (/alat:|web_search|web_fetch|location:|education:/i.test(text)) return '';
+  return text;
+}
+
+function channelLinks(value) {
+  const rows = Array.isArray(value) ? value : [];
+  const seen = new Set();
+  return rows
+    .map((item) => ({
+      platform: platformLabel(item.platform || ''),
+      url: String(item.url || item.link || '').trim().replace(/[.,;:!?]+$/, ''),
+    }))
+    .filter((item) => item.url && !seen.has(item.url.toLowerCase()) && seen.add(item.url.toLowerCase()))
+    .slice(0, 8);
+}
+
+function platformLabel(value) {
+  const key = String(value || '').toLowerCase().replace(/[_\s-]+/g, '');
+  const labels = {
+    tokopedia: 'Tokopedia',
+    shopee: 'Shopee',
+    instagram: 'Instagram',
+    tiktok: 'TikTok',
+    linkedin: 'LinkedIn',
+    facebook: 'Facebook',
+    youtube: 'YouTube',
+    pinterest: 'Pinterest',
+    flickr: 'Flickr',
+  };
+  return labels[key] || (value ? String(value) : 'Link');
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // GET / — Job list
@@ -171,6 +214,65 @@ app.get('/', async (req, res) => {
       page:        pageNum,
       totalPages,
       total,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('DB error: ' + err.message);
+  }
+});
+
+// GET /sales-sheet — Sales-facing prospect sheet in the browser
+app.get('/sales-sheet', async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      WITH candidates AS (
+        SELECT
+          j.id,
+          j.email,
+          j.full_name,
+          j.brand_name,
+          j.business_name,
+          j.business_industry,
+          j.business_website,
+          j.business_city,
+          j.marketplace_json,
+          j.social_media_json,
+          j.source,
+          j.confidence_score,
+          j.finished_at,
+          j.created_at,
+          r.no_hp_masked,
+          r.payload_json,
+          COALESCE(j.finished_at, j.created_at) AS event_time
+        FROM investigation_jobs j
+        LEFT JOIN LATERAL (
+          SELECT no_hp_masked, payload_json, source
+          FROM register_intake_jobs
+          WHERE investigation_job_id = j.id
+             OR LOWER(email) = LOWER(j.email)
+          ORDER BY processed_at DESC NULLS LAST, created_at DESC
+          LIMIT 1
+        ) r ON true
+        WHERE j.classification = 'possible_company_affiliated'
+          AND COALESCE(j.confidence_score, 0) >= 60
+      ),
+      deduped AS (
+        SELECT DISTINCT ON (LOWER(email)) *
+        FROM candidates
+        ORDER BY LOWER(email), COALESCE(confidence_score, 0) DESC, event_time DESC
+      )
+      SELECT *
+      FROM deduped
+      ORDER BY COALESCE(confidence_score, 0) DESC, event_time DESC
+      LIMIT 100
+    `);
+
+    render(res, 'sales_sheet', {
+      title: 'Sales Prospect Sheet',
+      prospects: result.rows,
+      prospectTier,
+      displayName,
+      channelLinks,
     });
   } catch (err) {
     console.error(err);
