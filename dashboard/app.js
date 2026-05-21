@@ -42,6 +42,22 @@ app.get('/exports/:filename', (req, res) => {
   res.download(filePath, filename);
 });
 
+app.get('/sales-sheet/latest.xlsx', (_req, res) => {
+  const exportDir = path.join(__dirname, 'public', 'exports');
+  if (!fs.existsSync(exportDir)) return res.status(404).send('No sales sheet export found');
+
+  const latest = fs.readdirSync(exportDir)
+    .filter((name) => /^company-detector-prospects-.*\.xlsx$/.test(name))
+    .map((name) => ({
+      name,
+      mtimeMs: fs.statSync(path.join(exportDir, name)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
+
+  if (!latest) return res.status(404).send('No sales sheet export found');
+  res.download(path.join(exportDir, latest.name), latest.name);
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Render helper — wrap body in layout

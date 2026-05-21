@@ -23,7 +23,7 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
 const DASHBOARD_PUBLIC_BASE_URL = (process.env.DASHBOARD_PUBLIC_BASE_URL || DASHBOARD_BASE_URL.replace(':3001', '')).replace(/\/+$/, '');
 const SALES_SHEET_EXPORT_DIR = process.env.SALES_SHEET_EXPORT_DIR || '/home/nunuopc/.openclaw/dashboard/public/exports';
-const SALES_SHEET_PUBLIC_BASE_URL = (process.env.SALES_SHEET_PUBLIC_BASE_URL || `${DASHBOARD_PUBLIC_BASE_URL}/exports`).replace(/\/+$/, '');
+const SALES_SHEET_LATEST_URL = process.env.SALES_SHEET_LATEST_URL || `${DASHBOARD_PUBLIC_BASE_URL}/sales-sheet/latest.xlsx`;
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const testRun = args.includes('--test-run');
@@ -49,7 +49,7 @@ async function main() {
     const window = await getDigestWindow(client);
     const prospects = await getProspects(client, window);
     const salesSheet = exportSalesSheet(prospects, window, { testRun });
-    const linkMessage = buildMessage(prospects, window, { testRun, salesSheetText: salesSheet.url });
+    const linkMessage = buildMessage(prospects, window, { testRun, salesSheetText: `<${salesSheet.url}|Download Sales Sheet>` });
     const attachmentMessage = buildMessage(prospects, window, { testRun, salesSheetText: 'file Excel terlampir di pesan ini' });
 
     if (dryRun) {
@@ -243,7 +243,7 @@ function exportSalesSheet(prospects, window, options = {}) {
   return {
     path: outputPath,
     filename,
-    url: `${SALES_SHEET_PUBLIC_BASE_URL}/${filename}`,
+    url: SALES_SHEET_LATEST_URL,
   };
 }
 
