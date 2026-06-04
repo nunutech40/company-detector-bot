@@ -8,12 +8,12 @@ Sistem ini memakai deterministic Go pipeline sebagai fondasi dan OpenClaw AI rea
 
 ## Current Status
 
-Status per 21 Mei 2026:
+Status per 4 Juni 2026:
 
 Done:
 
 - Go CLI pipeline: email intelligence, domain check, crawler, search cascade, scraper, scoring, report, evidence.
-- AI reasoning loop via OpenClaw + Qwen3.6 Flash.
+- AI reasoning loop via OpenClaw + Sumopod `kimi-k2.6`.
 - Telegram investigation flow.
 - PostgreSQL 16 database `company_detection`.
 - 3-table storage: `investigation_jobs`, `final_reports`, `llm_calls`.
@@ -27,7 +27,7 @@ Done:
 - Slack digest test mode: `--test-run` sends a preview without marking production digest rows.
 - Tool packages: `brandhint`, `sociallinks`, `rolesignal`.
 - Token/cost tracking.
-- One-command deploy via `deploy.sh`.
+- One-command deploy via `deploy.sh`, including OpenClaw primary model sync.
 
 Next validation:
 
@@ -67,6 +67,24 @@ For another AI agent:
 | Webhook health | `http://103.226.139.107:3002/health` |
 
 ---
+
+## Production AI Runtime
+
+Current VPS OpenClaw primary model:
+
+```text
+sumopod/kimi-k2.6
+```
+
+Provider config:
+
+```text
+provider: sumopod
+baseUrl: https://ai.sumopod.com/v1
+config file: /home/nunuopc/.openclaw/openclaw.json
+```
+
+`deploy.sh` preserves the existing Sumopod API key on the VPS and only enforces the provider URL plus primary model. Do not reduce context/tooling to make a provider fit; the production investigation flow should stay unchanged.
 
 ## Commands
 

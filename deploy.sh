@@ -10,6 +10,11 @@ VPS_HOST="103.226.139.107"
 VPS_PASS="IloveIndonesia123"
 VPS_WORKSPACE="/home/nunuopc/.openclaw/workspace"
 VPS_GO_BIN="/home/nunuopc/.openclaw/go-service/bin"
+OPENCLAW_CONFIG="/home/nunuopc/.openclaw/openclaw.json"
+OPENCLAW_PROVIDER="sumopod"
+OPENCLAW_BASE_URL="https://ai.sumopod.com/v1"
+OPENCLAW_PRIMARY_MODEL="sumopod/kimi-k2.6"
+OPENCLAW_MODEL_ID="kimi-k2.6"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GO_SERVICE_DIR="${REPO_DIR}/go-service"
 
@@ -22,6 +27,47 @@ expect "*password:"
 send "\$pass\r"
 expect eof
 EXPECTEOF
+}
+
+configure_openclaw_model() {
+  local tmp_script="/tmp/company-detector-openclaw-model.js"
+
+  ssh_cmd "cat > ${tmp_script} <<'NODE'
+const fs = require('fs');
+
+const configPath = '${OPENCLAW_CONFIG}';
+const providerName = '${OPENCLAW_PROVIDER}';
+const baseUrl = '${OPENCLAW_BASE_URL}';
+const primaryModel = '${OPENCLAW_PRIMARY_MODEL}';
+const modelId = '${OPENCLAW_MODEL_ID}';
+
+const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+if (!cfg.models || !cfg.models.providers || !cfg.models.providers[providerName]) {
+  throw new Error(providerName + ' provider not found in ' + configPath);
+}
+
+const provider = cfg.models.providers[providerName];
+provider.baseUrl = baseUrl;
+delete provider.baseURL;
+
+const models = Array.isArray(provider.models) ? provider.models : [];
+const hasModel = models.some((model) => (model.id || model.name) === modelId);
+if (!hasModel) {
+  models.push({ id: modelId, name: modelId, cost: { input: 0, output: 0 } });
+}
+provider.models = models;
+
+cfg.agents = cfg.agents || {};
+cfg.agents.defaults = cfg.agents.defaults || {};
+cfg.agents.defaults.model = cfg.agents.defaults.model || {};
+cfg.agents.defaults.model.primary = primaryModel;
+
+fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\\n');
+console.log('OpenClaw model configured:', primaryModel, 'via', baseUrl);
+NODE
+node ${tmp_script}
+rm -f ${tmp_script}"
 }
 
 scp_file() {
@@ -99,8 +145,10 @@ done
 ssh_cmd "cd ${VPS_WORKSPACE} && npm install --omit=dev"
 echo "      ✓ workspace npm dependencies"
 
-# 5. Restart gateway
-echo "[5/5] Restarting OpenClaw gateway..."
+# 5. Configure and restart gateway
+echo "[5/5] Configuring OpenClaw model and restarting gateway..."
+configure_openclaw_model
+echo "      ✓ OpenClaw model ${OPENCLAW_PRIMARY_MODEL}"
 ssh_cmd "systemctl --user restart openclaw-gateway"
 sleep 5
 ssh_cmd "/home/nunuopc/.npm-global/bin/openclaw status 2>&1 | grep -E 'Gateway|reachable' | head -2"

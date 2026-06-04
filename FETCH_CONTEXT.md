@@ -1,7 +1,7 @@
 # Fetch Context
 
 **Purpose:** Fast orientation for any AI agent continuing this project.  
-**Last updated:** 21 Mei 2026
+**Last updated:** 4 Juni 2026
 
 ---
 
@@ -91,6 +91,16 @@ Important point: AI can reason and choose tools, but deterministic scoring/class
 
 Important boundary: AI/OpenClaw does not write directly to storage or Slack. Finalizer/db_writer writes results. Slack digest reads finalized DB rows later.
 
+Current production AI provider:
+
+```text
+OpenClaw primary model: sumopod/kimi-k2.6
+Provider base URL: https://ai.sumopod.com/v1
+Config path on VPS: /home/nunuopc/.openclaw/openclaw.json
+```
+
+`deploy.sh` syncs this provider URL and primary model while preserving the existing API key in the VPS config. Do not reduce context, visible tools, or investigation depth just to make a provider fit; only swap the AI provider/model unless explicitly requested.
+
 ---
 
 ## 4. Implemented Services
@@ -107,6 +117,7 @@ VPS:
 - IP: `103.226.139.107`
 - Workspace: `/home/nunuopc/.openclaw/workspace/`
 - Go binary: `/home/nunuopc/.openclaw/go-service/bin/company-check`
+- OpenClaw config: `/home/nunuopc/.openclaw/openclaw.json`
 
 ---
 

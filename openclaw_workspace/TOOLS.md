@@ -5,7 +5,7 @@ This workspace is for the Company Detection Telegram MVP.
 ## Current Runtime
 
 - OpenClaw Gateway runs on the VPS.
-- Default model: `minimax/MiniMax-M2.7`.
+- Default model: `sumopod/kimi-k2.6`.
 - Telegram bot: `@company_detector_bot`.
 - Delivery channel: Telegram DM.
 - Primary company detection runtime: Go CLI via `scripts/company_check_go.sh`.
