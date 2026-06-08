@@ -9,8 +9,9 @@ Dokumentasi aktif dibuat sederhana:
 5. [Register Webhook API](technical/REGISTER_WEBHOOK_API.md) — kontrak REST API untuk platform register.
 6. [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist hasil implementasi, validasi, dan sisa refinement.
 7. [Office Server Deployment Handover](technical/OFFICE_SERVER_DEPLOYMENT_HANDOVER.md) — instruksi deploy mandiri untuk engineer server kantor.
-8. [Server Migration Runbook](technical/SERVER_MIGRATION_RUNBOOK.md) — checklist pindahan VPS ke server kantor.
-9. [Backlog](../BACKLOG.md) — status kerja berikutnya.
+8. [Deployment Secrets Handover](technical/DEPLOYMENT_SECRETS_HANDOVER.md) — checklist penyerahan key/secrets tanpa menyimpan nilainya di Git.
+9. [Server Migration Runbook](technical/SERVER_MIGRATION_RUNBOOK.md) — checklist pindahan VPS ke server kantor.
+10. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -29,6 +30,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Webhook + Slack Daily Digest Plan](technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) | Workflow webhook PostgreSQL queue, sequential worker, Telegram delivery, dan Slack digest jam 09:00 |
 | [Webhook + Slack Building Checklist](technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) | Checklist implementasi, test, deploy, dan sisa refinement fitur webhook + Slack |
 | [Office Server Deployment Handover](technical/OFFICE_SERVER_DEPLOYMENT_HANDOVER.md) | Step-by-step dari GitHub clone sampai service aktif untuk engineer kantor |
+| [Deployment Secrets Handover](technical/DEPLOYMENT_SECRETS_HANDOVER.md) | Checklist key, pemilik, lokasi pemasangan, verifikasi, dan sign-off tanpa nilai secret |
 | [Server Migration Runbook](technical/SERVER_MIGRATION_RUNBOOK.md) | Runbook migrasi server kantor: backup, restore DB, deploy services, cutover, rollback, dan verifikasi |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Token Optimization Test Log](technical/TOKEN_OPTIMIZATION_TEST_LOG.md) | Catatan AB test token, hasil gagal/ditolak, dan arah optimasi berikutnya |

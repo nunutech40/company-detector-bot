@@ -6,9 +6,32 @@
 
 Dokumen ini berbeda dari runbook migrasi. Runbook migrasi menjelaskan pindahan dari VPS lama. Dokumen ini adalah paket instruksi untuk orang yang menerima handover deployment.
 
+## Document Map
+
+| Kebutuhan | Dokumen |
+|---|---|
+| Deploy manual dari GitHub sampai service aktif | Dokumen ini |
+| Daftar key/secrets yang harus diserahkan | `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` |
+| Memindahkan data dan runtime dari VPS lama | `docs/technical/SERVER_MIGRATION_RUNBOOK.md` |
+| Kontrak endpoint register | `docs/technical/REGISTER_WEBHOOK_API.md` |
+| Memahami alur sistem | `docs/technical/FLOW_MAP.md` |
+
+## Deployment Sections
+
+1. **System Overview** — komponen dan alur yang akan dijalankan.
+2. **Server Preparation** — spesifikasi, package, user, dan folder.
+3. **Repository** — akses GitHub dan clone source code.
+4. **Keys And Secrets** — penyerahan serta pemasangan credential.
+5. **Database** — membuat atau restore PostgreSQL.
+6. **OpenClaw And AI** — runtime agent dan model provider.
+7. **Application Install** — build dan copy seluruh project.
+8. **Services** — systemd untuk dashboard, webhook, worker, dan digest.
+9. **Network** — Nginx, domain, HTTPS, dan firewall.
+10. **Verification And Cutover** — pembuktian seluruh flow berjalan.
+
 ---
 
-## 1. What Will Be Deployed
+## 1. System Overview
 
 Company Detector terdiri dari:
 
@@ -40,7 +63,9 @@ Platform register
 
 ---
 
-## 2. Server Requirements
+## 2. Server Preparation
+
+### 2.1 Server Requirements
 
 Minimum:
 
@@ -64,9 +89,7 @@ sudo apt install -y git curl build-essential postgresql postgresql-contrib nginx
 
 Node.js LTS is recommended. Go must support module `go 1.22`.
 
----
-
-## 3. Accounts And Paths
+### 2.2 Account And Paths
 
 Recommended app user:
 
@@ -97,7 +120,23 @@ sudo loginctl enable-linger companydetector
 
 ---
 
-## 4. Clone Repository
+## 3. Repository
+
+### 3.1 Repository Access
+
+Required:
+
+```text
+Repository : https://github.com/nunutech40/company-detector-bot
+Branch     : main
+Access     : read access is enough for deployment
+```
+
+The office engineer must confirm that the server can clone and pull the
+repository before continuing. For a private repository, use a GitHub deploy key
+or office-managed machine user. Do not copy a developer's personal SSH key.
+
+### 3.2 Clone Repository
 
 As app user:
 
@@ -111,7 +150,20 @@ If repository access uses SSH/private GitHub access, configure deploy key first.
 
 ---
 
-## 5. Environment File
+## 4. Keys And Secrets
+
+The deployment document intentionally contains no real secret values. Use the
+separate checklist:
+
+```text
+docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md
+```
+
+Secret values must be sent through an approved secure channel, then installed
+directly on the server. Do not send them through GitHub issues, commit them to
+the repository, or paste them into this document.
+
+### 4.1 Runtime Environment File
 
 Create:
 
@@ -142,7 +194,9 @@ Do not put real secrets in Git.
 
 ---
 
-## 6. PostgreSQL Setup
+## 5. Database
+
+### 5.1 PostgreSQL Setup
 
 Create DB and user according to internal policy.
 
@@ -188,7 +242,9 @@ psql "$DATABASE_URL" -c "select count(*) from investigation_jobs;"
 
 ---
 
-## 7. Install OpenClaw
+## 6. OpenClaw And AI
+
+### 6.1 Install OpenClaw
 
 Install OpenClaw according to the approved internal method.
 
@@ -225,7 +281,9 @@ Expected: gateway reachable/running.
 
 ---
 
-## 8. Build And Install Project Files
+## 7. Application Install
+
+### 7.1 Build And Install Project Files
 
 Create target folders:
 
@@ -282,7 +340,9 @@ cd ~/.openclaw/webhook && npm install --omit=dev
 
 ---
 
-## 9. Install Systemd User Services
+## 8. Services
+
+### 8.1 Install Systemd User Services
 
 Copy unit files:
 
@@ -322,7 +382,9 @@ systemctl --user --no-pager status openclaw-gateway
 
 ---
 
-## 10. Nginx
+## 9. Network
+
+### 9.1 Nginx
 
 Install config:
 
@@ -358,7 +420,7 @@ http://<SERVER_HOST>:3002/webhook/check
 
 ---
 
-## 11. Firewall
+### 9.2 Firewall
 
 Open only what is needed.
 
@@ -374,7 +436,9 @@ Ports `3001`, `3002`, and `18789` should ideally stay localhost/internal only if
 
 ---
 
-## 12. Verification
+## 10. Verification And Cutover
+
+### 10.1 Verification
 
 Run these as app user.
 
@@ -466,7 +530,7 @@ psql "$DATABASE_URL" -c "select email, classification, confidence_score, report_
 
 ---
 
-## 13. Platform Cutover Checklist
+### 10.2 Platform Cutover Checklist
 
 Before platform team switches webhook:
 
@@ -500,7 +564,7 @@ journalctl --user -u company-slack-digest.service -n 100
 
 ---
 
-## 14. Deliverables To Send To Office Engineer
+## 11. Handover Deliverables
 
 Send:
 
@@ -523,19 +587,15 @@ Send:
    docs/technical/SERVER_MIGRATION_RUNBOOK.md
    ```
 
-4. Secret values through secure channel, not Git:
+4. Secrets checklist:
 
    ```text
-   DATABASE_URL or DB credential
-   WEBHOOK_SECRET
-   SLACK_BOT_TOKEN
-   SLACK_REPORT_CHANNEL
-   OpenClaw Sumopod API key
-   Telegram credentials / target
-   Search provider keys if used
+   docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md
    ```
 
-5. Expected public URLs:
+5. Real secret values through an approved secure channel, not Git.
+
+6. Expected public URLs:
 
    ```text
    Dashboard/Sales Sheet: https://<SERVER_DOMAIN>/sales-sheet
@@ -544,10 +604,17 @@ Send:
 
 ---
 
-## 15. Known Gaps / Decisions Needed
+## 12. Known Gaps And Feedback
 
 - OpenClaw installation method is external to this repo. Office engineer must install/enable OpenClaw runtime and provide `~/.npm-global/bin/openclaw`.
 - Real OpenClaw provider API key must be added to `~/.openclaw/openclaw.json`.
 - If server kantor cannot expose public HTTP/HTTPS, platform register must reach it through VPN/private network.
 - If the app user is not `companydetector`, update path values in `gateway.systemd.env`.
 - If old data must be preserved, do not start fresh migrations; restore `company_detection.dump`.
+
+After the first office deployment, record any environment-specific correction
+below and submit it back to this repository.
+
+| Date | Feedback / missing step | Resolution | Added to docs |
+|---|---|---|---|
+| - | - | - | - |
