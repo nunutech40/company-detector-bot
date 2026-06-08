@@ -27,7 +27,8 @@ Canonical docs:
 3. `docs/technical/FLOW_MAP.md` — runtime flow.
 4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — implemented workflow note for webhook queue + Slack digest.
 5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
-6. `BACKLOG.md` — status and next priorities.
+6. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
+7. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
 
@@ -295,9 +296,10 @@ bash deploy.sh
 
 Current next priorities:
 
-1. Validate from Komerce platform register flow.
-2. Improve `db_writer.js` extraction for social/marketplace/role evidence.
-3. Add dashboard queue visibility if operationally needed.
-4. Add dashboard authentication before broader exposure.
+1. Prepare server kantor migration using `docs/technical/SERVER_MIGRATION_RUNBOOK.md`.
+2. Validate from Komerce platform register flow.
+3. Improve `db_writer.js` extraction for social/marketplace/role evidence.
+4. Add dashboard queue visibility if operationally needed.
+5. Add dashboard authentication before broader exposure.
 
 Avoid broad rewrites. This project already has the core implementation; most near-term work is validation, polish, and operational hardening.
