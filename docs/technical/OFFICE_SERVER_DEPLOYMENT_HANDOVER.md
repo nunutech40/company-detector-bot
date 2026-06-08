@@ -33,6 +33,11 @@ Dokumen ini berbeda dari runbook migrasi. Runbook migrasi menjelaskan pindahan d
 If the office server standard is Docker, use `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md`
 as the execution path and keep this document as architectural/reference context.
 
+For Docker deployments, model/provider changes are runtime configuration. Change
+`LLM_PRIMARY_MODEL`, `LLM_MODEL_ID`, `LLM_PROVIDER`, and `LLM_BASE_URL` in the
+server `.env` or secret manager, then restart the worker. Do not edit source
+code just to switch Kimi/Qwen.
+
 ---
 
 ## 1. System Overview

@@ -43,6 +43,8 @@ Important:
 | `Dockerfile` | Build runtime image berisi dashboard, webhook, workspace scripts, dan Go `company-check` binary |
 | `compose.yml` | Service stack untuk PostgreSQL, migration, dashboard, webhook, worker |
 | `.env.docker.example` | Template env Compose tanpa nilai secret asli |
+| `ops/docker/configure-openclaw.js` | Generate/update OpenClaw provider/model/Telegram config dari env |
+| `ops/docker/worker-entrypoint.sh` | Worker startup entrypoint untuk config OpenClaw saat agent mode |
 | `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` | Checklist key/secrets yang harus diserahkan |
 
 ## 3. Local Smoke Test
@@ -118,20 +120,52 @@ WEBHOOK_SECRET=...
 DASHBOARD_BASE_URL=https://<SERVER_DOMAIN>
 DASHBOARD_BIND_PORT=3001
 WEBHOOK_BIND_PORT=3002
+OPENCLAW_CONFIGURE=true
+LLM_PROVIDER=sumopod
+LLM_BASE_URL=https://ai.sumopod.com/v1
+LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
+LLM_MODEL_ID=kimi-k2.6
+LLM_ADDITIONAL_MODELS=komerce,qwen3.6-flash
+LLM_TIMEOUT_SECONDS=120
 REGISTER_WORKER_MODE=agent
 REGISTER_WORKER_DELIVER_TELEGRAM=true
 OPENCLAW_BIN=/usr/local/bin/openclaw
+TELEGRAM_DEFAULT_BOT_TOKEN=...
+TELEGRAM_ALLOW_FROM=...
 ```
 
 If using an external PostgreSQL, update `DATABASE_URL` in `compose.yml` or add a
 production override file such as `compose.prod.yml`.
 
+To temporarily test Qwen without editing code:
+
+```text
+LLM_PRIMARY_MODEL=sumopod/qwen3.6-flash
+LLM_MODEL_ID=qwen3.6-flash
+```
+
+Then restart only the worker:
+
+```bash
+docker compose up -d worker
+```
+
+To return to Kimi:
+
+```text
+LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
+LLM_MODEL_ID=kimi-k2.6
+```
+
 ## 6. OpenClaw In Docker
 
 The provided Docker image uses Node 22 and installs pinned OpenClaw CLI version
-`2026.4.15` in `/usr/local/bin/openclaw`. Full production still requires the
-approved OpenClaw configuration and credentials to be mounted or injected into
-the worker container.
+`2026.4.15` in `/usr/local/bin/openclaw`.
+
+When `OPENCLAW_CONFIGURE=true` or `REGISTER_WORKER_MODE=agent`, the worker
+entrypoint runs `ops/docker/configure-openclaw.js`. That script creates or
+updates `/root/.openclaw/openclaw.json` from `.env` values, so model/provider
+changes do not require code edits.
 
 The worker also needs:
 

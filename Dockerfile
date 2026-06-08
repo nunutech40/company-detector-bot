@@ -25,12 +25,16 @@ RUN cd dashboard && npm ci --omit=dev \
 COPY dashboard/ ./dashboard/
 COPY webhook/ ./webhook/
 COPY openclaw_workspace/ ./openclaw_workspace/
+COPY ops/docker/ ./ops/docker/
 COPY --from=go-builder /out/company-check /app/go-service/bin/company-check
 
 RUN chmod +x /app/go-service/bin/company-check /app/openclaw_workspace/scripts/*.sh \
+    && chmod +x /app/ops/docker/*.sh /app/ops/docker/*.js \
     && mkdir -p /app/openclaw_workspace/reports /app/openclaw_workspace/evidence /app/openclaw_workspace/exports
 
 ENV OPENCLAW_WORKSPACE=/app/openclaw_workspace
 ENV COMPANY_CHECK_BIN=/app/go-service/bin/company-check
+ENV OPENCLAW_STATE_DIR=/root/.openclaw
+ENV OPENCLAW_CONFIG_PATH=/root/.openclaw/openclaw.json
 
 CMD ["node", "dashboard/app.js"]

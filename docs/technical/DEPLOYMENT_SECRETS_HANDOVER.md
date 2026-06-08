@@ -19,6 +19,7 @@
 | `~/.openclaw/gateway.systemd.env` | Database, webhook, Slack, Telegram target, search keys, runtime config | `600` |
 | `~/.openclaw/openclaw.json` | OpenClaw provider configuration and Sumopod API key | `600` |
 | `~/.openclaw/credentials/` | OpenClaw/Telegram credential files if used | directory private to app user |
+| Docker `.env` or secret manager | Docker runtime env, LLM model/provider, webhook secret, Telegram values | server restricted |
 | GitHub deploy key on server | Repository read access if repository is private | office-managed |
 
 ## 3. Required Secrets Checklist
@@ -28,6 +29,7 @@
 | `DATABASE_URL` or DB credentials | Yes | Database/server engineer | `gateway.systemd.env` | `psql "$DATABASE_URL" -c "select 1;"` | Pending |
 | `WEBHOOK_SECRET` | Yes | Platform/backend owner | `gateway.systemd.env` and register platform | Authenticated webhook returns queued response | Pending |
 | Sumopod API key | Yes | AI/provider account owner | `openclaw.json` | OpenClaw agent smoke test completes | Pending |
+| `LLM_PRIMARY_MODEL` / `LLM_MODEL_ID` | Yes | Product/AI owner | Docker `.env` or OpenClaw config | `openclaw models list` and agent smoke test | Pending |
 | `SLACK_BOT_TOKEN` | Yes | Slack app owner | `gateway.systemd.env` | Slack digest dry-run/send test | Pending |
 | `SLACK_REPORT_CHANNEL` | Yes | Sales/Slack owner | `gateway.systemd.env` | Test message reaches correct channel | Pending |
 | Telegram bot credential | If Telegram delivery enabled | Telegram bot owner | OpenClaw credentials/config | Worker delivery test succeeds | Pending |

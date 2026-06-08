@@ -71,14 +71,34 @@ services:
     environment:
       DATABASE_URL: postgresql://company_detection:${POSTGRES_PASSWORD:-local_company_detection}@postgres:5432/company_detection
       OPENCLAW_WORKSPACE: /app/openclaw_workspace
+      OPENCLAW_STATE_DIR: /root/.openclaw
+      OPENCLAW_CONFIG_PATH: /root/.openclaw/openclaw.json
+      OPENCLAW_CONFIGURE: ${OPENCLAW_CONFIGURE:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-sumopod}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://ai.sumopod.com/v1}
+      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-sumopod/kimi-k2.6}
+      LLM_MODEL_ID: ${LLM_MODEL_ID:-kimi-k2.6}
+      LLM_ADDITIONAL_MODELS: ${LLM_ADDITIONAL_MODELS:-komerce,qwen3.6-flash}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
       REGISTER_WORKER_MODE: ${REGISTER_WORKER_MODE:-deterministic}
       REGISTER_WORKER_DELIVER_TELEGRAM: ${REGISTER_WORKER_DELIVER_TELEGRAM:-false}
+      REGISTER_WORKER_AGENT_TIMEOUT_SEC: ${REGISTER_WORKER_AGENT_TIMEOUT_SEC:-900}
+      REGISTER_WORKER_MAX_ATTEMPTS: ${REGISTER_WORKER_MAX_ATTEMPTS:-3}
+      REGISTER_WORKER_IDLE_MS: ${REGISTER_WORKER_IDLE_MS:-10000}
+      REGISTER_WORKER_RUN_TIMEOUT_MS: ${REGISTER_WORKER_RUN_TIMEOUT_MS:-120000}
       OPENCLAW_BIN: ${OPENCLAW_BIN:-/usr/local/bin/openclaw}
+      TELEGRAM_ALLOW_FROM: ${TELEGRAM_ALLOW_FROM:-}
+      TELEGRAM_ASSISTANT_ALLOW_FROM: ${TELEGRAM_ASSISTANT_ALLOW_FROM:-}
+      TELEGRAM_DEFAULT_BOT_TOKEN: ${TELEGRAM_DEFAULT_BOT_TOKEN:-}
+      TELEGRAM_ASSISTANT_BOT_TOKEN: ${TELEGRAM_ASSISTANT_BOT_TOKEN:-}
+    entrypoint: ["/app/ops/docker/worker-entrypoint.sh"]
     command: ["node", "webhook/worker.js"]
     volumes:
       - company_detector_reports:/app/openclaw_workspace/reports
+      - company_detector_openclaw:/root/.openclaw
 
 volumes:
   company_detector_db:
   company_detector_exports:
   company_detector_reports:
+  company_detector_openclaw:
