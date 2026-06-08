@@ -29,8 +29,9 @@ Canonical docs:
 5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
 6. `docs/technical/OFFICE_SERVER_DEPLOYMENT_HANDOVER.md` — standalone handover for office server engineer.
 7. `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` — secret/key handover checklist without real values.
-8. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
-9. `BACKLOG.md` — status and next priorities.
+8. `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` — Docker/Compose deploy path and local smoke test.
+9. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
+10. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
 

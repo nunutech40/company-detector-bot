@@ -11,6 +11,7 @@ Dokumen ini berbeda dari runbook migrasi. Runbook migrasi menjelaskan pindahan d
 | Kebutuhan | Dokumen |
 |---|---|
 | Deploy manual dari GitHub sampai service aktif | Dokumen ini |
+| Deploy di atas Docker/Compose | `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` |
 | Daftar key/secrets yang harus diserahkan | `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` |
 | Memindahkan data dan runtime dari VPS lama | `docs/technical/SERVER_MIGRATION_RUNBOOK.md` |
 | Kontrak endpoint register | `docs/technical/REGISTER_WEBHOOK_API.md` |
@@ -28,6 +29,9 @@ Dokumen ini berbeda dari runbook migrasi. Runbook migrasi menjelaskan pindahan d
 8. **Services** — systemd untuk dashboard, webhook, worker, dan digest.
 9. **Network** — Nginx, domain, HTTPS, dan firewall.
 10. **Verification And Cutover** — pembuktian seluruh flow berjalan.
+
+If the office server standard is Docker, use `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md`
+as the execution path and keep this document as architectural/reference context.
 
 ---
 
@@ -587,15 +591,21 @@ Send:
    docs/technical/SERVER_MIGRATION_RUNBOOK.md
    ```
 
-4. Secrets checklist:
+4. Docker/Compose runbook if office infrastructure requires Docker:
+
+   ```text
+   docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md
+   ```
+
+5. Secrets checklist:
 
    ```text
    docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md
    ```
 
-5. Real secret values through an approved secure channel, not Git.
+6. Real secret values through an approved secure channel, not Git.
 
-6. Expected public URLs:
+7. Expected public URLs:
 
    ```text
    Dashboard/Sales Sheet: https://<SERVER_DOMAIN>/sales-sheet

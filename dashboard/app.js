@@ -6,7 +6,8 @@ const { Pool } = require('pg');
 const fs      = require('fs');
 
 // ── Load env ─────────────────────────────────────────────────────────────────
-const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
+const ENV_FILE = process.env.COMPANY_DETECTOR_ENV_FILE
+  || path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'gateway.systemd.env');
 if (fs.existsSync(ENV_FILE)) {
   for (const line of fs.readFileSync(ENV_FILE, 'utf8').split('\n')) {
     const trimmed = line.trim();

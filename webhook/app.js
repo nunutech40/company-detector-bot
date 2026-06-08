@@ -16,7 +16,9 @@ const express = require('express');
 const fs = require('fs');
 const { Pool } = require('pg');
 
-const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
+const ENV_FILE = process.env.COMPANY_DETECTOR_ENV_FILE
+  || pathFromHome('.openclaw/gateway.systemd.env')
+  || '/home/nunuopc/.openclaw/gateway.systemd.env';
 loadEnv(ENV_FILE);
 
 const PORT = process.env.WEBHOOK_PORT || 3002;
@@ -204,6 +206,10 @@ function loadEnv(filePath) {
     const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
     if (!process.env[key]) process.env[key] = val;
   }
+}
+
+function pathFromHome(relativePath) {
+  return process.env.HOME ? `${process.env.HOME}/${relativePath}` : '';
 }
 
 process.on('SIGTERM', async () => {

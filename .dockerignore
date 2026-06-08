@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+node_modules
+**/node_modules
+reports
+evidence
+exports
+*.dump
+*.sql.gz
+docs

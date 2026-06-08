@@ -15,7 +15,8 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 
-const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
+const ENV_FILE = process.env.COMPANY_DETECTOR_ENV_FILE
+  || path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'gateway.systemd.env');
 loadEnv(ENV_FILE);
 
 const repoRoot = path.resolve(__dirname, '..');

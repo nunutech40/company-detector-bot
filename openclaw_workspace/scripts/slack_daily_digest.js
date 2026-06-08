@@ -13,7 +13,8 @@ const fs = require('fs');
 const { Client } = require('pg');
 const path = require('path');
 
-const ENV_FILE = '/home/nunuopc/.openclaw/gateway.systemd.env';
+const ENV_FILE = process.env.COMPANY_DETECTOR_ENV_FILE
+  || `${process.env.HOME || '/home/nunuopc'}/.openclaw/gateway.systemd.env`;
 loadEnv(ENV_FILE);
 
 const { sendToSlack, uploadFileToSlack } = require('./slack_reporter');
@@ -22,7 +23,8 @@ const { writeSalesSheetXlsx, formatChannels } = require('./sales_sheet_exporter'
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
 const DASHBOARD_PUBLIC_BASE_URL = (process.env.DASHBOARD_PUBLIC_BASE_URL || DASHBOARD_BASE_URL.replace(':3001', '')).replace(/\/+$/, '');
-const SALES_SHEET_EXPORT_DIR = process.env.SALES_SHEET_EXPORT_DIR || '/home/nunuopc/.openclaw/dashboard/public/exports';
+const SALES_SHEET_EXPORT_DIR = process.env.SALES_SHEET_EXPORT_DIR
+  || `${process.env.HOME || '/home/nunuopc'}/.openclaw/dashboard/public/exports`;
 const SALES_SHEET_LATEST_URL = process.env.SALES_SHEET_LATEST_URL || `${DASHBOARD_PUBLIC_BASE_URL}/sales-sheet/latest.xlsx`;
 const SALES_SHEET_WEB_URL = process.env.SALES_SHEET_WEB_URL || `${DASHBOARD_PUBLIC_BASE_URL}/sales-sheet`;
 const args = process.argv.slice(2);

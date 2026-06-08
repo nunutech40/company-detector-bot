@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: company_detection
+      POSTGRES_USER: company_detection
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_company_detection}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U company_detection -d company_detection"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - company_detector_db:/var/lib/postgresql/data
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-local_company_detection}
+    volumes:
+      - ./docs/technical:/migrations:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v1.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v2_webhook_slack_queue.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v3_report_provenance.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v4_llm_usage_provenance.sql
+    restart: "no"
+
+  dashboard:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://company_detection:${POSTGRES_PASSWORD:-local_company_detection}@postgres:5432/company_detection
+      DASHBOARD_PORT: 3001
+    command: ["node", "dashboard/app.js"]
+    ports:
+      - "${DASHBOARD_BIND_PORT:-3001}:3001"
+    volumes:
+      - company_detector_exports:/app/dashboard/public/exports
+
+  webhook:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://company_detection:${POSTGRES_PASSWORD:-local_company_detection}@postgres:5432/company_detection
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://localhost:3001}
+      WEBHOOK_PORT: 3002
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-local-webhook-secret}
+    command: ["node", "webhook/app.js"]
+    ports:
+      - "${WEBHOOK_BIND_PORT:-3002}:3002"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://company_detection:${POSTGRES_PASSWORD:-local_company_detection}@postgres:5432/company_detection
+      OPENCLAW_WORKSPACE: /app/openclaw_workspace
+      REGISTER_WORKER_MODE: ${REGISTER_WORKER_MODE:-deterministic}
+      REGISTER_WORKER_DELIVER_TELEGRAM: ${REGISTER_WORKER_DELIVER_TELEGRAM:-false}
+      OPENCLAW_BIN: ${OPENCLAW_BIN:-/usr/local/bin/openclaw}
+    command: ["node", "webhook/worker.js"]
+    volumes:
+      - company_detector_reports:/app/openclaw_workspace/reports
+
+volumes:
+  company_detector_db:
+  company_detector_exports:
+  company_detector_reports:

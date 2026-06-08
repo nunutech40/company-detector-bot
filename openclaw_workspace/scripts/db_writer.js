@@ -57,7 +57,8 @@ if (!email) {
 const WORKSPACE    = path.resolve(__dirname, '..');
 const evidencePath = get('--evidence') || path.join(WORKSPACE, 'evidence', 'latest.json');
 const reportPath   = get('--ai-report') || path.join(WORKSPACE, 'reports', 'ai_report_latest.txt');
-const ENV_FILE     = '/home/nunuopc/.openclaw/gateway.systemd.env';
+const ENV_FILE     = process.env.COMPANY_DETECTOR_ENV_FILE
+  || `${process.env.HOME || '/home/nunuopc'}/.openclaw/gateway.systemd.env`;
 
 // ── Load DATABASE_URL dari env file ─────────────────────────────────────────
 function loadEnv(filePath) {
@@ -98,7 +99,8 @@ if (fs.existsSync(reportPath)) {
 
 // ── LLM usage ────────────────────────────────────────────────────────────────
 function loadCostMap() {
-  const configPath = '/home/nunuopc/.openclaw/openclaw.json';
+  const configPath = process.env.OPENCLAW_CONFIG
+    || `${process.env.HOME || '/home/nunuopc'}/.openclaw/openclaw.json`;
   const costMap = {};
   if (!fs.existsSync(configPath)) return costMap;
   try {
@@ -152,7 +154,8 @@ function getTokenUsage() {
   }
 
   try {
-    const raw = execSync('/home/nunuopc/.npm-global/bin/openclaw sessions --json 2>/dev/null', {
+    const openclawBin = process.env.OPENCLAW_BIN || `${process.env.HOME || '/home/nunuopc'}/.npm-global/bin/openclaw`;
+    const raw = execSync(`${shellQuote(openclawBin)} sessions --json 2>/dev/null`, {
       timeout: 10000,
       encoding: 'utf8',
     });
@@ -186,6 +189,10 @@ function getTokenUsage() {
   } catch (_) {
     return [];
   }
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
 }
 
 // ── Extract structured fields dari evidence JSON ─────────────────────────────
