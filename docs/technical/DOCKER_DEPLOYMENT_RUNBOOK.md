@@ -3,6 +3,17 @@
 **Purpose:** jalur deploy Company Detector ketika server kantor menjalankan aplikasi di atas Docker.  
 **Status:** repo sudah menyediakan `Dockerfile`, `compose.yml`, dan `.env.docker.example` untuk smoke test lokal serta deployment berbasis Compose.
 
+Last local pre-production check:
+
+```text
+2026-06-08
+- Docker image build: passed
+- Webhook health: passed
+- Dashboard /sales-sheet: passed
+- Webhook queue -> deterministic worker -> DB completed: passed
+- Telegram send from worker image via OpenClaw CLI: passed
+```
+
 ## 1. When To Use This
 
 Gunakan dokumen ini jika engineer kantor meminta semua aplikasi berjalan sebagai
@@ -117,11 +128,10 @@ production override file such as `compose.prod.yml`.
 
 ## 6. OpenClaw In Docker
 
-Full production requires `OPENCLAW_BIN` to work inside the `worker` container.
-There are two acceptable approaches:
-
-1. Build an internal image that installs OpenClaw in `/usr/local/bin/openclaw`.
-2. Mount an approved OpenClaw binary/config into the worker container.
+The provided Docker image uses Node 22 and installs pinned OpenClaw CLI version
+`2026.4.15` in `/usr/local/bin/openclaw`. Full production still requires the
+approved OpenClaw configuration and credentials to be mounted or injected into
+the worker container.
 
 The worker also needs:
 
@@ -136,12 +146,35 @@ Telegram/search credentials if enabled
 Full agent smoke test:
 
 ```bash
+docker compose exec worker /usr/local/bin/openclaw --version
 docker compose exec worker /usr/local/bin/openclaw status
 docker compose exec worker node webhook/worker.js --once
 ```
 
 Do not switch production to `REGISTER_WORKER_MODE=agent` until these commands
 work inside the container.
+
+Local note from 2026-06-08: the developer machine's default OpenClaw config had
+a stale `9router` provider entry that failed schema validation. Telegram was
+tested with an isolated OpenClaw state directory copied from the existing
+Telegram config and with the invalid model provider removed. Before production,
+use a clean office-approved OpenClaw config containing the active Sumopod
+provider/model and Telegram credentials.
+
+Telegram smoke test pattern:
+
+```bash
+docker compose run --rm -T \
+  -v /secure/openclaw-state:/openclaw-state:ro \
+  -e OPENCLAW_STATE_DIR=/openclaw-state \
+  -e OPENCLAW_CONFIG_PATH=/openclaw-state/openclaw.json \
+  worker openclaw message send \
+    --channel telegram \
+    --account default \
+    --target "<TELEGRAM_TARGET>" \
+    --message "[PRE-PRODUCTION DOCKER TEST] Company Detector Telegram delivery from worker container" \
+    --json
+```
 
 ## 7. Server Deployment Steps
 

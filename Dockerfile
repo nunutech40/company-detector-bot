@@ -5,10 +5,10 @@ COPY go-service/go.mod ./
 COPY go-service/ ./
 RUN go build -o /out/company-check ./cmd/company-check
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash ca-certificates curl \
+    && apt-get install -y --no-install-recommends bash ca-certificates curl git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -19,7 +19,8 @@ COPY openclaw_workspace/package*.json ./openclaw_workspace/
 
 RUN cd dashboard && npm ci --omit=dev \
     && cd ../webhook && npm ci --omit=dev \
-    && cd ../openclaw_workspace && npm ci --omit=dev
+    && cd ../openclaw_workspace && npm ci --omit=dev \
+    && npm install -g openclaw@2026.4.15
 
 COPY dashboard/ ./dashboard/
 COPY webhook/ ./webhook/
