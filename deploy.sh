@@ -184,6 +184,8 @@ echo "      ✓ webhook deployed"
 # 5d. Deploy user systemd units used by webhook queue and daily Slack digest
 echo "[5d] Deploying systemd units..."
 for unit in \
+  company-dashboard.service \
+  company-webhook.service \
   company-register-worker.service \
   company-slack-digest.service \
   company-slack-digest.timer; do
@@ -193,6 +195,8 @@ for unit in \
   fi
 done
 ssh_cmd "systemctl --user daemon-reload"
+ssh_cmd "systemctl --user enable --now company-dashboard"
+ssh_cmd "systemctl --user enable --now company-webhook"
 ssh_cmd "systemctl --user restart company-register-worker"
 ssh_cmd "systemctl --user enable --now company-slack-digest.timer"
 echo "      ✓ queue/digest units reloaded"

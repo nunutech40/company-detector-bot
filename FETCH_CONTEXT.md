@@ -27,8 +27,9 @@ Canonical docs:
 3. `docs/technical/FLOW_MAP.md` — runtime flow.
 4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — implemented workflow note for webhook queue + Slack digest.
 5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
-6. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
-7. `BACKLOG.md` — status and next priorities.
+6. `docs/technical/OFFICE_SERVER_DEPLOYMENT_HANDOVER.md` — standalone handover for office server engineer.
+7. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
+8. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
 

@@ -33,7 +33,7 @@ const AGENT_TIMEOUT_SEC = parseInt(process.env.REGISTER_WORKER_AGENT_TIMEOUT_SEC
 const DELIVER_TELEGRAM = (process.env.REGISTER_WORKER_DELIVER_TELEGRAM || 'true') !== 'false';
 const TELEGRAM_TARGET = process.env.REGISTER_WORKER_TELEGRAM_TO
   || process.env.TELEGRAM_DELIVERY_TO
-  || readTelegramAllowFromTarget('/home/nunuopc/.openclaw/credentials/telegram-default-allowFrom.json');
+  || readTelegramAllowFromTarget(path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'credentials', 'telegram-default-allowFrom.json'));
 
 const args = process.argv.slice(2);
 const once = args.includes('--once');

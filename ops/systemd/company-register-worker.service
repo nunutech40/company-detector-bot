@@ -4,9 +4,10 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/nunuopc/.openclaw/webhook
-EnvironmentFile=/home/nunuopc/.openclaw/gateway.systemd.env
-Environment=OPENCLAW_WORKSPACE=/home/nunuopc/.openclaw/workspace
+WorkingDirectory=%h/.openclaw/webhook
+EnvironmentFile=%h/.openclaw/gateway.systemd.env
+Environment=OPENCLAW_WORKSPACE=%h/.openclaw/workspace
+Environment=OPENCLAW_BIN=%h/.npm-global/bin/openclaw
 Environment=REGISTER_WORKER_MODE=agent
 Environment=REGISTER_WORKER_AGENT_TIMEOUT_SEC=900
 Environment=REGISTER_WORKER_DELIVER_TELEGRAM=true

@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/nunuopc/.openclaw/workspace
-EnvironmentFile=/home/nunuopc/.openclaw/gateway.systemd.env
+WorkingDirectory=%h/.openclaw/workspace
+EnvironmentFile=%h/.openclaw/gateway.systemd.env
 Environment=TZ=Asia/Jakarta
 ExecStart=/usr/bin/env node scripts/slack_daily_digest.js

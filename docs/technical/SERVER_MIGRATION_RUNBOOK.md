@@ -316,13 +316,17 @@ EnvironmentFile=/home/<SERVER_USER>/.openclaw/gateway.systemd.env
 Environment=OPENCLAW_WORKSPACE=/home/<SERVER_USER>/.openclaw/workspace
 ```
 
-Dashboard and webhook services currently exist on old VPS but are not fully stored in repo. During migration, export them from old VPS or create equivalent units:
+Dashboard and webhook service templates are stored in repo under `ops/systemd/`.
+Install them together with worker and digest units:
 
 ```text
 company-dashboard.service
 company-webhook.service
-openclaw-gateway.service
 ```
+
+OpenClaw gateway service is owned by the OpenClaw installation and may still
+need to be exported from old VPS or recreated using the office-approved OpenClaw
+installer.
 
 Minimum expected:
 

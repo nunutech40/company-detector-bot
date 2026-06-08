@@ -1,0 +1,15 @@
+[Unit]
+Description=Company Detector webhook API
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/webhook
+EnvironmentFile=%h/.openclaw/gateway.systemd.env
+Environment=WEBHOOK_PORT=3002
+ExecStart=/usr/bin/env node app.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
