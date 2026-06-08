@@ -221,11 +221,13 @@ function buildMessage(prospects, window, options = {}) {
   prospects.forEach((job, index) => {
     const name = displayName(job);
     const contact = job.email;
+    const whatsapp = extractPhone(job);
     const tier = prospectTier(job.confidence_score);
     const marketplace = formatChannels(job.marketplace_json, { maxItems: 2 });
     const socialMedia = formatChannels(job.social_media_json, { maxItems: 3 });
     lines.push(`${index + 1}. ${name}`);
     lines.push(`   Kontak: ${contact}`);
+    if (whatsapp) lines.push(`   WhatsApp: ${whatsapp}`);
     lines.push(`   Prioritas: ${tier}`);
     if (job.business_website) lines.push(`   Website: ${job.business_website}`);
     if (marketplace) lines.push(`   Marketplace: ${marketplace}`);
@@ -246,6 +248,22 @@ function exportSalesSheet(prospects, window, options = {}) {
     filename,
     url: SALES_SHEET_LATEST_URL,
   };
+}
+
+function extractPhone(job) {
+  const payload = parseJsonObject(job.payload_json);
+  return payload.no_hp || payload.phone || payload.phone_number || payload.mobile || job.no_hp_masked || '';
+}
+
+function parseJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (_err) {
+    return {};
+  }
 }
 
 async function sendDigestToSlack(attachmentMessage, linkMessage, salesSheet) {
