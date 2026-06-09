@@ -27,10 +27,8 @@ Canonical docs:
 3. `docs/technical/FLOW_MAP.md` — runtime flow.
 4. `docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md` — implemented workflow note for webhook queue + Slack digest.
 5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
-6. `docs/technical/OFFICE_SERVER_DEPLOYMENT_HANDOVER.md` — standalone handover for office server engineer.
+6. `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` — single production deploy path: Docker/Compose, migration, cutover, and acceptance test.
 7. `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` — secret/key handover checklist without real values.
-8. `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` — Docker/Compose deploy path and local smoke test.
-9. `docs/technical/SERVER_MIGRATION_RUNBOOK.md` — server kantor migration checklist and runbook.
 10. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
@@ -299,7 +297,7 @@ bash deploy.sh
 
 Current next priorities:
 
-1. Prepare server kantor migration using `docs/technical/SERVER_MIGRATION_RUNBOOK.md`.
+1. Prepare and verify server kantor deployment using `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md`.
 2. Validate from Komerce platform register flow.
 3. Improve `db_writer.js` extraction for social/marketplace/role evidence.
 4. Add dashboard queue visibility if operationally needed.

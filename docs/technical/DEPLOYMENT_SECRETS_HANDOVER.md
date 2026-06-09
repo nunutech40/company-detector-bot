@@ -16,26 +16,23 @@
 
 | Location | Contents | Permission |
 |---|---|---|
-| `~/.openclaw/gateway.systemd.env` | Database, webhook, Slack, Telegram target, search keys, runtime config | `600` |
-| `~/.openclaw/openclaw.json` | OpenClaw provider configuration and Sumopod API key | `600` |
-| `~/.openclaw/credentials/` | OpenClaw/Telegram credential files if used | directory private to app user |
-| Docker `.env` or secret manager | Docker runtime env, LLM model/provider, webhook secret, Telegram values | server restricted |
+| Docker `.env` or office secret manager | DB, LLM, webhook, Slack, Telegram, search keys, runtime config | `600` / server restricted |
 | GitHub deploy key on server | Repository read access if repository is private | office-managed |
 
 ## 3. Required Secrets Checklist
 
 | Secret / value | Required | Owner / source | Install location | Verification | Status |
 |---|---:|---|---|---|---|
-| `DATABASE_URL` or DB credentials | Yes | Database/server engineer | `gateway.systemd.env` | `psql "$DATABASE_URL" -c "select 1;"` | Pending |
-| `WEBHOOK_SECRET` | Yes | Platform/backend owner | `gateway.systemd.env` and register platform | Authenticated webhook returns queued response | Pending |
-| Sumopod API key | Yes | AI/provider account owner | `openclaw.json` | OpenClaw agent smoke test completes | Pending |
+| `POSTGRES_PASSWORD` or external DB credentials | Yes | Database/server engineer | Docker `.env` / secret manager | Acceptance test DB checks pass | Pending |
+| `WEBHOOK_SECRET` | Yes | Platform/backend owner | Docker `.env` and register platform | Authenticated webhook returns queued response | Pending |
+| `LLM_API_KEY` / Sumopod API key | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
 | `LLM_PRIMARY_MODEL` / `LLM_MODEL_ID` | Yes | Product/AI owner | Docker `.env` or OpenClaw config | `openclaw models list` and agent smoke test | Pending |
-| `SLACK_BOT_TOKEN` | Yes | Slack app owner | `gateway.systemd.env` | Slack digest dry-run/send test | Pending |
-| `SLACK_REPORT_CHANNEL` | Yes | Sales/Slack owner | `gateway.systemd.env` | Test message reaches correct channel | Pending |
-| Telegram bot credential | If Telegram delivery enabled | Telegram bot owner | OpenClaw credentials/config | Worker delivery test succeeds | Pending |
-| `TELEGRAM_DELIVERY_TO` or `REGISTER_WORKER_TELEGRAM_TO` | If Telegram delivery enabled | Telegram destination owner | `gateway.systemd.env` | Test report reaches correct destination | Pending |
-| `BRAVE_SEARCH_API_KEY` | Optional but recommended | Search provider owner | `gateway.systemd.env` | Search tool smoke test succeeds | Pending |
-| `GOOGLE_CSE_KEY` and `GOOGLE_CSE_ID` | Optional fallback | Search provider owner | `gateway.systemd.env` | Search fallback smoke test succeeds | Pending |
+| `SLACK_BOT_TOKEN` | Yes | Slack app owner | Docker `.env` / secret manager | Slack digest dry-run/send test | Pending |
+| `SLACK_REPORT_CHANNEL` | Yes | Sales/Slack owner | Docker `.env` / secret manager | Test message reaches correct channel | Pending |
+| `TELEGRAM_DEFAULT_BOT_TOKEN` | Yes | Telegram bot owner | Docker `.env` / secret manager | Worker delivery test succeeds | Pending |
+| `REGISTER_WORKER_TELEGRAM_TO` | Yes | Telegram destination owner | Docker `.env` / secret manager | Test report reaches correct destination | Pending |
+| `BRAVE_SEARCH_API_KEY` | Optional but recommended | Search provider owner | Docker `.env` / secret manager | Search tool smoke test succeeds | Pending |
+| `GOOGLE_CSE_KEY` and `GOOGLE_CSE_ID` | Optional fallback | Search provider owner | Docker `.env` / secret manager | Search fallback smoke test succeeds | Pending |
 | GitHub deploy key/token | Only if repo is private | GitHub/repository admin | Server SSH/Git credential store | `git pull` succeeds | Pending |
 | TLS certificate/private key | Depends on office infrastructure | Infrastructure engineer | Reverse proxy/certificate manager | Public HTTPS check succeeds | Pending |
 
@@ -57,26 +54,15 @@ agreement from the relevant owner.
 
 ## 5. Installation Check
 
-Run as the app user after secrets are installed:
+Run from the repository as the deployment user after secrets are installed:
 
 ```bash
-chmod 600 ~/.openclaw/gateway.systemd.env
-chmod 600 ~/.openclaw/openclaw.json
-systemctl --user daemon-reload
-systemctl --user restart openclaw-gateway company-dashboard company-webhook company-register-worker
+chmod 600 .env
+docker compose up -d
+./ops/docker/verify-deployment.sh
 ```
 
-Verify that secrets are readable by services without printing their values:
-
-```bash
-systemctl --user --no-pager status openclaw-gateway
-systemctl --user --no-pager status company-dashboard
-systemctl --user --no-pager status company-webhook
-systemctl --user --no-pager status company-register-worker
-```
-
-Do not use commands such as `cat ~/.openclaw/gateway.systemd.env` in shared
-screenshares or deployment reports.
+Do not use commands such as `cat .env` in shared screenshares or deployment reports.
 
 ## 6. Sign-Off
 

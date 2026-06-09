@@ -194,8 +194,8 @@ async function runOpenClawAgent(job) {
     '--timeout', String(AGENT_TIMEOUT_SEC),
   ];
   if (DELIVER_TELEGRAM) {
-    commandArgs.push('--channel', 'telegram', '--deliver');
-    if (TELEGRAM_TARGET) commandArgs.push('--to', TELEGRAM_TARGET);
+    commandArgs.push('--deliver', '--reply-channel', 'telegram');
+    if (TELEGRAM_TARGET) commandArgs.push('--reply-to', TELEGRAM_TARGET);
   }
   return runCommand(OPENCLAW_BIN, commandArgs, {
     cwd: WORKSPACE,

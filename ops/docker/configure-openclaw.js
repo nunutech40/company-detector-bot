@@ -36,12 +36,11 @@ cfg.models.providers = cfg.models.providers || {};
 const provider = cfg.models.providers[providerName] || {};
 provider.baseUrl = baseUrl;
 delete provider.baseURL;
+if (process.env.LLM_API_KEY) provider.apiKey = process.env.LLM_API_KEY;
 provider.models = Array.isArray(provider.models) ? provider.models : [];
 upsertModel(provider.models, modelId);
 for (const id of additionalModels) upsertModel(provider.models, id);
-if (process.env.LLM_TIMEOUT_SECONDS) {
-  provider.timeoutSeconds = Number(process.env.LLM_TIMEOUT_SECONDS);
-}
+delete provider.timeoutSeconds;
 cfg.models.providers[providerName] = provider;
 
 cfg.channels = cfg.channels || {};

@@ -1,6 +1,6 @@
 # Docker Deployment Runbook
 
-**Purpose:** jalur deploy Company Detector ketika server kantor menjalankan aplikasi di atas Docker.  
+**Purpose:** satu-satunya jalur deploy production Company Detector ke server kantor.
 **Status:** repo sudah menyediakan `Dockerfile`, `compose.yml`, dan `.env.docker.example` untuk smoke test lokal serta deployment berbasis Compose.
 
 Last local pre-production check:
@@ -16,9 +16,8 @@ Last local pre-production check:
 
 ## 1. When To Use This
 
-Gunakan dokumen ini jika engineer kantor meminta semua aplikasi berjalan sebagai
-container. Dokumen bare-metal/systemd tetap berguna untuk memahami service yang
-ada, tetapi eksekusi production-nya mengikuti Compose.
+Gunakan dokumen ini untuk seluruh deployment server kantor. Jalur
+bare-metal/systemd lama sudah tidak digunakan.
 
 Docker path menjalankan:
 
@@ -28,6 +27,7 @@ migrate    : migration runner
 dashboard  : Node dashboard, port 3001
 webhook    : Node webhook API, port 3002
 worker     : queue worker
+digest     : Slack prospect digest scheduler, daily 09:00 WIB
 ```
 
 Important:
@@ -54,7 +54,7 @@ Run from repo root:
 ```bash
 cp .env.docker.example .env
 docker compose build
-docker compose up -d postgres migrate dashboard webhook worker
+docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose ps
 ```
 
@@ -123,6 +123,7 @@ WEBHOOK_BIND_PORT=3002
 OPENCLAW_CONFIGURE=true
 LLM_PROVIDER=sumopod
 LLM_BASE_URL=https://ai.sumopod.com/v1
+LLM_API_KEY=...
 LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
 LLM_MODEL_ID=kimi-k2.6
 LLM_ADDITIONAL_MODELS=komerce,qwen3.6-flash
@@ -132,6 +133,10 @@ REGISTER_WORKER_DELIVER_TELEGRAM=true
 OPENCLAW_BIN=/usr/local/bin/openclaw
 TELEGRAM_DEFAULT_BOT_TOKEN=...
 TELEGRAM_ALLOW_FROM=...
+REGISTER_WORKER_TELEGRAM_TO=...
+SLACK_BOT_TOKEN=...
+SLACK_REPORT_CHANNEL=...
+BRAVE_SEARCH_API_KEY=...
 ```
 
 If using an external PostgreSQL, update `DATABASE_URL` in `compose.yml` or add a
@@ -220,28 +225,108 @@ cd company-detector-bot
 cp .env.docker.example .env
 # edit .env with real values
 docker compose build
-docker compose up -d postgres migrate dashboard webhook worker
+docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose ps
 ```
 
-If database is restored from old VPS, restore before starting worker:
+### Backup from the old VPS
+
+Before cutover, stop intake briefly or coordinate a maintenance window, then
+create a final PostgreSQL dump on the old VPS:
+
+```bash
+pg_dump -Fc "$DATABASE_URL" -f company_detection.dump
+```
+
+Transfer `company_detection.dump` to the office server through an approved
+secure channel. Secrets are handed over separately; do not put them in Git.
+
+### Restore existing production data
+
+Restore before starting the office worker:
 
 ```bash
 docker compose stop worker
-# restore company_detection dump according to SERVER_MIGRATION_RUNBOOK.md
+docker compose cp company_detection.dump postgres:/tmp/company_detection.dump
+docker compose exec -T postgres pg_restore \
+  -U company_detection -d company_detection \
+  --clean --if-exists /tmp/company_detection.dump
 docker compose up -d worker
 ```
 
+### Cutover order
+
+1. Run `./ops/docker/verify-deployment.sh` on the office server.
+2. Confirm the test report arrives through the production Telegram bot.
+3. Run Slack `--test-run` and confirm the office channel receives it.
+4. Stop the old VPS worker/webhook/digest services.
+5. Change the platform register webhook URL to the office server.
+6. Submit one final register test and confirm dashboard, DB, and Telegram.
+
+Rollback: point the platform webhook back to the old VPS and restart its
+services. Do not run both workers against the same intake flow.
+
 ## 8. Verification Before Cutover
 
-- [ ] `docker compose ps` shows `dashboard`, `webhook`, and `worker` running.
+### One-command acceptance test
+
+After production secrets are installed and all Compose services are running:
+
+```bash
+chmod +x ops/docker/verify-deployment.sh
+./ops/docker/verify-deployment.sh
+```
+
+The script verifies Compose, service status, webhook, dashboard, OpenClaw,
+model access, and Slack digest dry-run. It then asks for one real test identity,
+queues it through the same webhook/worker flow as production, and waits until
+the result is saved to PostgreSQL.
+
+The final human acceptance check is simple: confirm that the resulting
+`Company Detection Report` arrives in the intended production Telegram bot.
+Do not cut over if the script fails or Telegram receives nothing.
+
+Example failure:
+
+```text
+FAIL  LLM_API_KEY is missing
+```
+
+Fix the named `.env` value, run `docker compose up -d worker`, then rerun the
+acceptance test. A failed acceptance test is a deployment blocker, not a warning.
+
+### Manual investigation through Telegram
+
+The production Telegram bot can also be used as a manual investigation console.
+Send a message in this format:
+
+```text
+Investigasi akun ini sampai selesai:
+email: nama@example.com
+full_name: Nama Lengkap
+brand_name: Nama Brand
+no_hp: 08123456789
+
+Cari evidence bisnis dari public web dan social media yang tersedia.
+Simpan hasil investigasi sesuai standing orders.
+```
+
+`email` is required. Other fields are optional but improve investigation
+quality. The agent may discover public Instagram/Facebook/marketplace evidence,
+but `no_hp` remains confirmation-only and must not be used as a public search
+seed.
+
+- [ ] `docker compose ps` shows `dashboard`, `webhook`, `worker`, and `digest` running.
+- [ ] `digest` is running and its log shows the next scheduled run.
 - [ ] `GET /health` returns OK.
 - [ ] Dashboard `/sales-sheet` loads.
 - [ ] Smoke webhook inserts `register_intake_jobs`.
 - [ ] Worker processes deterministic smoke test.
 - [ ] OpenClaw works inside worker container.
 - [ ] Worker processes one full `agent` mode smoke test.
+- [ ] Full agent result is saved to DB and delivered by the production Telegram bot.
 - [ ] Slack digest dry-run works in container.
+- [ ] Slack digest `--test-run` reaches the intended office Slack channel.
 - [ ] Public reverse proxy routes to dashboard and webhook.
 - [ ] No URL in response points to `localhost` except local-only test.
 
