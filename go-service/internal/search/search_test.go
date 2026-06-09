@@ -99,6 +99,29 @@ func TestBraveSearchSkipsWhenNotConfigured(t *testing.T) {
 	}
 }
 
+func TestBraveSearchDoesNotSetAcceptEncodingManually(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Header.Get("Accept-Encoding") != "" {
+			t.Fatalf("Accept-Encoding must be managed by the Go transport")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body: io.NopCloser(bytes.NewBufferString(`{
+				"web": {"results": [
+					{"title": "Romelaanasa", "url": "https://example.com/", "description": "Distributor NASA"}
+				]}
+			}`)),
+			Request: req,
+		}, nil
+	})}
+	t.Setenv("BRAVE_SEARCH_API_KEY", "test-key")
+	result := braveSearch(context.Background(), "Romelaanasa", Options{BraveEndpoint: "https://brave.test/search", HTTPClient: client})
+	if !result.OK || len(result.Results) != 1 {
+		t.Fatalf("expected parsed Brave result, got %+v", result)
+	}
+}
+
 func TestBingHTMLParsesResults(t *testing.T) {
 	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{

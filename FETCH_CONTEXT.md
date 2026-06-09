@@ -32,6 +32,7 @@ Canonical docs:
 8. `docs/operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md` — owner checklist for office deployment handover and acceptance.
 9. `docs/handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx` — office engineer deployment handover document.
 10. `BACKLOG.md` — status and next priorities.
+11. `docs/technical/VPS_DOCKER_PARITY_AUDIT.md` — mandatory VPS-versus-Docker parity gate before office cutover.
 
 Runtime instructions:
 
@@ -104,6 +105,13 @@ Config path on VPS: /home/nunuopc/.openclaw/openclaw.json
 ```
 
 `deploy.sh` syncs this provider URL and primary model while preserving the existing API key in the VPS config. Do not reduce context, visible tools, or investigation depth just to make a provider fit; only swap the AI provider/model unless explicitly requested.
+
+Docker office deployment checks:
+
+```bash
+./ops/docker/verify-precutover.sh  # safe while VPS Telegram gateway remains active
+./ops/docker/verify-deployment.sh  # final cutover window; requires office gateway
+```
 
 ---
 

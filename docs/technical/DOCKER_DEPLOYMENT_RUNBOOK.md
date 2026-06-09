@@ -1,7 +1,7 @@
 # Docker Deployment Runbook
 
 **Purpose:** satu-satunya jalur deploy production Company Detector ke server kantor.
-**Status:** repo sudah menyediakan `Dockerfile`, `compose.yml`, dan `.env.docker.example` untuk smoke test lokal serta deployment berbasis Compose.
+**Status:** repo menyediakan bundle production berbasis Docker Compose.
 
 Last local pre-production check:
 
@@ -27,27 +27,28 @@ migrate    : migration runner
 dashboard  : Node dashboard, port 3001
 webhook    : Node webhook API, port 3002
 worker     : queue worker
+gateway    : OpenClaw Telegram inbound/manual investigation gateway
 digest     : Slack prospect digest scheduler, daily 09:00 WIB
 ```
 
 Important:
 
-- Local smoke test default menggunakan `REGISTER_WORKER_MODE=deterministic`.
-- Full AI investigation tetap membutuhkan OpenClaw runtime tersedia di dalam worker container atau image internal yang sudah membundel OpenClaw.
-- Jangan anggap production siap sampai full OpenClaw agent smoke test berhasil.
+- Image membundel OpenClaw `2026.5.12`, Node 24, dan seluruh binary Go aktif.
+- Production default menggunakan `REGISTER_WORKER_MODE=agent`.
+- Jangan anggap production siap sampai parity gate dan full OpenClaw agent smoke test berhasil.
 
 ## 2. Files
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | Build runtime image berisi dashboard, webhook, workspace scripts, dan Go `company-check` binary |
+| `Dockerfile` | Build runtime image berisi OpenClaw, dashboard, webhook, workspace scripts, dan seluruh binary Go aktif |
 | `compose.yml` | Service stack untuk PostgreSQL, migration, dashboard, webhook, worker |
 | `.env.docker.example` | Template env Compose tanpa nilai secret asli |
 | `ops/docker/configure-openclaw.js` | Generate/update OpenClaw provider/model/Telegram config dari env |
 | `ops/docker/worker-entrypoint.sh` | Worker startup entrypoint untuk config OpenClaw saat agent mode |
 | `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` | Checklist key/secrets yang harus diserahkan |
 
-## 3. Local Smoke Test
+## 3. Local Pre-Cutover Test
 
 Run from repo root:
 
@@ -58,6 +59,9 @@ docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose ps
 ```
 
+Keep `gateway` stopped while the VPS production gateway is polling the same
+Telegram bot.
+
 Verify health:
 
 ```bash
@@ -65,37 +69,16 @@ curl -fsS http://localhost:3002/health
 curl -fsS http://localhost:3001/sales-sheet >/dev/null
 ```
 
-Queue a test register:
+Run the safe pre-cutover acceptance test:
 
 ```bash
-curl -X POST http://localhost:3002/webhook/check \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer local-webhook-secret" \
-  -d '{
-    "email": "docker-smoke@example.com",
-    "full_name": "Docker Smoke",
-    "brand_name": "Docker Test",
-    "no_hp": "08123456789",
-    "source": "docker_smoke",
-    "external_id": "docker-smoke-001",
-    "idempotency_key": "docker_smoke:001"
-  }'
+chmod +x ops/docker/verify-precutover.sh
+./ops/docker/verify-precutover.sh
 ```
 
-Check worker and dashboard:
-
-```bash
-docker compose logs --tail=100 worker
-docker compose exec postgres psql -U company_detection -d company_detection \
-  -c "select email, status, investigation_job_id, last_error from register_intake_jobs order by created_at desc limit 5;"
-```
-
-Expected for local deterministic smoke:
-
-- Webhook returns queued response.
-- Worker consumes queue.
-- DB row becomes `completed` or shows a clear actionable error.
-- Dashboard route loads.
+This verifies webhook, deterministic pipeline, PostgreSQL persistence,
+dashboard visibility, and Slack digest dry-run without starting the Telegram
+poller or calling the LLM provider.
 
 ## 4. Production Docker Decisions
 
@@ -107,8 +90,8 @@ Engineer kantor must decide these before deployment:
 | Reverse proxy | Office Nginx/Traefik/Caddy in front of `dashboard:3001` and `webhook:3002` |
 | TLS | Terminate HTTPS at office reverse proxy |
 | Secrets | Use `.env`, Docker secrets, or office secret manager; do not bake secrets into image |
-| OpenClaw runtime | Provide office-approved OpenClaw image/binary mounted into worker container |
-| Worker mode | `REGISTER_WORKER_MODE=agent` for production after OpenClaw smoke test passes |
+| OpenClaw runtime | Bundled and pinned in the repository Docker image |
+| Worker mode | Keep `REGISTER_WORKER_MODE=agent` for production |
 
 ## 5. Production Compose Env
 
@@ -126,7 +109,7 @@ LLM_BASE_URL=https://ai.sumopod.com/v1
 LLM_API_KEY=...
 LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
 LLM_MODEL_ID=kimi-k2.6
-LLM_ADDITIONAL_MODELS=komerce,qwen3.6-flash
+LLM_ADDITIONAL_MODELS=komerce
 LLM_TIMEOUT_SECONDS=120
 REGISTER_WORKER_MODE=agent
 REGISTER_WORKER_DELIVER_TELEGRAM=true
@@ -164,8 +147,9 @@ LLM_MODEL_ID=kimi-k2.6
 
 ## 6. OpenClaw In Docker
 
-The provided Docker image uses Node 22 and installs pinned OpenClaw CLI version
-`2026.4.15` in `/usr/local/bin/openclaw`.
+The provided Docker image uses Node 24 and installs pinned OpenClaw CLI version
+`2026.5.12` in `/usr/local/bin/openclaw`, matching the verified production VPS
+runtime.
 
 When `OPENCLAW_CONFIGURE=true` or `REGISTER_WORKER_MODE=agent`, the worker
 entrypoint runs `ops/docker/configure-openclaw.js`. That script creates or
@@ -190,8 +174,7 @@ docker compose exec worker /usr/local/bin/openclaw status
 docker compose exec worker node webhook/worker.js --once
 ```
 
-Do not switch production to `REGISTER_WORKER_MODE=agent` until these commands
-work inside the container.
+Do not cut over production until these commands work inside the container.
 
 Local note from 2026-06-08: the developer machine's default OpenClaw config had
 a stale `9router` provider entry that failed schema validation. Telegram was
@@ -225,7 +208,7 @@ cd company-detector-bot
 cp .env.docker.example .env
 # edit .env with real values
 docker compose build
-docker compose up -d postgres migrate dashboard webhook worker digest
+docker compose up -d postgres migrate dashboard webhook worker gateway digest
 docker compose ps
 ```
 
@@ -298,6 +281,8 @@ acceptance test. A failed acceptance test is a deployment blocker, not a warning
 ### Manual investigation through Telegram
 
 The production Telegram bot can also be used as a manual investigation console.
+This requires an active Telegram gateway/poller on the office server. Never run
+the office poller and old-VPS poller concurrently with the same bot token.
 Send a message in this format:
 
 ```text
@@ -316,7 +301,7 @@ quality. The agent may discover public Instagram/Facebook/marketplace evidence,
 but `no_hp` remains confirmation-only and must not be used as a public search
 seed.
 
-- [ ] `docker compose ps` shows `dashboard`, `webhook`, `worker`, and `digest` running.
+- [ ] `docker compose ps` shows `dashboard`, `webhook`, `worker`, `gateway`, and `digest` running.
 - [ ] `digest` is running and its log shows the next scheduled run.
 - [ ] `GET /health` returns OK.
 - [ ] Dashboard `/sales-sheet` loads.

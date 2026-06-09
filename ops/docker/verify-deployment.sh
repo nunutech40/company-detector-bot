@@ -33,7 +33,7 @@ pass "Compose configuration valid"
 [[ -n "$(env_value REGISTER_WORKER_TELEGRAM_TO)" ]] || fail "REGISTER_WORKER_TELEGRAM_TO is missing"
 pass "Required production secrets and worker mode configured"
 
-required_services=(postgres dashboard webhook worker digest)
+required_services=(postgres dashboard webhook worker gateway digest)
 for service in "${required_services[@]}"; do
   running="$($COMPOSE ps --status running --services | grep -Fx "$service" || true)"
   [[ "$running" == "$service" ]] || fail "Service ${service} is not running"
@@ -47,6 +47,8 @@ pass "Webhook and dashboard reachable"
 $COMPOSE exec -T worker openclaw config validate >/dev/null || fail "OpenClaw config invalid"
 $COMPOSE exec -T worker openclaw models list >/dev/null || fail "OpenClaw model unavailable"
 pass "OpenClaw configuration and model available"
+
+COMPOSE_COMMAND="${COMPOSE}" ./ops/docker/verify-runtime-parity.sh
 
 $COMPOSE exec -T digest node openclaw_workspace/scripts/slack_daily_digest.js --dry-run --window-hours 24 >/dev/null \
   || fail "Slack digest dry-run failed"

@@ -199,7 +199,6 @@ func braveSearch(ctx context.Context, query string, options Options) model.Searc
 	reqURL := endpoint + "?q=" + url.QueryEscape(query) + "&count=" + itoa(limit)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("X-Subscription-Token", key)
 	resp, err := client.Do(req)
 	if err != nil {

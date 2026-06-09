@@ -23,6 +23,9 @@ cfg.agents = cfg.agents || {};
 cfg.agents.defaults = cfg.agents.defaults || {};
 cfg.agents.defaults.model = cfg.agents.defaults.model || {};
 cfg.agents.defaults.model.primary = primaryModel;
+cfg.agents.defaults.models = cfg.agents.defaults.models || {};
+cfg.agents.defaults.models['deepseek/deepseek-chat'] = { alias: 'DeepSeek' };
+cfg.agents.defaults.models['minimax/MiniMax-M2.7'] = { alias: 'Minimax' };
 cfg.agents.list = Array.isArray(cfg.agents.list) ? cfg.agents.list : [];
 upsertById(cfg.agents.list, { id: 'main', workspace });
 
@@ -35,6 +38,7 @@ cfg.models = cfg.models || {};
 cfg.models.providers = cfg.models.providers || {};
 const provider = cfg.models.providers[providerName] || {};
 provider.baseUrl = baseUrl;
+provider.api = process.env.LLM_API || 'openai-completions';
 delete provider.baseURL;
 if (process.env.LLM_API_KEY) provider.apiKey = process.env.LLM_API_KEY;
 provider.models = Array.isArray(provider.models) ? provider.models : [];
@@ -42,6 +46,16 @@ upsertModel(provider.models, modelId);
 for (const id of additionalModels) upsertModel(provider.models, id);
 delete provider.timeoutSeconds;
 cfg.models.providers[providerName] = provider;
+configureFallbackProviders(cfg);
+
+cfg.plugins = cfg.plugins || {};
+cfg.plugins.entries = cfg.plugins.entries || {};
+for (const id of ['deepseek', 'llm-task', 'minimax']) {
+  cfg.plugins.entries[id] = { ...(cfg.plugins.entries[id] || {}), enabled: true };
+}
+cfg.tools = cfg.tools || {};
+cfg.tools.profile = 'full';
+cfg.tools.alsoAllow = Array.from(new Set([...(cfg.tools.alsoAllow || []), 'llm-task']));
 
 cfg.channels = cfg.channels || {};
 if (process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_ASSISTANT_BOT_TOKEN) {
@@ -114,4 +128,39 @@ function writeAllowFrom(filename, value) {
     `${JSON.stringify({ version: 1, allowFrom }, null, 2)}\n`,
     { mode: 0o600 }
   );
+}
+
+function configureFallbackProviders(config) {
+  if (process.env.DEEPSEEK_API_KEY) {
+    config.models.providers.deepseek = {
+      api: 'openai-completions',
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseUrl: 'https://api.deepseek.com',
+      models: [{
+        id: 'deepseek-chat',
+        name: 'DeepSeek V3',
+        input: ['text'],
+        contextWindow: 65536,
+        maxTokens: 8192,
+        cost: { input: 0.27, output: 1.1 },
+      }],
+    };
+  }
+  if (process.env.MINIMAX_API_KEY) {
+    config.models.providers.minimax = {
+      api: 'anthropic-messages',
+      apiKey: process.env.MINIMAX_API_KEY,
+      authHeader: true,
+      baseUrl: 'https://api.minimax.io/anthropic',
+      models: [{
+        id: 'MiniMax-M2.7',
+        name: 'MiniMax M2.7',
+        input: ['text'],
+        contextWindow: 204800,
+        maxTokens: 8192,
+        reasoning: true,
+        cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0.375 },
+      }],
+    };
+  }
 }

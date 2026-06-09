@@ -47,12 +47,13 @@ Jangan menulis nilai secret asli di dokumen atau repository.
 ## Yang Harus Diminta dari Engineer Kantor
 
 - [ ] Docker dan Docker Compose tersedia.
-- [ ] Seluruh service berjalan: `postgres`, `dashboard`, `webhook`, `worker`, `digest`.
+- [ ] Seluruh service berjalan: `postgres`, `dashboard`, `webhook`, `worker`, `gateway`, `digest`.
 - [ ] Reverse proxy dan HTTPS tersedia untuk dashboard serta webhook.
 - [ ] Backup database terjadwal dan diuji.
 - [ ] Engineer menjalankan:
 
 ```bash
+./ops/docker/verify-precutover.sh
 ./ops/docker/verify-deployment.sh
 ```
 
@@ -62,6 +63,45 @@ Jangan menulis nilai secret asli di dokumen atau repository.
 ## Acceptance Test yang Kamu Lakukan
 
 Jangan menerima deployment hanya karena container berstatus running.
+
+### Setup Telegram Server Kantor
+
+Server kantor menggunakan bot Telegram production yang sama dengan VPS lama.
+Berikan dua nilai berikut melalui secure channel:
+
+```text
+TELEGRAM_DEFAULT_BOT_TOKEN=<token bot Company Detector production>
+REGISTER_WORKER_TELEGRAM_TO=<chat ID tujuan report>
+```
+
+Engineer memasukkan nilainya ke `.env`, lalu menjalankan:
+
+```bash
+docker compose up -d worker
+```
+
+Jangan menulis token atau chat ID ke Git maupun dokumen handover.
+
+### Apakah VPS Lama Harus Dimatikan Saat Test?
+
+Untuk acceptance test otomatis, VPS lama belum perlu dimatikan. Server kantor
+hanya mengirim report keluar melalui bot yang sama. Gunakan data test yang jelas
+agar report dari server kantor mudah dikenali.
+
+Selama persiapan harian, jalankan `verify-precutover.sh`. Script ini tidak
+menyalakan gateway Telegram dan tidak memanggil AI, sehingga VPS production
+tetap aman. `verify-deployment.sh` dijalankan hanya pada jendela final test.
+
+Namun, sebelum webhook platform dipindahkan ke server kantor:
+
+- worker, webhook, dan digest VPS lama harus dimatikan;
+- jangan menjalankan dua worker production untuk intake yang sama;
+- jangan menjalankan dua Telegram gateway/poller untuk menerima chat manual
+  menggunakan bot token yang sama.
+
+Manual chat melalui Telegram hanya dapat diuji setelah Telegram gateway/poller
+dipindahkan ke server kantor dan poller VPS lama dimatikan. Acceptance test
+otomatis tetap dapat membuktikan outbound Telegram tanpa mematikan VPS.
 
 1. Minta engineer menjalankan `./ops/docker/verify-deployment.sh`.
 2. Berikan satu identitas nyata untuk dites.
