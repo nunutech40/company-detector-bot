@@ -11,6 +11,9 @@
 - Batasi permission file yang berisi secret dengan `chmod 600`.
 - Setelah deployment, pemilik sistem dan engineer server mengisi status checklist.
 - Rotasi secret segera jika pernah terkirim melalui channel yang tidak aman.
+- Pastikan `.env` tidak ikut backup publik, artifact build, atau log deployment.
+- Jangan menjalankan `docker compose config` pada output CI/log publik karena
+  Compose dapat menampilkan nilai environment yang sudah di-resolve.
 
 ## 2. Secret Locations
 
@@ -27,11 +30,13 @@
 | `WEBHOOK_SECRET` | Yes | Platform/backend owner | Docker `.env` and register platform | Authenticated webhook returns queued response | Pending |
 | `LLM_API_KEY` / Sumopod API key | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
 | `LLM_PRIMARY_MODEL` / `LLM_MODEL_ID` | Yes | Product/AI owner | Docker `.env` or OpenClaw config | `openclaw models list` and agent smoke test | Pending |
+| `DEEPSEEK_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | DeepSeek provider appears in OpenClaw config | Pending |
+| `MINIMAX_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | MiniMax provider appears in OpenClaw config | Pending |
 | `SLACK_BOT_TOKEN` | Yes | Slack app owner | Docker `.env` / secret manager | Slack digest dry-run/send test | Pending |
 | `SLACK_REPORT_CHANNEL` | Yes | Sales/Slack owner | Docker `.env` / secret manager | Test message reaches correct channel | Pending |
 | `TELEGRAM_DEFAULT_BOT_TOKEN` | Yes | Telegram bot owner | Docker `.env` / secret manager | Worker delivery test succeeds | Pending |
 | `REGISTER_WORKER_TELEGRAM_TO` | Yes | Telegram destination owner | Docker `.env` / secret manager | Test report reaches correct destination | Pending |
-| `BRAVE_SEARCH_API_KEY` | Optional but recommended | Search provider owner | Docker `.env` / secret manager | Search tool smoke test succeeds | Pending |
+| `BRAVE_SEARCH_API_KEY` | Yes, required for VPS-equivalent investigation quality | Search provider owner | Docker `.env` / secret manager | Runtime parity and search behavior tests pass | Pending |
 | `GOOGLE_CSE_KEY` and `GOOGLE_CSE_ID` | Optional fallback | Search provider owner | Docker `.env` / secret manager | Search fallback smoke test succeeds | Pending |
 | GitHub deploy key/token | Only if repo is private | GitHub/repository admin | Server SSH/Git credential store | `git pull` succeeds | Pending |
 | TLS certificate/private key | Depends on office infrastructure | Infrastructure engineer | Reverse proxy/certificate manager | Public HTTPS check succeeds | Pending |
@@ -58,11 +63,16 @@ Run from the repository as the deployment user after secrets are installed:
 
 ```bash
 chmod 600 .env
-docker compose up -d
+docker compose up -d postgres migrate dashboard webhook worker digest
+./ops/docker/verify-precutover.sh
+# Start gateway only during the final Telegram cutover window.
+docker compose up -d gateway
 ./ops/docker/verify-deployment.sh
 ```
 
 Do not use commands such as `cat .env` in shared screenshares or deployment reports.
+Do not start the office `gateway` while the VPS gateway is polling the same
+Telegram bot.
 
 ## 6. Sign-Off
 

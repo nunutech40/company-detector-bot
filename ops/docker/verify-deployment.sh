@@ -18,6 +18,13 @@ read_value() {
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; exit 1; }
 env_value() { awk -F= -v key="$1" '$1==key{sub(/^[^=]*=/,""); print; exit}' .env; }
+validate_env_security() {
+  grep -Eq '(^|=)CHANGE_ME($|_)' .env && fail ".env still contains CHANGE_ME placeholders"
+  if command -v stat >/dev/null 2>&1; then
+    mode="$(stat -c '%a' .env 2>/dev/null || stat -f '%Lp' .env 2>/dev/null || true)"
+    [[ "$mode" == "600" ]] || fail ".env permission must be 600, found ${mode:-unknown}"
+  fi
+}
 
 echo "Company Detector production acceptance test"
 echo
@@ -26,9 +33,14 @@ $COMPOSE config --quiet || fail "Compose configuration invalid"
 pass "Compose configuration valid"
 
 [[ -f .env ]] || fail ".env is missing"
+validate_env_security
+pass ".env has no placeholders and permission is restricted"
 [[ "$(env_value REGISTER_WORKER_MODE)" == "agent" ]] || fail "REGISTER_WORKER_MODE must be agent"
 [[ "$(env_value REGISTER_WORKER_DELIVER_TELEGRAM)" == "true" ]] || fail "REGISTER_WORKER_DELIVER_TELEGRAM must be true"
 [[ -n "$(env_value LLM_API_KEY)" ]] || fail "LLM_API_KEY is missing"
+[[ -n "$(env_value BRAVE_SEARCH_API_KEY)" ]] || fail "BRAVE_SEARCH_API_KEY is missing"
+[[ -n "$(env_value DEEPSEEK_API_KEY)" ]] || fail "DEEPSEEK_API_KEY is missing"
+[[ -n "$(env_value MINIMAX_API_KEY)" ]] || fail "MINIMAX_API_KEY is missing"
 [[ -n "$(env_value TELEGRAM_DEFAULT_BOT_TOKEN)" ]] || fail "TELEGRAM_DEFAULT_BOT_TOKEN is missing"
 [[ -n "$(env_value REGISTER_WORKER_TELEGRAM_TO)" ]] || fail "REGISTER_WORKER_TELEGRAM_TO is missing"
 pass "Required production secrets and worker mode configured"

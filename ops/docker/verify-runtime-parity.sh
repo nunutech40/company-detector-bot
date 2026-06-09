@@ -24,6 +24,7 @@ console.log(JSON.stringify({
   api: s.api,
   models: (s.models || []).map(x => x.id).sort(),
   plugins: Object.entries(c.plugins?.entries || {}).filter(([,v]) => v.enabled).map(([k]) => k).sort(),
+  providers: Object.keys(c.models?.providers || {}).sort(),
   profile: c.tools?.profile,
   alsoAllow: c.tools?.alsoAllow || [],
   telegram: !!c.channels?.telegram?.enabled,
@@ -40,6 +41,7 @@ if (c.primary !== 'sumopod/kimi-k2.6') failures.push(`primary=${c.primary}`);
 if (c.api !== 'openai-completions') failures.push(`api=${c.api}`);
 if (!c.models.includes('kimi-k2.6') || !c.models.includes('komerce')) failures.push(`models=${c.models}`);
 for (const p of requiredPlugins) if (!c.plugins.includes(p)) failures.push(`plugin_missing=${p}`);
+for (const p of ['deepseek', 'minimax', 'sumopod']) if (!c.providers.includes(p)) failures.push(`provider_missing=${p}`);
 if (c.profile !== 'full') failures.push(`tools.profile=${c.profile}`);
 if (!c.alsoAllow.includes('llm-task')) failures.push('llm-task_not_allowed');
 if (!c.telegram) failures.push('telegram_not_enabled');

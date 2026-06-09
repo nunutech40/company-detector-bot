@@ -12,6 +12,10 @@ Serahkan file berikut:
 docs/handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx
 ```
 
+Sebelum diserahkan, pastikan DOCX sudah diregenerasi dari runbook terbaru dan
+tidak sedang terbuka/ter-lock di Word. Jika belum, serahkan
+`docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` sebagai sumber teknis utama.
+
 Berikan juga akses read ke repository:
 
 ```text
@@ -41,6 +45,8 @@ Secret diberikan melalui password manager atau secure channel yang disetujui.
 - `SLACK_BOT_TOKEN`.
 - `SLACK_REPORT_CHANNEL`.
 - Search API key jika tersedia.
+- `BRAVE_SEARCH_API_KEY` wajib agar kemampuan pencarian setara VPS.
+- `DEEPSEEK_API_KEY` dan `MINIMAX_API_KEY` untuk fallback provider setara VPS.
 
 Jangan menulis nilai secret asli di dokumen atau repository.
 
@@ -78,6 +84,8 @@ Engineer memasukkan nilainya ke `.env`, lalu menjalankan:
 
 ```bash
 docker compose up -d worker
+# Gateway hanya dinyalakan saat poller VPS sudah dimatikan.
+docker compose up -d gateway
 ```
 
 Jangan menulis token atau chat ID ke Git maupun dokumen handover.
@@ -130,11 +138,12 @@ Urutan:
 
 1. Ambil final database dump dari VPS lama.
 2. Restore dump ke server kantor.
-3. Jalankan acceptance test lagi.
-4. Matikan worker, webhook, dan digest di VPS lama.
-5. Ubah URL webhook platform register ke server kantor.
-6. Kirim satu register test terakhir.
-7. Pastikan database, dashboard, Telegram, dan Slack berjalan.
+3. Jalankan `verify-precutover.sh` dengan gateway kantor tetap mati.
+4. Matikan gateway, worker, webhook, dan digest di VPS lama.
+5. Nyalakan gateway kantor dan jalankan `verify-deployment.sh`.
+6. Ubah URL webhook platform register ke server kantor.
+7. Kirim satu register test terakhir.
+8. Pastikan database, dashboard, Telegram, dan Slack berjalan.
 
 Jika gagal setelah cutover, arahkan webhook kembali ke VPS lama dan hidupkan
 kembali servicenya. Jangan menjalankan dua worker production bersamaan.

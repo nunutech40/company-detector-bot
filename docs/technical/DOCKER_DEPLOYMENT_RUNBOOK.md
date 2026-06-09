@@ -93,6 +93,29 @@ Engineer kantor must decide these before deployment:
 | OpenClaw runtime | Bundled and pinned in the repository Docker image |
 | Worker mode | Keep `REGISTER_WORKER_MODE=agent` for production |
 
+## 4.1 Tools and Plugins on a Clean Server
+
+The office engineer does not install Company Detector tools one by one.
+`docker compose build` creates them automatically:
+
+- OpenClaw `2026.5.12` and Node 24 are installed in the image.
+- Go builds `company-check`, `tool-status`, and `last-report`.
+- Workspace scripts, skills, scoring rules, and tool catalog are copied into
+  the image.
+- `configure-openclaw.js` creates the Sumopod, DeepSeek, MiniMax, `llm-task`,
+  full tool profile, Telegram, and runtime DB configuration from `.env`.
+
+Required outbound HTTPS access:
+
+- `ai.sumopod.com`
+- Telegram API
+- Slack API
+- Brave Search API
+- GitHub/Docker registries during build/deploy
+
+If office egress uses an allow-list or proxy, these destinations must be
+approved before acceptance testing.
+
 ## 5. Production Compose Env
 
 Create `.env` on the server from `.env.docker.example` and real secret values:
@@ -101,8 +124,9 @@ Create `.env` on the server from `.env.docker.example` and real secret values:
 POSTGRES_PASSWORD=...
 WEBHOOK_SECRET=...
 DASHBOARD_BASE_URL=https://<SERVER_DOMAIN>
-DASHBOARD_BIND_PORT=3001
-WEBHOOK_BIND_PORT=3002
+DASHBOARD_PUBLIC_BASE_URL=https://<SERVER_DOMAIN>
+DASHBOARD_BIND_PORT=127.0.0.1:3001
+WEBHOOK_BIND_PORT=127.0.0.1:3002
 OPENCLAW_CONFIGURE=true
 LLM_PROVIDER=sumopod
 LLM_BASE_URL=https://ai.sumopod.com/v1
@@ -120,6 +144,8 @@ REGISTER_WORKER_TELEGRAM_TO=...
 SLACK_BOT_TOKEN=...
 SLACK_REPORT_CHANNEL=...
 BRAVE_SEARCH_API_KEY=...
+DEEPSEEK_API_KEY=...
+MINIMAX_API_KEY=...
 ```
 
 If using an external PostgreSQL, update `DATABASE_URL` in `compose.yml` or add a
@@ -157,9 +183,10 @@ updates `/root/.openclaw/openclaw.json` from `.env` values, so model/provider
 changes do not require code edits.
 
 It also writes `/root/.openclaw/company-detector.env` with mode `0600`.
-Commands launched by the agent use this internal runtime file to access
-PostgreSQL and configured integrations even when OpenClaw sanitizes inherited
-environment variables.
+This internal file contains only `DATABASE_URL`, which agent-launched finalizer
+commands need when OpenClaw sanitizes inherited environment variables.
+Integration tokens remain in the container environment/OpenClaw config and are
+not duplicated into this runtime file.
 
 The worker also needs:
 
@@ -213,9 +240,12 @@ cd company-detector-bot
 cp .env.docker.example .env
 # edit .env with real values
 docker compose build
-docker compose up -d postgres migrate dashboard webhook worker gateway digest
+docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose ps
+./ops/docker/verify-precutover.sh
 ```
+
+Keep `gateway` stopped until the final Telegram cutover window.
 
 ### Backup from the old VPS
 
@@ -244,12 +274,13 @@ docker compose up -d worker
 
 ### Cutover order
 
-1. Run `./ops/docker/verify-deployment.sh` on the office server.
-2. Confirm the test report arrives through the production Telegram bot.
-3. Run Slack `--test-run` and confirm the office channel receives it.
-4. Stop the old VPS worker/webhook/digest services.
-5. Change the platform register webhook URL to the office server.
-6. Submit one final register test and confirm dashboard, DB, and Telegram.
+1. Run `./ops/docker/verify-precutover.sh` while VPS production remains active.
+2. Stop the old VPS gateway, worker, webhook, and digest services.
+3. Start office `gateway`, then run `./ops/docker/verify-deployment.sh`.
+4. Confirm the report arrives through the production Telegram bot.
+5. Run Slack `--test-run` and confirm the office channel receives it.
+6. Change the platform register webhook URL to the office server.
+7. Submit one final register test and confirm dashboard, DB, and Telegram.
 
 Rollback: point the platform webhook back to the old VPS and restart its
 services. Do not run both workers against the same intake flow.

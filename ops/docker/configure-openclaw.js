@@ -133,16 +133,9 @@ function writeAllowFrom(filename, value) {
 }
 
 function writeRuntimeEnv(filePath) {
-  const keys = [
-    'DATABASE_URL',
-    'BRAVE_SEARCH_API_KEY',
-    'GOOGLE_CSE_KEY',
-    'GOOGLE_CSE_ID',
-    'SLACK_BOT_TOKEN',
-    'SLACK_REPORT_CHANNEL',
-    'TELEGRAM_DEFAULT_BOT_TOKEN',
-    'TELEGRAM_ASSISTANT_BOT_TOKEN',
-  ];
+  // Agent-launched finalizer commands only need DB access. Keep integration
+  // tokens in container environment/OpenClaw config instead of duplicating them.
+  const keys = ['DATABASE_URL'];
   const lines = keys
     .filter((key) => process.env[key])
     .map((key) => `${key}=${shellQuote(process.env[key])}`);

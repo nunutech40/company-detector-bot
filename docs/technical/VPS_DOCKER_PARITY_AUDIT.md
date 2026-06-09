@@ -36,7 +36,7 @@ active. It intentionally skips the Telegram poller and full AI call.
 | Deterministic Go pipeline | Active | Active | PASS | Docker compiles current source |
 | Go diagnostic binaries | `company-check`, `tool-status`, `last-report` | Same after audit fix | PASS | Checked automatically |
 | Brave Search | Active | Active after gzip adapter fix | PASS | Brave key is mandatory |
-| Telegram gateway | VPS gateway intentionally stopped during local test | Docker gateway healthy | CONDITIONAL | Only one bot poller may run |
+| Telegram gateway | Active after local acceptance test | Docker gateway tested healthy, currently stopped | CONDITIONAL | Only one bot poller may run |
 | Register worker mode | Agent | Agent default | PASS | Never deploy deterministic-only |
 | Register Telegram delivery | Enabled | Enabled default | PASS | Set destination and allow list |
 | Daily Slack digest | systemd timer, 09:00 WIB | Docker scheduler, 09:00 WIB | PASS BY DESIGN | Validate dry-run |
@@ -103,13 +103,24 @@ through the acceptance test.
 
 Never commit real values. Put them only in the office server `.env`.
 
+Security verification:
+
+- `.env` is ignored by Git and Docker build context.
+- Deployment scripts reject `CHANGE_ME` placeholders.
+- Production `.env` must have permission `0600`.
+- Internal agent runtime env has permission `0600` and contains only
+  `DATABASE_URL`.
+- Dashboard and webhook bind to `127.0.0.1` by default and should be exposed
+  only through the office reverse proxy.
+
 ## Known Blockers and Risks
 
 1. Sumopod Kimi currently returns intermittent errors/timeouts from both Docker
    and VPS. A temporary `qwen3.6-flash` acceptance test completed successfully
    and found the same Siti Romelah business evidence at confidence 80/100.
-2. The VPS gateway is intentionally inactive while Docker uses the production
-   Telegram bot. Starting both causes duplicate polling/conflicts.
+2. The VPS gateway is active and currently owns the production Telegram bot.
+   Starting the office/Docker gateway before stopping VPS causes duplicate
+   polling/conflicts.
 3. Production data must be dumped and restored before cutover if dashboard
    history must be retained.
 4. A deterministic baseline is insufficient. Final acceptance must complete

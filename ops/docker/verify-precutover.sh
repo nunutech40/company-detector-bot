@@ -9,8 +9,17 @@ TEST_EMAIL="docker-precutover-$(date +%s)@example.com"
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; exit 1; }
 env_value() { awk -F= -v key="$1" '$1==key{sub(/^[^=]*=/,""); print; exit}' "$ENV_FILE"; }
+validate_env_security() {
+  grep -Eq '(^|=)CHANGE_ME($|_)' "$ENV_FILE" && fail "${ENV_FILE} still contains CHANGE_ME placeholders"
+  if [[ "$ENV_FILE" == ".env" ]] && command -v stat >/dev/null 2>&1; then
+    mode="$(stat -c '%a' "$ENV_FILE" 2>/dev/null || stat -f '%Lp' "$ENV_FILE" 2>/dev/null || true)"
+    [[ "$mode" == "600" ]] || fail ".env permission must be 600, found ${mode:-unknown}"
+  fi
+}
 
 [[ -f "$ENV_FILE" ]] || fail "${ENV_FILE} is missing"
+validate_env_security
+pass "Environment file has no placeholders and production .env is restricted"
 $COMPOSE config --quiet || fail "Compose configuration invalid"
 pass "Compose configuration valid"
 
