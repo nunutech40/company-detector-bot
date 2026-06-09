@@ -42,7 +42,8 @@ active. It intentionally skips the Telegram poller and full AI call.
 | Daily Slack digest | systemd timer, 09:00 WIB | Docker scheduler, 09:00 WIB | PASS BY DESIGN | Validate dry-run |
 | Dashboard and webhook | systemd services | Compose services | PASS BY DESIGN | Validate health and routes |
 | Historical data | 379 investigations, 489 register rows at audit time | Local test data only | BLOCKER | Restore production dump if history must move |
-| Full AI behavior | VPS previously found Siti Romelah business evidence | Provider currently returns 401/402 | BLOCKER | Repeat after provider recovery |
+| Full AI behavior | VPS previously found Siti Romelah business evidence | Qwen test found the same business at 80/100; Kimi currently times out | CONDITIONAL PASS | Repeat once with production Kimi |
+| Manual agent DB persistence | Writes final result to PostgreSQL | Verified after runtime-env fallback fix | PASS | Checked with clean agent environment |
 
 `PASS BY DESIGN` means the deployment mechanism differs while the user-facing
 capability and schedule remain equivalent.
@@ -104,9 +105,9 @@ Never commit real values. Put them only in the office server `.env`.
 
 ## Known Blockers and Risks
 
-1. Sumopod Kimi currently returns intermittent `401 Not Enough Credits` and
-   `402 membership benefits` errors from both Docker and VPS. This is an
-   upstream/provider blocker, not a Docker parity difference.
+1. Sumopod Kimi currently returns intermittent errors/timeouts from both Docker
+   and VPS. A temporary `qwen3.6-flash` acceptance test completed successfully
+   and found the same Siti Romelah business evidence at confidence 80/100.
 2. The VPS gateway is intentionally inactive while Docker uses the production
    Telegram bot. Starting both causes duplicate polling/conflicts.
 3. Production data must be dumped and restored before cutover if dashboard
@@ -133,3 +134,24 @@ Acceptance criteria:
 - Result appears in dashboard search.
 - Telegram receives the report.
 - Slack digest dry-run succeeds.
+
+## 9 June 2026 Qwen Acceptance Result
+
+Temporary test-only override:
+
+```text
+sumopod/qwen3.6-flash
+```
+
+Result:
+
+- Provider preflight returned `PROVIDER_OK` in about 7 seconds.
+- Full Docker gateway investigation completed in about 47 seconds.
+- Found `Romelaanasa - Distributor Herbal NASA Malang`.
+- Phone evidence matched.
+- Confidence: `80/100`, equal to the known VPS result.
+- Docker Telegram gateway health passed while it temporarily owned the bot
+  poller.
+- Agent DB runtime environment persistence was fixed and verified separately.
+- Docker configuration was returned to production model `sumopod/kimi-k2.6`.
+- Telegram poller was returned to the VPS after testing.

@@ -68,6 +68,12 @@ schema_fingerprints="$($COMPOSE exec -T postgres psql -U company_detection -d co
 pass "Database schema and index parity"
 
 $COMPOSE exec -T gateway sh -lc \
+  'test -s /root/.openclaw/company-detector.env &&
+   grep -q "^DATABASE_URL=" /root/.openclaw/company-detector.env' \
+  || fail "Agent runtime database environment missing"
+pass "Agent runtime database environment"
+
+$COMPOSE exec -T gateway sh -lc \
   '/app/openclaw_workspace/scripts/company_check_go.sh --email sromelah24@gmail.com --full-name "Siti Romelah" --brand-name Romelaanasa --save 2>&1 | grep -q "web_search(brave_search)"' \
   || fail "Brave Search behavior parity failed"
 pass "Brave Search behavior parity"

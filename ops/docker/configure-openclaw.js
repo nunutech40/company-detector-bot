@@ -6,6 +6,7 @@ const path = require('path');
 
 const stateDir = process.env.OPENCLAW_STATE_DIR || path.join(process.env.HOME || '/root', '.openclaw');
 const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(stateDir, 'openclaw.json');
+const runtimeEnvPath = path.join(stateDir, 'company-detector.env');
 const workspace = process.env.OPENCLAW_WORKSPACE || '/app/openclaw_workspace';
 
 const providerName = process.env.LLM_PROVIDER || 'sumopod';
@@ -80,6 +81,7 @@ if (process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_ASSISTANT_BOT
 
 writeAllowFrom('telegram-default-allowFrom.json', process.env.TELEGRAM_ALLOW_FROM);
 writeAllowFrom('telegram-assistant-allowFrom.json', process.env.TELEGRAM_ASSISTANT_ALLOW_FROM);
+writeRuntimeEnv(runtimeEnvPath);
 
 fs.writeFileSync(configPath, `${JSON.stringify(cfg, null, 2)}\n`, { mode: 0o600 });
 console.log(`OpenClaw config ready: provider=${providerName} primary=${primaryModel} config=${configPath}`);
@@ -128,6 +130,27 @@ function writeAllowFrom(filename, value) {
     `${JSON.stringify({ version: 1, allowFrom }, null, 2)}\n`,
     { mode: 0o600 }
   );
+}
+
+function writeRuntimeEnv(filePath) {
+  const keys = [
+    'DATABASE_URL',
+    'BRAVE_SEARCH_API_KEY',
+    'GOOGLE_CSE_KEY',
+    'GOOGLE_CSE_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_REPORT_CHANNEL',
+    'TELEGRAM_DEFAULT_BOT_TOKEN',
+    'TELEGRAM_ASSISTANT_BOT_TOKEN',
+  ];
+  const lines = keys
+    .filter((key) => process.env[key])
+    .map((key) => `${key}=${shellQuote(process.env[key])}`);
+  fs.writeFileSync(filePath, `${lines.join('\n')}\n`, { mode: 0o600 });
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
 }
 
 function configureFallbackProviders(config) {

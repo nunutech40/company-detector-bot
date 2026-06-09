@@ -156,6 +156,11 @@ entrypoint runs `ops/docker/configure-openclaw.js`. That script creates or
 updates `/root/.openclaw/openclaw.json` from `.env` values, so model/provider
 changes do not require code edits.
 
+It also writes `/root/.openclaw/company-detector.env` with mode `0600`.
+Commands launched by the agent use this internal runtime file to access
+PostgreSQL and configured integrations even when OpenClaw sanitizes inherited
+environment variables.
+
 The worker also needs:
 
 ```text

@@ -58,7 +58,10 @@ const WORKSPACE    = path.resolve(__dirname, '..');
 const evidencePath = get('--evidence') || path.join(WORKSPACE, 'evidence', 'latest.json');
 const reportPath   = get('--ai-report') || path.join(WORKSPACE, 'reports', 'ai_report_latest.txt');
 const ENV_FILE     = process.env.COMPANY_DETECTOR_ENV_FILE
-  || `${process.env.HOME || '/home/nunuopc'}/.openclaw/gateway.systemd.env`;
+  || firstExistingEnvFile([
+    `${process.env.HOME || '/home/nunuopc'}/.openclaw/company-detector.env`,
+    `${process.env.HOME || '/home/nunuopc'}/.openclaw/gateway.systemd.env`,
+  ]);
 
 // ── Load DATABASE_URL dari env file ─────────────────────────────────────────
 function loadEnv(filePath) {
@@ -73,6 +76,9 @@ function loadEnv(filePath) {
     const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
     if (!process.env[key]) process.env[key] = val;
   }
+}
+function firstExistingEnvFile(paths) {
+  return paths.find((filePath) => fs.existsSync(filePath)) || paths[0];
 }
 loadEnv(ENV_FILE);
 
