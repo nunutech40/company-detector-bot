@@ -29,6 +29,8 @@ Canonical docs:
 5. `docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md` — implementation and validation checklist.
 6. `docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md` — single production deploy path: Docker/Compose, migration, cutover, and acceptance test.
 7. `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` — secret/key handover checklist without real values.
+8. `docs/operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md` — owner checklist for office deployment handover and acceptance.
+9. `docs/handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx` — office engineer deployment handover document.
 10. `BACKLOG.md` — status and next priorities.
 
 Runtime instructions:
