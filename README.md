@@ -1,165 +1,178 @@
-# Company Detector Bot — AI Company Detection Agent
+# Company Detector Bot - AI Company Detection Agent
 
-AI Company Detection Agent untuk mendeteksi apakah user register adalah personal, pemilik bisnis, perusahaan, agency/freelancer, atau akun suspicious.
+Company Detector menginvestigasi data register untuk mengidentifikasi akun
+personal, pemilik bisnis, perusahaan, agency/freelancer, atau akun suspicious.
 
-Sistem ini memakai deterministic Go pipeline sebagai fondasi dan OpenClaw AI reasoning loop sebagai investigator. Semua hasil disimpan ke file evidence dan PostgreSQL, lalu bisa dilihat lewat dashboard.
-
----
+Sistem menggunakan deterministic Go pipeline sebagai fondasi dan OpenClaw AI
+reasoning loop sebagai investigator. Hasil disimpan ke evidence files dan
+PostgreSQL, ditampilkan di dashboard, dikirim ke Telegram, serta dirangkum ke
+Slack setiap pukul 09:00 Asia/Jakarta.
 
 ## Current Status
 
-Status per 4 Juni 2026:
+Status per 10 Juni 2026:
 
-Done:
+- Production bundle berbasis Docker Compose untuk server kantor.
+- Runtime Docker telah diuji setara dengan VPS lama: OpenClaw `2026.5.12`,
+  Node 24, PostgreSQL 16, Go binaries, plugins, providers, search tools, dan
+  agent investigation flow.
+- Webhook queue memproses register secara sequential melalui OpenClaw agent.
+- Telegram mendukung outbound report dan inbound/manual investigation.
+- Dashboard menyediakan investigation records dan browser-based Sales Sheet.
+- Slack daily prospect digest berjalan setiap pukul 09:00 Asia/Jakarta.
+- Pre-cutover, runtime parity, dan final deployment verification tersedia.
 
-- Go CLI pipeline: email intelligence, domain check, crawler, search cascade, scraper, scoring, report, evidence.
-- AI reasoning loop via OpenClaw + Sumopod `kimi-k2.6`.
-- Telegram investigation flow.
-- PostgreSQL 16 database `company_detection`.
-- 3-table storage: `investigation_jobs`, `final_reports`, `llm_calls`.
-- `db_writer.js` integrated with `finish_investigation.sh`.
-- Report provenance in DB/dashboard: AI reasoning vs deterministic fallback.
-- Dashboard Express + EJS at port `3001`.
-- Webhook API Express at port `3002` with PostgreSQL-backed queue intake.
-- Sequential register worker: `register_intake_jobs` -> OpenClaw agent investigation -> finalizer -> DB/dashboard.
-- Telegram delivery is mandatory for each queued investigation.
-- Slack daily prospect digest at 09:00 Asia/Jakarta.
-- Slack digest test mode: `--test-run` sends a preview without marking production digest rows.
-- Tool packages: `brandhint`, `sociallinks`, `rolesignal`.
-- Token/cost tracking.
-- One-command deploy via `deploy.sh`, including OpenClaw primary model sync.
+Docker Compose adalah jalur production utama. VPS lama tetap aktif sampai
+cutover server kantor diterima. Jangan menjalankan dua Telegram gateway dengan
+bot token yang sama.
 
-Next validation:
-
-- Improve `db_writer.js` social/marketplace extraction.
-- Validate Komerce platform register flow against the queue webhook.
-
----
+Provider availability dan kredit merupakan dependency eksternal. Jangan
+mengurangi tools, context, atau kualitas investigation hanya agar provider bisa
+merespons.
 
 ## Start Here
 
-For humans:
+Untuk pemilik sistem:
 
-1. [PRD](docs/product/PRD.md) — product source of truth.
-2. [TRD](docs/technical/TRD.md) — technical source of truth.
-3. [Flow Map](docs/technical/FLOW_MAP.md) — satu-satunya flow aktif: data akun, orchestra loop, finalizer, DB/dashboard.
-4. [Register Webhook API](docs/technical/REGISTER_WEBHOOK_API.md) — kontrak REST API untuk tim platform register.
-5. [Webhook + Slack Plan](docs/technical/WEBHOOK_SLACK_DAILY_DIGEST_PLAN.md) — implemented workflow note untuk webhook queue + Slack digest.
-6. [Webhook + Slack Building Checklist](docs/technical/WEBHOOK_SLACK_BUILDING_CHECKLIST.md) — checklist implementasi dan validasi terbaru.
-7. [Documentation Index](docs/README.md) — all docs.
-8. [Backlog](BACKLOG.md) — status and next work.
+1. [Owner Office Deployment Guide](docs/operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md)
+2. [Deployment Secrets Handover](docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md)
+3. [PRD](docs/product/PRD.md)
 
-For another AI agent:
+Untuk engineer/deployer:
+
+1. [Docker Deployment Runbook](docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md)
+2. [VPS-Docker Parity Audit](docs/technical/VPS_DOCKER_PARITY_AUDIT.md)
+3. [Register Webhook API](docs/technical/REGISTER_WEBHOOK_API.md)
+4. [TRD](docs/technical/TRD.md)
+5. [Flow Map](docs/technical/FLOW_MAP.md)
+
+Untuk AI agent:
 
 1. [FETCH_CONTEXT.md](FETCH_CONTEXT.md)
 2. [PRD](docs/product/PRD.md)
 3. [TRD](docs/technical/TRD.md)
 
----
+Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 
-## Main URLs
+## Docker Runtime
 
-| Service | URL |
+| Service | Purpose |
 |---|---|
-| Dashboard | `http://103.226.139.107` |
-| Sales Sheet Web | `http://103.226.139.107/sales-sheet` |
-| Webhook API | `http://103.226.139.107:3002` |
-| Webhook health | `http://103.226.139.107:3002/health` |
+| `postgres` | PostgreSQL database; dapat diganti office-managed PostgreSQL |
+| `migrate` | Database migration runner |
+| `dashboard` | Dashboard dan browser-based Sales Sheet |
+| `webhook` | Register intake API |
+| `worker` | Sequential queued investigation worker |
+| `gateway` | Telegram inbound/manual investigation poller |
+| `digest` | Daily Slack prospect digest |
 
----
+Application ports default ke loopback-only:
+
+```text
+Dashboard: http://127.0.0.1:3001
+Sales:     http://127.0.0.1:3001/sales-sheet
+Webhook:   http://127.0.0.1:3002
+Health:    http://127.0.0.1:3002/health
+```
+
+Gunakan reverse proxy kantor dan HTTPS untuk public access.
+
+## Quick Start
+
+Requirements:
+
+- Docker Engine dan Docker Compose
+- Real credentials dari
+  [Deployment Secrets Handover](docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md)
+- Outbound HTTPS ke LLM provider, Telegram, Slack, Brave Search, GitHub, dan
+  Docker registries
+
+Prepare environment:
+
+```bash
+cp .env.docker.example .env
+chmod 600 .env
+# Replace every CHANGE_ME value before verification.
+```
+
+Build dan jalankan safe pre-cutover stack:
+
+```bash
+docker compose build
+docker compose up -d postgres migrate dashboard webhook worker digest
+docker compose ps
+./ops/docker/verify-precutover.sh
+```
+
+Keep `gateway` stopped selama VPS lama masih polling bot Telegram production.
+Pada final cutover, matikan gateway VPS terlebih dahulu, lalu:
+
+```bash
+docker compose up -d gateway
+./ops/docker/verify-deployment.sh
+```
+
+Operational commands:
+
+```bash
+docker compose ps
+docker compose logs -f worker
+docker compose logs -f gateway
+docker compose restart worker
+docker compose down
+```
 
 ## Production AI Runtime
 
-Current VPS OpenClaw primary model:
-
-```text
-sumopod/kimi-k2.6
-```
-
-Provider config:
+Default primary model:
 
 ```text
 provider: sumopod
-baseUrl: https://ai.sumopod.com/v1
-config file: /home/nunuopc/.openclaw/openclaw.json
+base URL: https://ai.sumopod.com/v1
+model: sumopod/kimi-k2.6
 ```
 
-`deploy.sh` preserves the existing Sumopod API key on the VPS and only enforces the provider URL plus primary model. Do not reduce context/tooling to make a provider fit; the production investigation flow should stay unchanged.
+Provider/model dikonfigurasi melalui `.env`, sehingga perubahan model tidak
+memerlukan edit kode. Docker juga menyiapkan provider DeepSeek dan MiniMax,
+plugin `llm-task`, full tool profile, Telegram, dan runtime database access.
 
-## Commands
+Jangan commit `.env`, menulis secret ke dokumentasi, atau membagikan output
+`docker compose config`. Production `.env` wajib memiliki permission `600`.
 
-Run deterministic check:
+## Verification Gates
+
+Jalankan berurutan:
 
 ```bash
-cd openclaw_workspace
-scripts/company_check_go.sh --email contact@komerce.id --save
+./ops/docker/verify-precutover.sh
+./ops/docker/verify-runtime-parity.sh
+# Only after old Telegram gateway is stopped:
+./ops/docker/verify-deployment.sh
 ```
 
-Run with register fields:
+Verification mencakup required secrets, service health, deterministic pipeline,
+database persistence, dashboard visibility, runtime parity, dan final
+production integrations.
+
+## Useful Commands
+
+Deterministic investigation:
 
 ```bash
-cd openclaw_workspace
-scripts/company_check_go.sh \
-  --email person@gmail.com \
-  --full-name "Person Name" \
+docker compose exec worker openclaw_workspace/scripts/company_check_go.sh \
+  --email contact@komerce.id \
+  --full-name "Ragil Setiawan" \
+  --brand-name "Komerce" \
   --no-hp "08123456789" \
-  --brand-name "Acme Studio" \
   --save
 ```
 
-Finalize an AI investigation:
+Preview Slack digest:
 
 ```bash
-cd openclaw_workspace
-scripts/finish_investigation.sh --email contact@komerce.id
+docker compose exec digest node openclaw_workspace/scripts/slack_daily_digest.js \
+  --dry-run --window-hours 24
 ```
-
-Write latest result to database manually:
-
-```bash
-cd openclaw_workspace
-node scripts/db_writer.js --email contact@komerce.id
-```
-
-Test webhook:
-
-```bash
-curl -X POST http://103.226.139.107:3002/webhook/check \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <shared-secret>" \
-  -d '{
-    "email": "contact@komerce.id",
-    "full_name": "Ragil Setiawan",
-    "brand_name": "Komerce",
-    "no_hp": "08123456789",
-    "source": "platform_register",
-    "external_id": "register-user-id-123",
-    "idempotency_key": "platform_register:register-user-id-123"
-  }'
-```
-
-Process one queued webhook job:
-
-```bash
-cd webhook
-npm run worker:once
-```
-
-Preview Slack daily digest:
-
-```bash
-cd openclaw_workspace
-npm run slack:digest:dry-run
-```
-
-Send Slack test digest without marking production items:
-
-```bash
-cd openclaw_workspace
-node scripts/slack_daily_digest.js --test-run --window-hours 999
-```
-
-Slack digest links to the browser-based Sales Sheet at `http://103.226.139.107/sales-sheet`, so sales users do not need Excel. A fresh `.xlsx` export is still generated as a fallback/internal artifact under dashboard `/exports/`. On VPS, nginx proxies the dashboard on port 80, so Slack links do not use `:3001`. Override `DASHBOARD_PUBLIC_BASE_URL`, `SALES_SHEET_WEB_URL`, `SALES_SHEET_LATEST_URL`, and `SALES_SHEET_EXPORT_DIR` if the public URL changes.
 
 Run Go tests:
 
@@ -168,42 +181,31 @@ cd go-service
 go test ./...
 ```
 
-Deploy:
-
-```bash
-bash deploy.sh
-```
-
----
-
 ## Repo Map
 
 ```text
 .
+├── Dockerfile
+├── compose.yml
+├── .env.docker.example
 ├── README.md
 ├── FETCH_CONTEXT.md
-├── CONTEXT.md
-├── BACKLOG.md
-├── deploy.sh
 ├── docs/
-│   ├── README.md
+│   ├── operations/
+│   │   └── OWNER_OFFICE_DEPLOYMENT_GUIDE.md
 │   ├── product/
-│   │   ├── PRD.md
-│   ├── technical/
-│   │   ├── TRD.md
-│   │   ├── FLOW_MAP.md
-│   │   ├── REGISTER_WEBHOOK_API.md
-│   │   ├── TOOLS_AND_ALGORITHMS.md
-│   │   ├── migration_v1.sql
-│   │   └── migration_v2_webhook_slack_queue.sql
-│   └── archive/       ← plan/review/checklist/flow lama
+│   │   └── PRD.md
+│   └── technical/
+│       ├── TRD.md
+│       ├── DOCKER_DEPLOYMENT_RUNBOOK.md
+│       ├── DEPLOYMENT_SECRETS_HANDOVER.md
+│       ├── VPS_DOCKER_PARITY_AUDIT.md
+│       ├── FLOW_MAP.md
+│       └── REGISTER_WEBHOOK_API.md
 ├── go-service/
-│   ├── cmd/
-│   └── internal/
 ├── dashboard/
 ├── webhook/
-├── ops/
-│   └── systemd/
+├── ops/docker/
 └── openclaw_workspace/
     ├── AGENTS.md
     ├── STANDING_ORDERS.md
@@ -211,8 +213,6 @@ bash deploy.sh
     ├── config/
     └── scripts/
 ```
-
----
 
 ## Runtime Contract
 
@@ -223,13 +223,14 @@ Classifications:
 - `unknown_needs_more_evidence`
 - `suspicious_or_invalid`
 
-Post-investigation rule:
+Post-investigation finalizer:
 
 ```bash
-scripts/finish_investigation.sh --email <email>
+openclaw_workspace/scripts/finish_investigation.sh --email <email>
 ```
 
-This finalizer handles evidence saving, DB write, and token usage. Slack delivery is handled by the daily digest flow.
+Finalizer menangani evidence saving, database write, dan token usage. Slack
+delivery ditangani daily digest flow.
 
 Slack daily digest target:
 
@@ -241,14 +242,15 @@ possible_company_affiliated + confidence >= 60 => listed as prospect
 empty prospect window => send heartbeat digest
 ```
 
-Slack test mode:
+Input rules:
 
-```text
---test-run sends a [TEST] digest and does not insert slack_digest_runs/slack_digest_items.
-```
+- `email` wajib.
+- `full_name` dan `brand_name` adalah optional hints.
+- `no_hp` adalah confirmation-only dan tidak boleh digunakan untuk public
+  search.
 
-Input rule:
+## Legacy VPS
 
-- `email` is required.
-- `full_name` and `brand_name` are optional hints.
-- `no_hp` is confirmation only and must not be used for public search.
+Deployment VPS/systemd dan `deploy.sh` hanya dipertahankan sebagai migration
+serta rollback reference. Deployment baru ke server kantor wajib mengikuti
+[Docker Deployment Runbook](docs/technical/DOCKER_DEPLOYMENT_RUNBOOK.md).
