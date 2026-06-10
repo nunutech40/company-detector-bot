@@ -174,8 +174,27 @@ services:
     volumes:
       - company_detector_exports:/app/dashboard/public/exports
 
+  review-monitor:
+    build: .
+    restart: unless-stopped
+    environment:
+      REVIEW_MONITOR_BUSINESS_NAME: ${REVIEW_MONITOR_BUSINESS_NAME:-Komerce}
+      REVIEW_MONITOR_MAPS_URL: ${REVIEW_MONITOR_MAPS_URL:-}
+      REVIEW_MONITOR_CRAWLER: ${REVIEW_MONITOR_CRAWLER:-browser}
+      REVIEW_MONITOR_CHROMIUM_PATH: ${REVIEW_MONITOR_CHROMIUM_PATH:-/usr/bin/chromium}
+      REVIEW_MONITOR_STORAGE_STATE: ${REVIEW_MONITOR_STORAGE_STATE:-}
+      REVIEW_MONITOR_COLLECT_HOUR_WIB: ${REVIEW_MONITOR_COLLECT_HOUR_WIB:-21}
+      REVIEW_MONITOR_SEND_HOUR_WIB: ${REVIEW_MONITOR_SEND_HOUR_WIB:-9}
+      REVIEW_MONITOR_MINUTE_WIB: ${REVIEW_MONITOR_MINUTE_WIB:-0}
+      REVIEW_MONITOR_TELEGRAM_TO: ${REVIEW_MONITOR_TELEGRAM_TO:-}
+      TELEGRAM_DEFAULT_BOT_TOKEN: ${TELEGRAM_DEFAULT_BOT_TOKEN:-}
+    command: ["node", "ops/docker/review-monitor-scheduler.js"]
+    volumes:
+      - company_detector_review_monitor:/app/review_monitor/state
+
 volumes:
   company_detector_db:
   company_detector_exports:
   company_detector_reports:
   company_detector_openclaw:
+  company_detector_review_monitor:

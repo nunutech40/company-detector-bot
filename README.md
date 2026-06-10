@@ -45,6 +45,7 @@ Untuk engineer/deployer:
 3. [Register Webhook API](docs/technical/REGISTER_WEBHOOK_API.md)
 4. [TRD](docs/technical/TRD.md)
 5. [Flow Map](docs/technical/FLOW_MAP.md)
+6. [Google Review Monitor](docs/technical/GOOGLE_REVIEW_MONITOR.md) - isolated deterministic review monitoring feature
 
 Untuk AI agent:
 
@@ -65,6 +66,7 @@ Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 | `worker` | Sequential queued investigation worker |
 | `gateway` | Telegram inbound/manual investigation poller |
 | `digest` | Daily Slack prospect digest |
+| `review-monitor` | Isolated Google Maps review 1-3 collector and Telegram report scheduler |
 
 Application ports default ke loopback-only:
 
