@@ -14,6 +14,7 @@ Dokumentasi aktif dibuat sederhana:
 10. [Office Docker Deployment Handover](handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx) — dokumen Word resmi yang diserahkan ke engineer kantor.
 11. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 12. [Google Business Review Monitor](technical/GOOGLE_REVIEW_MONITOR.md) — fitur deterministic terisolasi untuk review Google bintang 1-3.
+13. [Google Business Profile API Access Guide for Owner](handover/GOOGLE_BUSINESS_PROFILE_API_ACCESS_GUIDE_FOR_OWNER.docx) — panduan Word langkah demi langkah untuk owner profil bisnis sampai pengajuan Basic API Access berhasil.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -35,6 +36,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Docker Deployment Runbook](technical/DOCKER_DEPLOYMENT_RUNBOOK.md) | Compose stack, backup/restore, deploy, Telegram acceptance test, cutover, dan rollback |
 | [Owner Office Deployment Guide](operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md) | Checklist untuk pemilik sistem sebelum, selama, dan setelah handover |
 | [Office Docker Deployment Handover](handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx) | Dokumen Word siap serah untuk engineer deployment kantor |
+| [Google Business Profile API Access Guide for Owner](handover/GOOGLE_BUSINESS_PROFILE_API_ACCESS_GUIDE_FOR_OWNER.docx) | Tutorial Word untuk owner Google Business Profile: verifikasi profil, project Cloud, API pendukung, pengajuan Basic API Access, dan troubleshooting |
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Token Optimization Test Log](technical/TOKEN_OPTIMIZATION_TEST_LOG.md) | Catatan AB test token, hasil gagal/ditolak, dan arah optimasi berikutnya |
 | [Sales Sheet Sync Plan](technical/SALES_SHEET_SYNC_PLAN.md) | Browser Sales Sheet untuk sales follow-up, mapping field, dan fallback export |
