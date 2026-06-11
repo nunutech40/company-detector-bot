@@ -163,13 +163,13 @@ GBP_CLIENT_SECRET=...
 GBP_REFRESH_TOKEN=...
 REVIEW_MONITOR_COLLECT_HOUR_WIB=21
 REVIEW_MONITOR_SEND_HOUR_WIB=9
-REVIEW_MONITOR_TELEGRAM_TO=<Telegram chat ID>
-TELEGRAM_DEFAULT_BOT_TOKEN=...
+REVIEW_MONITOR_SLACK_CHANNEL=monitor-negatif-company
 ```
 
 The review monitor is isolated and opt-in. Normal `docker compose up` does not
 start it. Follow `docs/technical/GOOGLE_REVIEW_MONITOR.md` and enable only after
-its Google Business Profile API preflight succeeds.
+its Google Business Profile API preflight succeeds. It reuses
+`SLACK_BOT_TOKEN` from core `.env`; do not duplicate that secret.
 
 ```bash
 cp .env.review-monitor.example .env.review-monitor

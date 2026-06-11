@@ -66,7 +66,7 @@ Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 | `worker` | Sequential queued investigation worker |
 | `gateway` | Telegram inbound/manual investigation poller |
 | `digest` | Daily Slack prospect digest |
-| `review-monitor` | Isolated Google Business Profile review 1-3 collector and Telegram report scheduler |
+| `review-monitor` | Isolated Google Business Profile review 1-3 collector and Slack report scheduler |
 
 `review-monitor` menggunakan Compose profile opt-in dan `.env.review-monitor`
 terpisah. Normal deployment tidak menyalakannya sampai Google Business Profile

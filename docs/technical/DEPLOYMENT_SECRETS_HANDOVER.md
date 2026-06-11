@@ -43,7 +43,7 @@
 | Google OAuth client ID/secret | Only when review monitor is enabled | Google Cloud project owner | `.env.review-monitor` / secret manager | OAuth refresh succeeds | Pending |
 | Google OAuth refresh token | Only when review monitor is enabled | Authorized Business Profile manager | `.env.review-monitor` / secret manager | Reviews API collect succeeds | Pending |
 | `GBP_ACCOUNT_ID` / `GBP_LOCATION_ID` | Only when review monitor is enabled | Business Profile manager | `.env.review-monitor` | Correct profile reviews are returned | Pending |
-| Review monitor Telegram token/target | Only when review monitor is enabled | Telegram destination owner | `.env.review-monitor` / secret manager | Review monitor `test-send` succeeds | Pending |
+| `REVIEW_MONITOR_SLACK_CHANNEL` | Only when review monitor is enabled | Slack/channel owner | `.env.review-monitor` | Shared Slack bot `test-send` reaches `monitor-negatif-company` | Pending |
 
 ## 4. Non-Secret Values That Must Be Confirmed
 

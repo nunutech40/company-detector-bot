@@ -183,6 +183,7 @@ services:
         required: false
     environment:
       REVIEW_MONITOR_STATE_DIR: /app/review_monitor/state
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
     command: ["node", "ops/docker/review-monitor-scheduler.js"]
     volumes:
       - company_detector_review_monitor:/app/review_monitor/state

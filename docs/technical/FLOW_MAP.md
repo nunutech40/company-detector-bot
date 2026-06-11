@@ -67,7 +67,7 @@ Google Business Profile API
   -> isolated API collector jam 21:00
   -> filter review 1-3 + dedupe
   -> dedicated review-monitor state
-  -> Telegram report jam 09:00
+  -> Slack report jam 09:00
 ```
 
 ---
@@ -83,7 +83,7 @@ Google Business Profile API
 | Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
 | Storage / Output | PostgreSQL, file evidence, dashboard | Menjadi tempat review dan source data operasional |
 | Slack Digest | Cron/digest script, Slack channel | Mengirim ringkasan prospect jam 09:00 dari data final di DB |
-| Review Monitor | Google Business Profile API client, independent scheduler, dedicated state, Telegram API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
+| Review Monitor | Google Business Profile API client, independent scheduler, dedicated state, Slack API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
 
 ## 3.1 Feature Boundary Flowchart
 
@@ -92,7 +92,7 @@ flowchart TB
   subgraph shared["Shared Project Infrastructure"]
     Docker["Docker image / Compose"]
     OAuth["Google OAuth credential"]
-    Telegram["Telegram Bot API credential"]
+    SlackBot["Shared Slack bot credential"]
   end
 
   subgraph investigation["Company Investigation Feature"]
@@ -106,13 +106,13 @@ flowchart TB
     ReviewScheduler["Independent scheduler"]
     Collector["Deterministic Google Business Profile API collector"]
     ReviewState["Dedicated review-monitor state volume"]
-    ReviewReport["Daily Telegram review report"]
+    ReviewReport["Daily Slack review report"]
   end
 
   Docker --> Agent
   Docker --> ReviewScheduler
   OAuth --> Collector
-  Telegram --> ReviewReport
+  SlackBot --> ReviewReport
   Intake --> Agent --> Tools --> InvestigationDB
   ReviewScheduler --> Collector --> ReviewState --> ReviewReport
 
@@ -129,9 +129,9 @@ sequenceDiagram
   participant OAuth as Google OAuth
   participant API as Business Profile Reviews API
   participant State as Dedicated Review State
-  participant Telegram as Telegram Bot API
+  participant Slack as Slack channel monitor-negatif-company
 
-  Note over Scheduler,Telegram: Separate from OpenClaw investigation flow
+  Note over Scheduler,Slack: Separate from OpenClaw investigation flow
 
   Scheduler->>OAuth: Refresh access token at 21:00 WIB
   OAuth-->>Scheduler: Access token
@@ -148,11 +148,11 @@ sequenceDiagram
   Scheduler->>State: send at 09:00 WIB
   alt Latest collect status healthy
     State-->>Scheduler: Unsent negative reviews or verified empty result
-    Scheduler->>Telegram: Send daily review report
+    Scheduler->>Slack: Send daily review report
     Scheduler->>State: Mark review fingerprints sent
   else Latest collect unhealthy or stale
     State-->>Scheduler: Failure detail
-    Scheduler->>Telegram: Send monitoring failure alert
+    Scheduler->>Slack: Send monitoring failure alert
   end
 ```
 

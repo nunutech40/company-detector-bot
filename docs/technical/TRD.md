@@ -90,7 +90,7 @@ Isolated review monitor
         +--> 21:00 Google Business Profile API collect
         +--> filter rating 1-3
         +--> dedicated state/deduplication volume
-        +--> 09:00 Telegram report
+        +--> 09:00 Slack report
 ```
 
 AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
@@ -98,7 +98,7 @@ AI reasoning runs inside OpenClaw. It must use the deterministic tools as eviden
 Slack delivery is not part of the AI reasoning loop. Slack reads finalized data from PostgreSQL and sends a sales-ready digest once per day.
 
 The Google review monitor is not part of the AI reasoning loop or register
-investigation. It shares the repository, Docker image, and Telegram integration, while keeping its service, scheduler, environment,
+investigation. It shares the repository, Docker image, and Slack integration, while keeping its service, scheduler, environment,
 storage, and failure behavior isolated.
 
 ---
@@ -111,7 +111,7 @@ storage, and failure behavior isolated.
 | `openclaw_workspace/` | Agent prompt, standing orders, tool catalog, runtime scripts |
 | `dashboard/` | Express + EJS internal dashboard |
 | `webhook/` | Express webhook API |
-| `review_monitor/` | Isolated deterministic Google Business review collector and Telegram reporter |
+| `review_monitor/` | Isolated deterministic Google Business review collector and Slack reporter |
 | `ops/docker/review-monitor-scheduler.js` | Independent 21:00 collect and 09:00 send scheduler |
 | `docs/technical/migration_v1.sql` | PostgreSQL schema |
 | `docs/` | Product and technical documentation |
@@ -123,7 +123,7 @@ Sharing a project or runtime tool does not require sharing feature lifecycle.
 ```text
 Shared project infrastructure
 ├── Docker image and deployment
-├── Telegram API credential
+├── shared Slack bot credential
 └── common network/operations controls
 
 Investigation feature
@@ -136,7 +136,7 @@ Review monitor feature
 ├── deterministic Google Business Profile API collector
 ├── independent scheduler
 ├── dedicated state volume
-└── Telegram daily report
+└── Slack daily report
 ```
 
 Review monitor must not call OpenClaw, consume LLM credits, or modify
@@ -154,7 +154,7 @@ separate optional enrichment stage.
 | Collection | Official Google Business Profile Reviews API |
 | Selection | Rating 1-3 only |
 | Dedupe | SHA-256 fingerprint of rating, reviewer, and comment |
-| Delivery | Telegram Bot API |
+| Delivery | Slack Web API using shared Company Detector bot |
 | Failure safety | Send OAuth/API health failure; never report false empty result |
 
 ---

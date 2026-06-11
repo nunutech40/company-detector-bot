@@ -36,7 +36,7 @@ Secret diberikan melalui password manager atau secure channel yang disetujui.
 - [ ] Siapkan satu data nyata untuk acceptance test: email wajib; nama, brand, dan nomor WA opsional.
 - [ ] Putuskan apakah fitur opsional Google Review Monitor akan diaktifkan.
 - [ ] Jika diaktifkan, siapkan Google OAuth client, refresh token,
-      account/location ID, dan target Telegram melalui secure channel.
+      account/location ID, dan Slack channel melalui secure channel.
 
 ## Secret yang Harus Diberikan Secara Aman
 
@@ -137,11 +137,11 @@ Simpan hasil investigasi sesuai standing orders.
 
 Review monitor tetap satu project, tetapi service, scheduler, state, dan
 failure behavior-nya terisolasi dari investigation flow. Jangan menerimanya
-hanya karena dummy Telegram berhasil.
+hanya karena dummy Slack berhasil.
 
 - [ ] Engineer menjalankan official Google Business Profile API collect.
 - [ ] Review rating 1-3 tersimpan tanpa duplikasi.
-- [ ] `test-send` masuk ke target Telegram yang benar.
+- [ ] `test-send` masuk ke channel Slack `monitor-negatif-company`.
 - [ ] OAuth/API failure menghasilkan failure alert, bukan laporan kosong.
 - [ ] Scheduler menunjukkan collect 21:00 dan send 09:00 WIB.
 - [ ] Investigation worker dan OpenClaw tetap sehat setelah profile diaktifkan.

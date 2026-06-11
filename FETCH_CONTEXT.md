@@ -96,7 +96,7 @@ Isolated Google review monitor
         |
         +--> collect Google Business Profile reviews at 21:00
         +--> filter rating 1-3 + dedicated state
-        +--> Telegram report at 09:00
+        +--> Slack report at 09:00
 ```
 
 Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.
@@ -104,10 +104,10 @@ Important point: AI can reason and choose tools, but deterministic scoring/class
 Important boundary: AI/OpenClaw does not write directly to storage or Slack. Finalizer/db_writer writes results. Slack digest reads finalized DB rows later.
 
 Important review-monitor boundary: it is one feature in the same project and
-shares Docker/Telegram infrastructure, but it does not call OpenClaw,
+shares Docker/Slack infrastructure, but it does not call OpenClaw,
 use an LLM, or touch investigation tables. Do not enable its scheduler until
 Google Business Profile API preflight succeeds. Its OAuth/account/location and
-Telegram values live in separate `.env.review-monitor`, not core `.env`.
+Slack channel lives in separate `.env.review-monitor`; shared Slack bot token remains in core `.env`, not core `.env`.
 
 Current production AI provider:
 

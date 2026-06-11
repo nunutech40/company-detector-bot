@@ -67,14 +67,14 @@ tetapi bukan bagian dari AI company investigation.
 
 ```text
 21:00 WIB -> collect Google Business Profile API reviews -> filter rating 1-3 -> deduplicate
-09:00 WIB -> send daily Telegram report
+09:00 WIB -> send daily Slack report
 ```
 
 Requirements:
 
 - Tidak menggunakan AI agent untuk collect, filter, deduplicate, atau delivery.
 - Tidak membaca/menulis investigation jobs, scoring, atau prospect digest.
-- Boleh berbagi Docker image, Telegram credential, dan helper
+- Boleh berbagi Docker image, Slack credential, dan helper
   infrastructure.
 - Tidak boleh menyimpulkan "tidak ada review negatif" ketika OAuth/API gagal
   atau hasil collect stale.

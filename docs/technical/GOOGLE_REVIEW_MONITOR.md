@@ -11,7 +11,7 @@ Business Profile Komerce tanpa mengubah kode atau flow.
 
 ```text
 21:00 WIB -> Google Business Profile API collect + deduplicate
-09:00 WIB -> Telegram daily report
+09:00 WIB -> Slack daily report
 ```
 
 ## Product Status
@@ -20,7 +20,7 @@ Business Profile Komerce tanpa mengubah kode atau flow.
 Implementation: ready for Google Business Profile API credentials
 OAuth bootstrap tools: ready
 Separate env and Compose profile: ready
-Telegram test-send: passed
+Slack test-send: passed to monitor-negatif-company
 Real API collection: waiting for personal Google OAuth/account/location setup
 Production scheduler: disabled until API preflight passes
 ```
@@ -35,7 +35,7 @@ Production scheduler: disabled until API preflight passes
 - State/deduplication terpisah: `company_detector_review_monitor`.
 - Tidak memanggil OpenClaw/LLM.
 - Tidak membaca/menulis investigation tables.
-- Boleh berbagi Docker, Telegram integration, dan operations infrastructure.
+- Boleh berbagi Docker, Slack integration, dan operations infrastructure.
 
 ## Architecture Flowchart
 
@@ -43,7 +43,7 @@ Production scheduler: disabled until API preflight passes
 flowchart LR
   subgraph shared["Shared Company Detector Project"]
     Repo["Repository + Docker image"]
-    TelegramCredential["Telegram Bot API"]
+    SlackCredential["Shared Slack bot token"]
   end
 
   subgraph isolated["Isolated Review Monitor"]
@@ -51,7 +51,7 @@ flowchart LR
     GBP["Google Business Profile API client"]
     Filter["Rating 1-3 filter + reviewId dedupe"]
     State["Dedicated state volume"]
-    Reporter["Telegram reporter"]
+    Reporter["Slack reporter"]
     Env[".env.review-monitor"]
   end
 
@@ -59,7 +59,7 @@ flowchart LR
   Env --> GBP
   Env --> Reporter
   Scheduler --> GBP --> Filter --> State --> Reporter
-  TelegramCredential --> Reporter
+  SlackCredential --> Reporter
 ```
 
 ## Runtime Sequence
@@ -71,7 +71,7 @@ sequenceDiagram
   participant OAuth as Google OAuth
   participant GBP as Business Profile Reviews API
   participant State as Dedicated State
-  participant Telegram
+  participant Slack
 
   Scheduler->>OAuth: Refresh access token at 21:00
   OAuth-->>Scheduler: Short-lived access token
@@ -88,9 +88,9 @@ sequenceDiagram
   Scheduler->>State: Read unsent reviews at 09:00
   alt Latest collect healthy
     State-->>Scheduler: New negative reviews or verified empty result
-    Scheduler->>Telegram: Send daily report
+    Scheduler->>Slack: Send daily report
   else Latest collect unhealthy or stale
-    Scheduler->>Telegram: Send monitoring failure alert
+    Scheduler->>Slack: Send monitoring failure alert
   end
 ```
 
@@ -112,8 +112,7 @@ GBP_LOCATION_ID=
 GBP_CLIENT_ID=
 GBP_CLIENT_SECRET=
 GBP_REFRESH_TOKEN=
-TELEGRAM_DEFAULT_BOT_TOKEN=
-REVIEW_MONITOR_TELEGRAM_TO=
+REVIEW_MONITOR_SLACK_CHANNEL=monitor-negatif-company
 ```
 
 Never commit or share `.env.review-monitor`. OAuth client secret and refresh
@@ -175,9 +174,9 @@ The preflight validates:
 
 - `.env.review-monitor` exists with permission `600`.
 - No placeholder remains.
-- OAuth/account/location/Telegram values exist.
+- OAuth/account/location/Slack channel and shared bot token exist.
 - Google Business Profile Reviews API collection succeeds.
-- Telegram test-send succeeds.
+- Slack test-send succeeds.
 
 Only after preflight passes:
 
@@ -197,7 +196,7 @@ docker compose --profile review-monitor run --rm \
 docker compose --profile review-monitor run --rm \
   review-monitor node review_monitor/monitor.js send
 
-# Telegram format test with dummy data:
+# Slack format test with dummy data:
 docker compose --profile review-monitor run --rm \
   review-monitor node review_monitor/monitor.js test-send
 ```
@@ -231,7 +230,7 @@ Do not reuse personal OAuth credentials for production.
 - [ ] API collector returns verified reviews or verified empty result.
 - [ ] Only rating 1-3 reviews are stored.
 - [ ] Repeated collection deduplicates by stable Google `reviewId`.
-- [ ] Telegram `test-send` reaches the intended target.
+- [ ] Slack `test-send` reaches monitor-negatif-company.
 - [ ] Failed/stale collection sends failure alert, not false-empty result.
 - [ ] Scheduler logs show collect 21:00 and send 09:00 WIB.
 - [ ] Investigation worker/OpenClaw/database remain unchanged.

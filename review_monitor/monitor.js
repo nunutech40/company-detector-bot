@@ -75,8 +75,8 @@ function mapApiReview(review) {
 async function send(testMode) {
   const status = readJson(statusFile, null);
   if (!testMode && (!status?.ok || Date.now() - new Date(status.at).getTime() > 36 * 60 * 60 * 1000)) {
-    await sendTelegram(buildFailureMessage(status));
-    console.log('review_monitor: send crawl_status_unhealthy');
+    await sendReport(buildFailureMessage(status));
+    console.log('review_monitor: send collect_status_unhealthy');
     return;
   }
   const reviews = testMode ? [makeReview({
@@ -86,7 +86,7 @@ async function send(testMode) {
     source: 'google-business-profile-api',
   })] : unsentReviews();
   const text = buildMessage(reviews, testMode);
-  await sendTelegram(text);
+  await sendReport(text);
   if (!testMode) {
     const sent = new Set(readJson(sentFile, []));
     for (const review of reviews) sent.add(review.id);
@@ -110,6 +110,33 @@ function unsentReviews() {
   return readJson(reviewsFile, []).filter((review) => !sent.has(review.id));
 }
 
+async function sendReport(text) {
+  const destinations = [];
+  if (process.env.REVIEW_MONITOR_SLACK_CHANNEL) destinations.push(sendSlack(text));
+  if (process.env.REVIEW_MONITOR_TELEGRAM_TO) destinations.push(sendTelegram(text));
+  if (!destinations.length) {
+    throw new Error('REVIEW_MONITOR_SLACK_CHANNEL or REVIEW_MONITOR_TELEGRAM_TO is required');
+  }
+  await Promise.all(destinations);
+}
+
+async function sendSlack(text) {
+  const token = process.env.SLACK_BOT_TOKEN || '';
+  const channel = process.env.REVIEW_MONITOR_SLACK_CHANNEL || '';
+  if (!token) throw new Error('SLACK_BOT_TOKEN is required for Slack delivery');
+  const response = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json; charset=utf-8',
+    },
+    body: JSON.stringify({ channel, text, unfurl_links: false, unfurl_media: false }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const result = await response.json();
+  if (!result.ok) throw new Error(`Slack send failed: ${result.error || response.status}`);
+}
+
 async function sendTelegram(text) {
   const token = process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
   const target = process.env.REVIEW_MONITOR_TELEGRAM_TO
@@ -117,7 +144,7 @@ async function sendTelegram(text) {
     || process.env.TELEGRAM_DELIVERY_TO
     || '';
   if (!token) throw new Error('Telegram bot token is required');
-  if (!target) throw new Error('REVIEW_MONITOR_TELEGRAM_TO is required');
+  if (!target) throw new Error('REVIEW_MONITOR_TELEGRAM_TO is required for Telegram delivery');
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
