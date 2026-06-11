@@ -10,8 +10,8 @@ const stateDir = process.env.REVIEW_MONITOR_STATE_DIR || '/app/review_monitor/st
 const reviewsFile = path.join(stateDir, 'negative-reviews.json');
 const sentFile = path.join(stateDir, 'sent-review-ids.json');
 const statusFile = path.join(stateDir, 'last-collect-status.json');
-const mapsUrl = process.env.REVIEW_MONITOR_MAPS_URL || '';
-const businessName = process.env.REVIEW_MONITOR_BUSINESS_NAME || 'Komerce';
+const provider = process.env.REVIEW_MONITOR_PROVIDER || 'google-business-profile-api';
+const businessName = process.env.GBP_BUSINESS_NAME || process.env.REVIEW_MONITOR_BUSINESS_NAME || 'Google Business Profile';
 
 main().catch((error) => {
   console.error(`review_monitor: ${command} failed: ${error.message}`);
@@ -27,135 +27,49 @@ async function main() {
 }
 
 async function collect() {
-  if (!mapsUrl) throw new Error('REVIEW_MONITOR_MAPS_URL is required');
-  if ((process.env.REVIEW_MONITOR_CRAWLER || 'browser') === 'browser') {
-    return collectWithBrowser();
-  }
-  return collectWithHttp();
+  if (provider === 'google-business-profile-api') return collectWithBusinessProfileApi();
+  throw new Error(`unsupported REVIEW_MONITOR_PROVIDER: ${provider}`);
 }
 
-async function collectWithBrowser() {
-  const { chromium } = require('playwright-core');
-  const storageState = process.env.REVIEW_MONITOR_STORAGE_STATE || '';
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.REVIEW_MONITOR_CHROMIUM_PATH || '/usr/bin/chromium',
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  try {
-    const context = await browser.newContext({
-      locale: 'id-ID',
-      ...(storageState && fs.existsSync(storageState) ? { storageState } : {}),
-    });
-    const page = await context.newPage();
-    await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(5000);
-    const consent = page.getByRole('button', { name: /terima semua|accept all/i });
-    if (await consent.count()) await consent.first().click();
+async function collectWithBusinessProfileApi() {
+  const accountId = requireEnv('GBP_ACCOUNT_ID');
+  const locationId = requireEnv('GBP_LOCATION_ID');
+  const accessToken = await getAccessToken();
+  const apiBase = (process.env.GBP_API_BASE_URL || 'https://mybusiness.googleapis.com/v4').replace(/\/+$/, '');
+  let pageToken = '';
+  const apiReviews = [];
+  do {
+    const url = new URL(`${apiBase}/accounts/${encodeURIComponent(accountId)}/locations/${encodeURIComponent(locationId)}/reviews`);
+    url.searchParams.set('pageSize', '50');
+    url.searchParams.set('orderBy', 'updateTime desc');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const payload = await apiJson(url, accessToken);
+    apiReviews.push(...(payload.reviews || []));
+    pageToken = payload.nextPageToken || '';
+  } while (pageToken);
 
-    let reviewButton = page.locator('button[aria-label*="ulasan" i], button[aria-label*="review" i]')
-      .or(page.locator('button').filter({ hasText: /ulasan|reviews/i }))
-      .first();
-    if (!await reviewButton.count()) {
-      const firstPlace = page.locator('a[href*="/maps/place/"]').first();
-      if (await firstPlace.count()) {
-        await firstPlace.click();
-        await page.waitForTimeout(5000);
-        reviewButton = page.locator('button[aria-label*="ulasan" i], button[aria-label*="review" i]')
-          .or(page.locator('button').filter({ hasText: /ulasan|reviews/i }))
-          .first();
-      }
-    }
-    if (await reviewButton.count()) {
-      await reviewButton.click();
-      await page.waitForTimeout(4000);
-    }
-    const limitedView = /tampilan terbatas|limited view/i.test(await page.locator('body').innerText());
-    if (limitedView) {
-      writeCollectStatus(false, 'google_maps_limited_view_requires_authenticated_session');
-      throw new Error('Google Maps limited view: authenticated browser session is required');
-    }
-
-    const feed = page.locator('[role="feed"]').last();
-    if (await feed.count()) {
-      for (let index = 0; index < Number(process.env.REVIEW_MONITOR_SCROLLS || 8); index += 1) {
-        await feed.evaluate((node) => { node.scrollTop = node.scrollHeight; });
-        await page.waitForTimeout(1200);
-      }
-    }
-
-    const reviews = await page.locator('[data-review-id]').evaluateAll((nodes) => nodes.map((node) => {
-      const ratingNode = node.querySelector('[aria-label*="bintang"], [aria-label*="star"]');
-      const ratingText = ratingNode?.getAttribute('aria-label') || '';
-      const rating = Number((ratingText.match(/[1-5](?:[.,]0)?/) || [])[0]?.replace(',', '.'));
-      const reviewer = node.querySelector('.d4r55, [class*="d4r55"]')?.textContent?.trim() || '';
-      const comment = node.querySelector('.wiI7pd, [class*="wiI7pd"]')?.textContent?.trim() || '';
-      return { rating, reviewer, comment };
-    }));
-    if (!reviews.length) {
-      writeCollectStatus(false, 'google_maps_review_cards_not_observed');
-      throw new Error('Google Maps review cards were not observed');
-    }
-    const negative = reviews
-      .filter((review) => review.rating >= 1 && review.rating <= 3)
-      .map((review) => makeReview({ ...review, source: mapsUrl }));
-    const existing = readJson(reviewsFile, []);
-    const merged = dedupe([...existing, ...negative]);
-    writeJson(reviewsFile, merged);
-    writeCollectStatus(true, `observed=${reviews.length} negative=${negative.length}`);
-    console.log(`review_monitor: browser_collect observed=${reviews.length} negative=${negative.length} stored=${merged.length}`);
-  } finally {
-    await browser.close();
-  }
-}
-
-async function collectWithHttp() {
-  const response = await fetch(mapsUrl, {
-    headers: {
-      'accept-language': 'id-ID,id;q=0.9,en;q=0.7',
-      'user-agent': process.env.REVIEW_MONITOR_USER_AGENT
-        || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125 Safari/537.36',
-    },
-    signal: AbortSignal.timeout(Number(process.env.REVIEW_MONITOR_FETCH_TIMEOUT_MS || 45000)),
-  });
-  if (!response.ok) throw new Error(`Google Maps returned HTTP ${response.status}`);
-  const html = await response.text();
-  if (/captcha|unusual traffic/i.test(html)) throw new Error('Google Maps returned CAPTCHA');
-
-  const reviews = parseEmbeddedReviews(html)
+  const reviews = apiReviews
+    .map(mapApiReview)
     .filter((review) => review.rating >= 1 && review.rating <= 3);
-  if (!reviews.length) {
-    writeCollectStatus(false, 'http_parser_did_not_observe_verified_reviews');
-    throw new Error('HTTP parser did not observe verified reviews');
-  }
   const existing = readJson(reviewsFile, []);
   const merged = dedupe([...existing, ...reviews]);
   writeJson(reviewsFile, merged);
-  writeCollectStatus(true, `http_bytes=${html.length} parsed=${reviews.length}`);
-  console.log(`review_monitor: collect bytes=${html.length} parsed=${reviews.length} stored=${merged.length}`);
+  writeCollectStatus(true, `provider=google_business_profile_api observed=${apiReviews.length} negative=${reviews.length}`);
+  console.log(`review_monitor: api_collect observed=${apiReviews.length} negative=${reviews.length} stored=${merged.length}`);
 }
 
-function parseEmbeddedReviews(html) {
-  // Google Maps' public HTML is not a stable API. Extract only conservative
-  // rating/comment pairs and treat zero matches as an observable crawl result.
-  const decoded = html
-    .replace(/\\u003d/g, '=')
-    .replace(/\\u0026/g, '&')
-    .replace(/\\"/g, '"');
-  const reviews = [];
-  const patterns = [
-    /"([^"]{8,800})",\s*\[\s*(?:null,){0,4}([1-5])(?:\.0)?\s*,/g,
-    /\[\s*([1-5])(?:\.0)?\s*,\s*"([^"]{8,800})"/g,
-  ];
-  for (const pattern of patterns) {
-    for (const match of decoded.matchAll(pattern)) {
-      const rating = Number(pattern === patterns[0] ? match[2] : match[1]);
-      const comment = cleanup(pattern === patterns[0] ? match[1] : match[2]);
-      if (!comment || !/[A-Za-zÀ-ÿ]/.test(comment)) continue;
-      reviews.push(makeReview({ rating, comment, source: mapsUrl }));
-    }
-  }
-  return dedupe(reviews);
+function mapApiReview(review) {
+  const ratingMap = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+  const rating = ratingMap[review.starRating] || Number(review.starRating);
+  return makeReview({
+    externalId: review.reviewId || '',
+    rating,
+    reviewer: review.reviewer?.displayName || '',
+    comment: review.comment || '(tanpa komentar)',
+    source: review.name || `accounts/${process.env.GBP_ACCOUNT_ID}/locations/${process.env.GBP_LOCATION_ID}`,
+    createTime: review.createTime || '',
+    updateTime: review.updateTime || '',
+  });
 }
 
 async function send(testMode) {
@@ -169,7 +83,7 @@ async function send(testMode) {
     rating: 2,
     reviewer: 'Review Monitor Test',
     comment: 'Contoh review negatif untuk membuktikan jalur Telegram.',
-    source: mapsUrl || 'https://maps.google.com/',
+    source: 'google-business-profile-api',
   })] : unsentReviews();
   const text = buildMessage(reviews, testMode);
   await sendTelegram(text);
@@ -228,14 +142,17 @@ function buildMessage(reviews, testMode) {
 
 function makeReview(input) {
   const review = {
+    externalId: input.externalId || '',
     rating: Number(input.rating),
     reviewer: input.reviewer || '',
     comment: cleanup(input.comment || ''),
     source: input.source || '',
     collectedAt: new Date().toISOString(),
+    createTime: input.createTime || '',
+    updateTime: input.updateTime || '',
   };
   review.id = crypto.createHash('sha256')
-    .update(`${review.rating}|${review.reviewer}|${review.comment}`)
+    .update(review.externalId || `${review.rating}|${review.reviewer}|${review.comment}`)
     .digest('hex');
   return review;
 }
@@ -262,4 +179,43 @@ function writeJson(file, value) {
 
 function writeCollectStatus(ok, detail) {
   writeJson(statusFile, { ok, detail, at: new Date().toISOString() });
+}
+
+async function getAccessToken() {
+  const response = await fetch(process.env.GBP_TOKEN_URL || 'https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: requireEnv('GBP_CLIENT_ID'),
+      client_secret: requireEnv('GBP_CLIENT_SECRET'),
+      refresh_token: requireEnv('GBP_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload.access_token) {
+    writeCollectStatus(false, `oauth_refresh_failed:${payload.error || response.status}`);
+    throw new Error(`OAuth refresh failed: ${payload.error_description || payload.error || response.status}`);
+  }
+  return payload.access_token;
+}
+
+async function apiJson(url, accessToken) {
+  const response = await fetch(url, {
+    headers: { authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(45000),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    writeCollectStatus(false, `google_business_profile_api_failed:${response.status}`);
+    throw new Error(`Google Business Profile API failed: ${payload.error?.message || response.status}`);
+  }
+  return payload;
+}
+
+function requireEnv(name) {
+  const value = process.env[name] || '';
+  if (!value) throw new Error(`${name} is required`);
+  return value;
 }

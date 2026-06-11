@@ -63,8 +63,8 @@ Platform register
 Review monitor adalah flow kedua yang terpisah:
 
 ```text
-Google Maps Komerce
-  -> isolated browser collector jam 21:00
+Google Business Profile API
+  -> isolated API collector jam 21:00
   -> filter review 1-3 + dedupe
   -> dedicated review-monitor state
   -> Telegram report jam 09:00
@@ -83,7 +83,7 @@ Google Maps Komerce
 | Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
 | Storage / Output | PostgreSQL, file evidence, dashboard | Menjadi tempat review dan source data operasional |
 | Slack Digest | Cron/digest script, Slack channel | Mengirim ringkasan prospect jam 09:00 dari data final di DB |
-| Review Monitor | Chromium crawler, independent scheduler, dedicated state, Telegram API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
+| Review Monitor | Google Business Profile API client, independent scheduler, dedicated state, Telegram API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
 
 ## 3.1 Feature Boundary Flowchart
 
@@ -91,7 +91,7 @@ Google Maps Komerce
 flowchart TB
   subgraph shared["Shared Project Infrastructure"]
     Docker["Docker image / Compose"]
-    Browser["Chromium + Playwright"]
+    OAuth["Google OAuth credential"]
     Telegram["Telegram Bot API credential"]
   end
 
@@ -104,14 +104,14 @@ flowchart TB
 
   subgraph reviews["Google Review Monitor Feature"]
     ReviewScheduler["Independent scheduler"]
-    Collector["Deterministic browser collector"]
+    Collector["Deterministic Google Business Profile API collector"]
     ReviewState["Dedicated review-monitor state volume"]
     ReviewReport["Daily Telegram review report"]
   end
 
   Docker --> Agent
   Docker --> ReviewScheduler
-  Browser --> Collector
+  OAuth --> Collector
   Telegram --> ReviewReport
   Intake --> Agent --> Tools --> InvestigationDB
   ReviewScheduler --> Collector --> ReviewState --> ReviewReport
@@ -126,22 +126,23 @@ flowchart TB
 sequenceDiagram
   autonumber
   participant Scheduler as Review Monitor Scheduler
-  participant Browser as Chromium Collector
-  participant Maps as Google Maps
+  participant OAuth as Google OAuth
+  participant API as Business Profile Reviews API
   participant State as Dedicated Review State
   participant Telegram as Telegram Bot API
 
   Note over Scheduler,Telegram: Separate from OpenClaw investigation flow
 
-  Scheduler->>Browser: collect at 21:00 WIB
-  Browser->>Maps: Open configured Komerce place URL
-  Maps-->>Browser: Place page and review list
+  Scheduler->>OAuth: Refresh access token at 21:00 WIB
+  OAuth-->>Scheduler: Access token
+  Scheduler->>API: List reviews for configured account/location
 
   alt Authenticated review list available
-    Browser->>Browser: Extract reviews and filter rating 1-3
-    Browser->>State: Store deduplicated reviews and healthy collect status
-  else CAPTCHA, limited view, or crawl failure
-    Browser->>State: Store unhealthy collect status
+    API-->>Scheduler: Verified reviews
+    Scheduler->>Scheduler: Filter reviews and rating 1-3
+    Scheduler->>State: Store deduplicated reviews and healthy collect status
+  else OAuth or API failure
+    Scheduler->>State: Store unhealthy collect status
   end
 
   Scheduler->>State: send at 09:00 WIB

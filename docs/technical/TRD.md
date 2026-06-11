@@ -87,7 +87,7 @@ Slack channel + Sales Sheet link
 
 Isolated review monitor
         |
-        +--> 21:00 browser collect
+        +--> 21:00 Google Business Profile API collect
         +--> filter rating 1-3
         +--> dedicated state/deduplication volume
         +--> 09:00 Telegram report
@@ -98,8 +98,7 @@ AI reasoning runs inside OpenClaw. It must use the deterministic tools as eviden
 Slack delivery is not part of the AI reasoning loop. Slack reads finalized data from PostgreSQL and sends a sales-ready digest once per day.
 
 The Google review monitor is not part of the AI reasoning loop or register
-investigation. It shares the repository, Docker image, Chromium runtime, and
-Telegram integration, while keeping its service, scheduler, environment,
+investigation. It shares the repository, Docker image, and Telegram integration, while keeping its service, scheduler, environment,
 storage, and failure behavior isolated.
 
 ---
@@ -124,7 +123,6 @@ Sharing a project or runtime tool does not require sharing feature lifecycle.
 ```text
 Shared project infrastructure
 ├── Docker image and deployment
-├── Chromium/browser runtime
 ├── Telegram API credential
 └── common network/operations controls
 
@@ -135,7 +133,7 @@ Investigation feature
 └── investigation PostgreSQL tables
 
 Review monitor feature
-├── deterministic browser crawler
+├── deterministic Google Business Profile API collector
 ├── independent scheduler
 ├── dedicated state volume
 └── Telegram daily report
@@ -153,11 +151,11 @@ separate optional enrichment stage.
 | Schedule | Collect 21:00 WIB; send 09:00 WIB |
 | State | `company_detector_review_monitor` volume |
 | Configuration | `REVIEW_MONITOR_*` environment namespace |
-| Collection | Playwright + Chromium, authenticated storage-state when required |
+| Collection | Official Google Business Profile Reviews API |
 | Selection | Rating 1-3 only |
 | Dedupe | SHA-256 fingerprint of rating, reviewer, and comment |
 | Delivery | Telegram Bot API |
-| Failure safety | Send crawl-health failure; never report false empty result |
+| Failure safety | Send OAuth/API health failure; never report false empty result |
 
 ---
 

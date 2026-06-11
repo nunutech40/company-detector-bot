@@ -196,9 +196,8 @@ docs/archive/
 ```
 # Google Review Monitor
 
-- [ ] Obtain and install an authorized Google Maps authenticated Playwright
-      storage-state through a secure channel.
-- [ ] Run authenticated collector acceptance test against the direct Komerce
-      Maps place URL.
+- [ ] Obtain Google Business Profile API access and create OAuth credentials.
+- [ ] Fill `.env.review-monitor` with the approved account, location, OAuth, and Telegram values.
+- [ ] Run official API collector acceptance test against the selected personal warung location.
 - [ ] Enable the opt-in `review-monitor` Compose profile only after collection,
       deduplication, Telegram, and failure-alert checks pass.

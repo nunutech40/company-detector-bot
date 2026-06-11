@@ -2,6 +2,7 @@ info
 evidence/
 reports/
 .env
+.env.review-monitor
 .DS_Store
 node_modules/
 ~$*.xlsx

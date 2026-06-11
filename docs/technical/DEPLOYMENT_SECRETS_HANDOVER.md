@@ -40,8 +40,10 @@
 | `GOOGLE_CSE_KEY` and `GOOGLE_CSE_ID` | Optional fallback | Search provider owner | Docker `.env` / secret manager | Search fallback smoke test succeeds | Pending |
 | GitHub deploy key/token | Only if repo is private | GitHub/repository admin | Server SSH/Git credential store | `git pull` succeeds | Pending |
 | TLS certificate/private key | Depends on office infrastructure | Infrastructure engineer | Reverse proxy/certificate manager | Public HTTPS check succeeds | Pending |
-| Google Maps Playwright storage-state | Only when review monitor is enabled | Authorized Google account owner | Secure host file mounted read-only | Authenticated collect succeeds without limited view | Pending |
-| `REVIEW_MONITOR_TELEGRAM_TO` | Only when review monitor is enabled | Telegram destination owner | Docker `.env` / secret manager | Review monitor `test-send` succeeds | Pending |
+| Google OAuth client ID/secret | Only when review monitor is enabled | Google Cloud project owner | `.env.review-monitor` / secret manager | OAuth refresh succeeds | Pending |
+| Google OAuth refresh token | Only when review monitor is enabled | Authorized Business Profile manager | `.env.review-monitor` / secret manager | Reviews API collect succeeds | Pending |
+| `GBP_ACCOUNT_ID` / `GBP_LOCATION_ID` | Only when review monitor is enabled | Business Profile manager | `.env.review-monitor` | Correct profile reviews are returned | Pending |
+| Review monitor Telegram token/target | Only when review monitor is enabled | Telegram destination owner | `.env.review-monitor` / secret manager | Review monitor `test-send` succeeds | Pending |
 
 ## 4. Non-Secret Values That Must Be Confirmed
 
@@ -76,9 +78,9 @@ Do not use commands such as `cat .env` in shared screenshares or deployment repo
 Do not start the office `gateway` while the VPS gateway is polling the same
 Telegram bot.
 
-Do not enable the optional `review-monitor` Compose profile until its
-authenticated Google Maps storage-state is installed and its collect/test-send
-acceptance checks pass.
+Review monitor uses a separate `.env.review-monitor` with permission `600`.
+Do not enable the optional Compose profile until OAuth, real API collect, and
+Telegram test-send checks pass.
 
 ## 6. Sign-Off
 

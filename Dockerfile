@@ -10,7 +10,7 @@ RUN go build -o /out/company-check ./cmd/company-check \
 FROM node:24-bookworm-slim AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash ca-certificates chromium curl git \
+    && apt-get install -y --no-install-recommends bash ca-certificates curl git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -37,7 +37,7 @@ COPY --from=go-builder /out/last-report /app/go-service/bin/last-report
 
 RUN chmod +x /app/go-service/bin/company-check /app/go-service/bin/tool-status /app/go-service/bin/last-report \
     /app/openclaw_workspace/scripts/*.sh \
-    && chmod +x /app/ops/docker/*.sh /app/ops/docker/*.js \
+    && chmod +x /app/ops/docker/*.sh /app/ops/docker/*.js /app/review_monitor/*.js \
     && mkdir -p /app/openclaw_workspace/reports /app/openclaw_workspace/evidence /app/openclaw_workspace/exports /app/review_monitor/state
 
 ENV OPENCLAW_WORKSPACE=/app/openclaw_workspace

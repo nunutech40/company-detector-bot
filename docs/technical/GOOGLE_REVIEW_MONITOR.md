@@ -1,60 +1,65 @@
-# Google Business Review Monitor
+# Google Business Profile Review Monitor
 
 ## Purpose
 
-Monitor review Google Maps Komerce berbintang 1-3 sebagai fitur yang sepenuhnya
-terpisah dari Company Detector investigation flow.
+Monitor review Google Business Profile berbintang 1-3 sebagai fitur
+deterministic yang terisolasi dari Company Detector investigation flow.
+
+Development menggunakan profil warung pribadi yang dimiliki/dikelola akun
+Google personal. Production nanti mengganti credential dan location ke Google
+Business Profile Komerce tanpa mengubah kode atau flow.
 
 ```text
-21:00 WIB -> browser crawler collect + deduplicate
+21:00 WIB -> Google Business Profile API collect + deduplicate
 09:00 WIB -> Telegram daily report
 ```
-
-Monitor ini deterministic dan tidak menggunakan AI agent.
 
 ## Product Status
 
 ```text
-Implementation: complete as isolated opt-in Docker feature
+Implementation: ready for Google Business Profile API credentials
+OAuth bootstrap tools: ready
+Separate env and Compose profile: ready
 Telegram test-send: passed
-Anonymous Maps crawl: correctly rejected as limited view
-Production scheduler: intentionally disabled until authenticated crawl passes
+Real API collection: waiting for personal Google OAuth/account/location setup
+Production scheduler: disabled until API preflight passes
 ```
 
 ## Isolation Contract
 
-- Service: `review-monitor`
-- Source: `review_monitor/`
-- Scheduler: `ops/docker/review-monitor-scheduler.js`
-- State volume: `company_detector_review_monitor`
-- Environment prefix: `REVIEW_MONITOR_*`
-- Tidak membaca atau menulis investigation tables.
-- Tidak memanggil OpenClaw agent, register worker, scoring, atau prospect digest.
-- Compose profile `review-monitor` membuat fitur opt-in; normal Company Detector
-  deployment tidak akan menyalakannya.
+- Satu repository dan Docker image dengan Company Detector.
+- Service Compose terpisah: `review-monitor`.
+- Opt-in profile: normal Company Detector deployment tidak menyalakannya.
+- Secret terpisah: `.env.review-monitor`.
+- Scheduler terpisah: `ops/docker/review-monitor-scheduler.js`.
+- State/deduplication terpisah: `company_detector_review_monitor`.
+- Tidak memanggil OpenClaw/LLM.
+- Tidak membaca/menulis investigation tables.
+- Boleh berbagi Docker, Telegram integration, dan operations infrastructure.
 
 ## Architecture Flowchart
 
 ```mermaid
 flowchart LR
   subgraph shared["Shared Company Detector Project"]
-    Image["Docker image"]
-    Chromium["Chromium + Playwright"]
-    TelegramCredential["Telegram credential"]
+    Repo["Repository + Docker image"]
+    TelegramCredential["Telegram Bot API"]
   end
 
-  subgraph isolated["Isolated Review Monitor Feature"]
-    Scheduler["Review scheduler"]
-    Collector["Deterministic collector"]
-    Filter["Rating 1-3 filter + fingerprint dedupe"]
-    State["Dedicated review-monitor volume"]
+  subgraph isolated["Isolated Review Monitor"]
+    Scheduler["Independent scheduler"]
+    GBP["Google Business Profile API client"]
+    Filter["Rating 1-3 filter + reviewId dedupe"]
+    State["Dedicated state volume"]
     Reporter["Telegram reporter"]
+    Env[".env.review-monitor"]
   end
 
-  Image --> Scheduler
-  Chromium --> Collector
+  Repo --> Scheduler
+  Env --> GBP
+  Env --> Reporter
+  Scheduler --> GBP --> Filter --> State --> Reporter
   TelegramCredential --> Reporter
-  Scheduler --> Collector --> Filter --> State --> Reporter
 ```
 
 ## Runtime Sequence
@@ -63,136 +68,170 @@ flowchart LR
 sequenceDiagram
   autonumber
   participant Scheduler
-  participant Collector as Chromium Collector
-  participant Maps as Google Maps
+  participant OAuth as Google OAuth
+  participant GBP as Business Profile Reviews API
   participant State as Dedicated State
   participant Telegram
 
-  Scheduler->>Collector: 21:00 collect
-  Collector->>Maps: Open Komerce place page
-  alt Reviews available and crawl trustworthy
-    Maps-->>Collector: Review cards
-    Collector->>Collector: Filter rating 1-3 and fingerprint
-    Collector->>State: Save reviews + healthy status
-  else Limited view / CAPTCHA / failure
-    Collector->>State: Save unhealthy status
+  Scheduler->>OAuth: Refresh access token at 21:00
+  OAuth-->>Scheduler: Short-lived access token
+  Scheduler->>GBP: List reviews for account/location
+
+  alt API succeeds
+    GBP-->>Scheduler: Verified review list
+    Scheduler->>Scheduler: Filter stars 1-3 and dedupe by reviewId
+    Scheduler->>State: Save reviews + healthy collect status
+  else OAuth/API failure
+    Scheduler->>State: Save unhealthy collect status
   end
 
-  Scheduler->>State: 09:00 read unsent reviews
-  alt Healthy collection
-    State-->>Scheduler: Unsent reviews or verified empty result
-    Scheduler->>Telegram: Daily report
-  else Unhealthy or stale collection
-    Scheduler->>Telegram: Monitoring failure alert
+  Scheduler->>State: Read unsent reviews at 09:00
+  alt Latest collect healthy
+    State-->>Scheduler: New negative reviews or verified empty result
+    Scheduler->>Telegram: Send daily report
+  else Latest collect unhealthy or stale
+    Scheduler->>Telegram: Send monitoring failure alert
   end
 ```
 
-## Configuration
+## Separate Environment File
 
-```text
-REVIEW_MONITOR_BUSINESS_NAME=Komerce
-REVIEW_MONITOR_MAPS_URL=<direct Google Maps place URL>
-REVIEW_MONITOR_COLLECT_HOUR_WIB=21
-REVIEW_MONITOR_SEND_HOUR_WIB=9
-REVIEW_MONITOR_MINUTE_WIB=0
-REVIEW_MONITOR_TELEGRAM_TO=<Telegram chat ID>
-TELEGRAM_DEFAULT_BOT_TOKEN=<bot token>
-```
-
-Google Maps may return a limited view without review data to anonymous
-headless browsers. For browser-crawler mode, provide an authenticated
-Playwright storage-state file through a secure read-only mount and set:
-
-```text
-REVIEW_MONITOR_STORAGE_STATE=/run/secrets/google-maps-storage-state.json
-```
-
-Never commit the storage-state file. It contains authenticated Google session
-cookies and must be treated as a secret.
-
-Use the opt-in Compose override:
+Review monitor secrets must not be mixed into core Company Detector `.env`.
 
 ```bash
-export REVIEW_MONITOR_STORAGE_STATE_HOST=/secure/google-maps-storage-state.json
-docker compose \
-  --profile review-monitor \
-  -f compose.yml \
-  -f compose.review-monitor.yml \
-  up -d review-monitor
+cp .env.review-monitor.example .env.review-monitor
+chmod 600 .env.review-monitor
+```
+
+Required values:
+
+```text
+GBP_BUSINESS_NAME=
+GBP_ACCOUNT_ID=
+GBP_LOCATION_ID=
+GBP_CLIENT_ID=
+GBP_CLIENT_SECRET=
+GBP_REFRESH_TOKEN=
+TELEGRAM_DEFAULT_BOT_TOKEN=
+REVIEW_MONITOR_TELEGRAM_TO=
+```
+
+Never commit or share `.env.review-monitor`. OAuth client secret and refresh
+token provide access to the Google Business Profile managed by that account.
+
+## Development Setup With Personal Warung
+
+Requirements:
+
+- The personal Google account is owner/manager of the warung Business Profile.
+- The profile is verified and visible in Google Business Profile.
+- A Google Cloud project is created for development.
+- Google Business Profile APIs are enabled and API access is approved.
+- OAuth client type is Desktop App or another approved internal setup.
+
+Fill `GBP_CLIENT_ID` and `GBP_CLIENT_SECRET`, then generate the authorization
+URL:
+
+```bash
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/oauth.js auth-url
+```
+
+Open the URL, login using the personal account that manages the warung, grant
+access, then exchange the returned authorization code:
+
+```bash
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/oauth.js exchange-code '<AUTHORIZATION_CODE>'
+```
+
+Install the resulting `GBP_REFRESH_TOKEN` into `.env.review-monitor` through a
+secure editor.
+
+Discover account and location IDs:
+
+```bash
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/oauth.js list-accounts
+
+# Fill GBP_ACCOUNT_ID, then:
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/oauth.js list-locations
+```
+
+The API outputs names such as `accounts/123` and `locations/456`. Store only
+the numeric ID portions in `GBP_ACCOUNT_ID` and `GBP_LOCATION_ID`.
+
+## Acceptance And Activation
+
+Run the dedicated preflight:
+
+```bash
+chmod +x ops/docker/verify-review-monitor.sh
+./ops/docker/verify-review-monitor.sh
+```
+
+The preflight validates:
+
+- `.env.review-monitor` exists with permission `600`.
+- No placeholder remains.
+- OAuth/account/location/Telegram values exist.
+- Google Business Profile Reviews API collection succeeds.
+- Telegram test-send succeeds.
+
+Only after preflight passes:
+
+```bash
+docker compose --profile review-monitor up -d review-monitor
+docker compose logs -f review-monitor
+```
+
+## Commands
+
+```bash
+# Collect real reviews without sending:
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/monitor.js collect
+
+# Send real unsent reviews or verified-empty report:
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/monitor.js send
+
+# Telegram format test with dummy data:
+docker compose --profile review-monitor run --rm \
+  review-monitor node review_monitor/monitor.js test-send
 ```
 
 ## Safety Behavior
 
-The monitor must not report "no negative reviews" when crawling fails or Google
-returns limited data. It records the latest collect status and sends a Telegram
-failure alert instead.
+- API/OAuth failure is stored as unhealthy collection.
+- The 09:00 report sends a monitoring failure alert when collection is
+  unhealthy or older than 36 hours.
+- A verified-empty message is sent only after the official API successfully
+  returned a review list.
+- Refresh tokens and OAuth secrets never enter Git, image layers, or docs.
 
-## Commands
+## Move From Personal Warung To Komerce
 
-Test Telegram delivery with a dummy review:
+No code change is required.
 
-```bash
-docker compose run --rm review-monitor node review_monitor/monitor.js test-send
-```
+1. Create/approve the office Google Cloud project and OAuth client.
+2. Authorize using an office account that manages the Komerce Business Profile.
+3. Replace only the `.env.review-monitor` values:
+   `GBP_BUSINESS_NAME`, account/location IDs, OAuth client, refresh token.
+4. Run `verify-review-monitor.sh`.
+5. Enable the scheduler only after the production preflight passes.
 
-Collect without sending:
-
-```bash
-docker compose run --rm review-monitor node review_monitor/monitor.js collect
-```
-
-Send the stored daily report:
-
-```bash
-docker compose run --rm review-monitor node review_monitor/monitor.js send
-```
-
-Start the isolated scheduler only after authenticated crawling succeeds:
-
-```bash
-docker compose \
-  --profile review-monitor \
-  -f compose.yml \
-  -f compose.review-monitor.yml \
-  run --rm review-monitor node review_monitor/monitor.js collect
-
-docker compose \
-  --profile review-monitor \
-  -f compose.yml \
-  -f compose.review-monitor.yml \
-  up -d review-monitor
-```
+Do not reuse personal OAuth credentials for production.
 
 ## Acceptance Checklist
 
-- [ ] Direct Maps URL opens the intended Komerce location.
-- [ ] Authenticated collector does not return limited view or CAPTCHA.
-- [ ] Collector observes review cards and stores a healthy status.
+- [ ] OAuth account manages the intended development warung profile.
+- [ ] `list-accounts` and `list-locations` return expected IDs.
+- [ ] API collector returns verified reviews or verified empty result.
 - [ ] Only rating 1-3 reviews are stored.
-- [ ] Repeated collection does not duplicate fingerprints.
-- [ ] `test-send` reaches the intended Telegram chat.
-- [ ] A failed/stale collection sends a failure alert, not a false-empty report.
-- [ ] Investigation worker, OpenClaw gateway, scoring, and DB remain unchanged.
-- [ ] Scheduler logs show next collect at 21:00 and next send at 09:00 WIB.
-
-## Operational Failure Modes
-
-| Failure | Expected behavior | Operator action |
-|---|---|---|
-| Google limited view | Collect fails and records unhealthy status | Refresh authenticated storage-state |
-| CAPTCHA / unusual traffic | Collect fails; no false-empty result | Pause and review crawl method |
-| Telegram credential/target invalid | Send exits non-zero | Repair `REVIEW_MONITOR_TELEGRAM_TO` or token |
-| Storage-state expired | Failure alert at report time | Generate and install a new session file |
-| Google UI selector changes | Collect fails or observes zero cards | Update and retest collector before enabling |
-
-## Current Test Result
-
-On 10 June 2026:
-
-- VPS anonymous HTTP request reached Google Maps without CAPTCHA.
-- Browser crawler found the correct Komerce profile.
-- Google Maps returned a limited view without the review list.
-- Telegram dummy-review test succeeded.
-
-Do not enable the scheduler until an authenticated crawler session succeeds or
-the implementation is moved to the official Google Business Profile API.
+- [ ] Repeated collection deduplicates by stable Google `reviewId`.
+- [ ] Telegram `test-send` reaches the intended target.
+- [ ] Failed/stale collection sends failure alert, not false-empty result.
+- [ ] Scheduler logs show collect 21:00 and send 09:00 WIB.
+- [ ] Investigation worker/OpenClaw/database remain unchanged.

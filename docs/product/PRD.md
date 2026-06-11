@@ -58,7 +58,7 @@ Status per 21 Mei 2026:
 | Queue worker | Done | Sequential worker memproses satu job per waktu via OpenClaw agent dan finalizer |
 | Slack delivery | Done | Daily prospect digest jam 09:00 WIB; realtime raw report disabled |
 | End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
-| Google review monitor | Experimental | Service terpisah selesai; Telegram dummy test berhasil; authenticated Google Maps crawl belum tersedia |
+| Google review monitor | Experimental | Service/API client/OAuth bootstrap selesai; menunggu credential profil warung pribadi untuk real API preflight |
 
 ### Google Review Monitor Product Requirement
 
@@ -66,7 +66,7 @@ Review monitor adalah fitur dalam repository dan deployment Company Detector,
 tetapi bukan bagian dari AI company investigation.
 
 ```text
-21:00 WIB -> collect Google Maps reviews -> filter rating 1-3 -> deduplicate
+21:00 WIB -> collect Google Business Profile API reviews -> filter rating 1-3 -> deduplicate
 09:00 WIB -> send daily Telegram report
 ```
 
@@ -74,10 +74,10 @@ Requirements:
 
 - Tidak menggunakan AI agent untuk collect, filter, deduplicate, atau delivery.
 - Tidak membaca/menulis investigation jobs, scoring, atau prospect digest.
-- Boleh berbagi Docker image, browser tooling, Telegram credential, dan helper
+- Boleh berbagi Docker image, Telegram credential, dan helper
   infrastructure.
-- Tidak boleh menyimpulkan "tidak ada review negatif" ketika crawl gagal,
-  session expired, CAPTCHA muncul, atau Google memberi limited view.
+- Tidak boleh menyimpulkan "tidak ada review negatif" ketika OAuth/API gagal
+  atau hasil collect stale.
 - AI enrichment, sentiment summary, dan response draft hanya boleh menjadi
   fitur opsional setelah raw review terverifikasi.
 

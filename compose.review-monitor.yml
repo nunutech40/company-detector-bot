@@ -1,6 +1,0 @@
-services:
-  review-monitor:
-    environment:
-      REVIEW_MONITOR_STORAGE_STATE: /run/secrets/google-maps-storage-state.json
-    volumes:
-      - ${REVIEW_MONITOR_STORAGE_STATE_HOST:?Set REVIEW_MONITOR_STORAGE_STATE_HOST}:/run/secrets/google-maps-storage-state.json:ro

@@ -93,7 +93,7 @@ Engineer kantor must decide these before deployment:
 | Secrets | Use `.env`, Docker secrets, or office secret manager; do not bake secrets into image |
 | OpenClaw runtime | Bundled and pinned in the repository Docker image |
 | Worker mode | Keep `REGISTER_WORKER_MODE=agent` for production |
-| Review monitor | Keep disabled until authenticated Google Maps crawl passes |
+| Review monitor | Keep disabled until Google Business Profile API preflight passes |
 
 ## 4.1 Tools and Plugins on a Clean Server
 
@@ -114,7 +114,7 @@ Required outbound HTTPS access:
 - Slack API
 - Brave Search API
 - GitHub/Docker registries during build/deploy
-- Google Maps only when the optional review-monitor profile is enabled
+- Google OAuth and Business Profile APIs only when the optional review-monitor profile is enabled
 
 If office egress uses an allow-list or proxy, these destinations must be
 approved before acceptance testing.
@@ -151,20 +151,31 @@ DEEPSEEK_API_KEY=...
 MINIMAX_API_KEY=...
 ```
 
-Optional review monitor values:
+Optional review monitor values belong in a separate `.env.review-monitor`, not
+the core `.env`:
 
 ```text
-REVIEW_MONITOR_BUSINESS_NAME=Komerce
-REVIEW_MONITOR_MAPS_URL=<direct Komerce Google Maps place URL>
+GBP_BUSINESS_NAME=<development warung or Komerce>
+GBP_ACCOUNT_ID=...
+GBP_LOCATION_ID=...
+GBP_CLIENT_ID=...
+GBP_CLIENT_SECRET=...
+GBP_REFRESH_TOKEN=...
 REVIEW_MONITOR_COLLECT_HOUR_WIB=21
 REVIEW_MONITOR_SEND_HOUR_WIB=9
 REVIEW_MONITOR_TELEGRAM_TO=<Telegram chat ID>
-REVIEW_MONITOR_STORAGE_STATE_HOST=/secure/google-maps-storage-state.json
+TELEGRAM_DEFAULT_BOT_TOKEN=...
 ```
 
 The review monitor is isolated and opt-in. Normal `docker compose up` does not
 start it. Follow `docs/technical/GOOGLE_REVIEW_MONITOR.md` and enable only after
-its authenticated collection acceptance test succeeds.
+its Google Business Profile API preflight succeeds.
+
+```bash
+cp .env.review-monitor.example .env.review-monitor
+chmod 600 .env.review-monitor
+./ops/docker/verify-review-monitor.sh
+```
 
 If using an external PostgreSQL, update `DATABASE_URL` in `compose.yml` or add a
 production override file such as `compose.prod.yml`.
