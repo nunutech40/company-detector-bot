@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Audience:** Developer / AI agent penerus  
 **Status:** Active runtime map  
-**Last updated:** 21 Mei 2026
+**Last updated:** 11 Juni 2026
 
 ---
 
@@ -36,6 +36,7 @@ Status yang sesuai kondisi project sekarang:
 | Queue worker | Sequential worker sudah jalan; satu job per waktu |
 | Telegram delivery | Wajib untuk tiap investigasi queue/manual |
 | Slack routing | Daily prospect digest jam 09:00 sudah jalan; realtime raw report disabled |
+| Google review monitor | Fitur deterministic terisolasi; scheduler tersedia tetapi belum diaktifkan sampai authenticated crawl valid |
 
 Jalur persistence yang sudah divalidasi:
 
@@ -59,6 +60,16 @@ Platform register
   -> Slack digest jam 09:00
 ```
 
+Review monitor adalah flow kedua yang terpisah:
+
+```text
+Google Maps Komerce
+  -> isolated browser collector jam 21:00
+  -> filter review 1-3 + dedupe
+  -> dedicated review-monitor state
+  -> Telegram report jam 09:00
+```
+
 ---
 
 ## 3. Actor Boundaries
@@ -72,6 +83,77 @@ Platform register
 | Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
 | Storage / Output | PostgreSQL, file evidence, dashboard | Menjadi tempat review dan source data operasional |
 | Slack Digest | Cron/digest script, Slack channel | Mengirim ringkasan prospect jam 09:00 dari data final di DB |
+| Review Monitor | Chromium crawler, independent scheduler, dedicated state, Telegram API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
+
+## 3.1 Feature Boundary Flowchart
+
+```mermaid
+flowchart TB
+  subgraph shared["Shared Project Infrastructure"]
+    Docker["Docker image / Compose"]
+    Browser["Chromium + Playwright"]
+    Telegram["Telegram Bot API credential"]
+  end
+
+  subgraph investigation["Company Investigation Feature"]
+    Intake["Register / manual input"]
+    Agent["OpenClaw agent + LLM"]
+    Tools["Go investigation tools"]
+    InvestigationDB["Investigation PostgreSQL tables"]
+  end
+
+  subgraph reviews["Google Review Monitor Feature"]
+    ReviewScheduler["Independent scheduler"]
+    Collector["Deterministic browser collector"]
+    ReviewState["Dedicated review-monitor state volume"]
+    ReviewReport["Daily Telegram review report"]
+  end
+
+  Docker --> Agent
+  Docker --> ReviewScheduler
+  Browser --> Collector
+  Telegram --> ReviewReport
+  Intake --> Agent --> Tools --> InvestigationDB
+  ReviewScheduler --> Collector --> ReviewState --> ReviewReport
+
+  Collector -. "must not call" .-> Agent
+  ReviewState -. "must not write" .-> InvestigationDB
+```
+
+## 3.2 Google Review Monitor Sequence
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Scheduler as Review Monitor Scheduler
+  participant Browser as Chromium Collector
+  participant Maps as Google Maps
+  participant State as Dedicated Review State
+  participant Telegram as Telegram Bot API
+
+  Note over Scheduler,Telegram: Separate from OpenClaw investigation flow
+
+  Scheduler->>Browser: collect at 21:00 WIB
+  Browser->>Maps: Open configured Komerce place URL
+  Maps-->>Browser: Place page and review list
+
+  alt Authenticated review list available
+    Browser->>Browser: Extract reviews and filter rating 1-3
+    Browser->>State: Store deduplicated reviews and healthy collect status
+  else CAPTCHA, limited view, or crawl failure
+    Browser->>State: Store unhealthy collect status
+  end
+
+  Scheduler->>State: send at 09:00 WIB
+  alt Latest collect status healthy
+    State-->>Scheduler: Unsent negative reviews or verified empty result
+    Scheduler->>Telegram: Send daily review report
+    Scheduler->>State: Mark review fingerprints sent
+  else Latest collect unhealthy or stale
+    State-->>Scheduler: Failure detail
+    Scheduler->>Telegram: Send monitoring failure alert
+  end
+```
 
 ---
 

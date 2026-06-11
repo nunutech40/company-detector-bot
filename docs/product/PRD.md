@@ -1,9 +1,9 @@
 # Product Requirements Document
 
 **Project:** AI Company Detection Agent  
-**Version:** v7  
+**Version:** v8
 **Status:** Active product source of truth  
-**Last updated:** 21 Mei 2026
+**Last updated:** 11 Juni 2026
 
 ---
 
@@ -31,6 +31,8 @@ Hasil investigasi disimpan dalam dua bentuk:
 - Menyediakan dashboard internal untuk tim Komerce.
 - Menyediakan Webhook API agar platform register bisa memicu investigasi otomatis.
 - Menjaga biaya AI tetap terkendali dengan stop condition, token tracking, dan fallback deterministik.
+- Memantau review Google Business Komerce berbintang 1-3 melalui fitur
+  deterministic yang terisolasi dari investigation flow.
 
 ## 3. Non-Goals
 
@@ -56,6 +58,28 @@ Status per 21 Mei 2026:
 | Queue worker | Done | Sequential worker memproses satu job per waktu via OpenClaw agent dan finalizer |
 | Slack delivery | Done | Daily prospect digest jam 09:00 WIB; realtime raw report disabled |
 | End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
+| Google review monitor | Experimental | Service terpisah selesai; Telegram dummy test berhasil; authenticated Google Maps crawl belum tersedia |
+
+### Google Review Monitor Product Requirement
+
+Review monitor adalah fitur dalam repository dan deployment Company Detector,
+tetapi bukan bagian dari AI company investigation.
+
+```text
+21:00 WIB -> collect Google Maps reviews -> filter rating 1-3 -> deduplicate
+09:00 WIB -> send daily Telegram report
+```
+
+Requirements:
+
+- Tidak menggunakan AI agent untuk collect, filter, deduplicate, atau delivery.
+- Tidak membaca/menulis investigation jobs, scoring, atau prospect digest.
+- Boleh berbagi Docker image, browser tooling, Telegram credential, dan helper
+  infrastructure.
+- Tidak boleh menyimpulkan "tidak ada review negatif" ketika crawl gagal,
+  session expired, CAPTCHA muncul, atau Google memberi limited view.
+- AI enrichment, sentiment summary, dan response draft hanya boleh menjadi
+  fitur opsional setelah raw review terverifikasi.
 
 ---
 

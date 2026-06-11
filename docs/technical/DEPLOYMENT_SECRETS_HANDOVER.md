@@ -40,6 +40,8 @@
 | `GOOGLE_CSE_KEY` and `GOOGLE_CSE_ID` | Optional fallback | Search provider owner | Docker `.env` / secret manager | Search fallback smoke test succeeds | Pending |
 | GitHub deploy key/token | Only if repo is private | GitHub/repository admin | Server SSH/Git credential store | `git pull` succeeds | Pending |
 | TLS certificate/private key | Depends on office infrastructure | Infrastructure engineer | Reverse proxy/certificate manager | Public HTTPS check succeeds | Pending |
+| Google Maps Playwright storage-state | Only when review monitor is enabled | Authorized Google account owner | Secure host file mounted read-only | Authenticated collect succeeds without limited view | Pending |
+| `REVIEW_MONITOR_TELEGRAM_TO` | Only when review monitor is enabled | Telegram destination owner | Docker `.env` / secret manager | Review monitor `test-send` succeeds | Pending |
 
 ## 4. Non-Secret Values That Must Be Confirmed
 
@@ -73,6 +75,10 @@ docker compose up -d gateway
 Do not use commands such as `cat .env` in shared screenshares or deployment reports.
 Do not start the office `gateway` while the VPS gateway is polling the same
 Telegram bot.
+
+Do not enable the optional `review-monitor` Compose profile until its
+authenticated Google Maps storage-state is installed and its collect/test-send
+acceptance checks pass.
 
 ## 6. Sign-Off
 

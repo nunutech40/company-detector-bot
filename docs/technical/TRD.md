@@ -1,9 +1,9 @@
 # Technical Requirements Document
 
 **Project:** AI Company Detection Agent  
-**Version:** v7  
+**Version:** v8
 **Status:** Active technical source of truth  
-**Last updated:** 21 Mei 2026
+**Last updated:** 11 Juni 2026
 
 ---
 
@@ -21,6 +21,7 @@ Primary responsibilities:
 - Expose operator dashboard and platform webhook API.
 - Queue platform register payloads and process them sequentially.
 - Send one daily Slack prospect digest at 09:00 Asia/Jakarta.
+- Run an isolated deterministic Google Business review monitor.
 
 ---
 
@@ -83,11 +84,23 @@ Slack prospect digest reads PostgreSQL company_detection
         |
         v
 Slack channel + Sales Sheet link
+
+Isolated review monitor
+        |
+        +--> 21:00 browser collect
+        +--> filter rating 1-3
+        +--> dedicated state/deduplication volume
+        +--> 09:00 Telegram report
 ```
 
 AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
 
 Slack delivery is not part of the AI reasoning loop. Slack reads finalized data from PostgreSQL and sends a sales-ready digest once per day.
+
+The Google review monitor is not part of the AI reasoning loop or register
+investigation. It shares the repository, Docker image, Chromium runtime, and
+Telegram integration, while keeping its service, scheduler, environment,
+storage, and failure behavior isolated.
 
 ---
 
@@ -99,8 +112,52 @@ Slack delivery is not part of the AI reasoning loop. Slack reads finalized data 
 | `openclaw_workspace/` | Agent prompt, standing orders, tool catalog, runtime scripts |
 | `dashboard/` | Express + EJS internal dashboard |
 | `webhook/` | Express webhook API |
+| `review_monitor/` | Isolated deterministic Google Business review collector and Telegram reporter |
+| `ops/docker/review-monitor-scheduler.js` | Independent 21:00 collect and 09:00 send scheduler |
 | `docs/technical/migration_v1.sql` | PostgreSQL schema |
 | `docs/` | Product and technical documentation |
+
+## 3.1 Shared Tools And Isolation
+
+Sharing a project or runtime tool does not require sharing feature lifecycle.
+
+```text
+Shared project infrastructure
+├── Docker image and deployment
+├── Chromium/browser runtime
+├── Telegram API credential
+└── common network/operations controls
+
+Investigation feature
+├── OpenClaw agent + LLM
+├── register worker
+├── deterministic Go tools
+└── investigation PostgreSQL tables
+
+Review monitor feature
+├── deterministic browser crawler
+├── independent scheduler
+├── dedicated state volume
+└── Telegram daily report
+```
+
+Review monitor must not call OpenClaw, consume LLM credits, or modify
+investigation state unless a future requirement explicitly introduces a
+separate optional enrichment stage.
+
+## 3.2 Review Monitor Runtime Contract
+
+| Item | Contract |
+|---|---|
+| Compose service | `review-monitor` |
+| Schedule | Collect 21:00 WIB; send 09:00 WIB |
+| State | `company_detector_review_monitor` volume |
+| Configuration | `REVIEW_MONITOR_*` environment namespace |
+| Collection | Playwright + Chromium, authenticated storage-state when required |
+| Selection | Rating 1-3 only |
+| Dedupe | SHA-256 fingerprint of rating, reviewer, and comment |
+| Delivery | Telegram Bot API |
+| Failure safety | Send crawl-health failure; never report false empty result |
 
 ---
 

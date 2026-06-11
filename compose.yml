@@ -175,6 +175,7 @@ services:
       - company_detector_exports:/app/dashboard/public/exports
 
   review-monitor:
+    profiles: ["review-monitor"]
     build: .
     restart: unless-stopped
     environment:

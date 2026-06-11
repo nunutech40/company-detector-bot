@@ -194,3 +194,11 @@ Archived planning docs live in:
 ```text
 docs/archive/
 ```
+# Google Review Monitor
+
+- [ ] Obtain and install an authorized Google Maps authenticated Playwright
+      storage-state through a secure channel.
+- [ ] Run authenticated collector acceptance test against the direct Komerce
+      Maps place URL.
+- [ ] Enable the opt-in `review-monitor` Compose profile only after collection,
+      deduplication, Telegram, and failure-alert checks pass.

@@ -1,7 +1,7 @@
 # Fetch Context
 
 **Purpose:** Fast orientation for any AI agent continuing this project.  
-**Last updated:** 4 Juni 2026
+**Last updated:** 11 Juni 2026
 
 ---
 
@@ -33,6 +33,7 @@ Canonical docs:
 9. `docs/handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx` — office engineer deployment handover document.
 10. `BACKLOG.md` — status and next priorities.
 11. `docs/technical/VPS_DOCKER_PARITY_AUDIT.md` — mandatory VPS-versus-Docker parity gate before office cutover.
+12. `docs/technical/GOOGLE_REVIEW_MONITOR.md` — isolated deterministic Google review monitor.
 
 Runtime instructions:
 
@@ -90,11 +91,22 @@ Slack digest script reads PostgreSQL
         |
         v
 Sales-ready prospect digest + Sales Sheet link
+
+Isolated Google review monitor
+        |
+        +--> collect Google Maps reviews at 21:00
+        +--> filter rating 1-3 + dedicated state
+        +--> Telegram report at 09:00
 ```
 
 Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.
 
 Important boundary: AI/OpenClaw does not write directly to storage or Slack. Finalizer/db_writer writes results. Slack digest reads finalized DB rows later.
+
+Important review-monitor boundary: it is one feature in the same project and
+shares Docker/browser/Telegram infrastructure, but it does not call OpenClaw,
+use an LLM, or touch investigation tables. Do not enable its scheduler until
+authenticated Google Maps crawling succeeds.
 
 Current production AI provider:
 
@@ -123,6 +135,7 @@ Docker office deployment checks:
 | Dashboard | 3001 | `dashboard/` | Express + EJS |
 | Webhook API | 3002 | `webhook/` | Express enqueue-only API backed by PostgreSQL queue |
 | PostgreSQL | 5432 | VPS service | DB `company_detection` |
+| Review monitor | none | `review_monitor/` + Compose `review-monitor` | Isolated scheduler/state; currently not enabled on VPS |
 
 VPS:
 

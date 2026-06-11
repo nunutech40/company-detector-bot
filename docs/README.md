@@ -13,6 +13,7 @@ Dokumentasi aktif dibuat sederhana:
 9. [Owner Office Deployment Guide](operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md) — panduan pemilik sistem untuk menyiapkan, menyerahkan, dan menerima deployment.
 10. [Office Docker Deployment Handover](handover/COMPANY_DETECTOR_DOCKER_DEPLOYMENT_HANDOVER.docx) — dokumen Word resmi yang diserahkan ke engineer kantor.
 11. [Backlog](../BACKLOG.md) — status kerja berikutnya.
+12. [Google Business Review Monitor](technical/GOOGLE_REVIEW_MONITOR.md) — fitur deterministic terisolasi untuk review Google bintang 1-3.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -37,6 +38,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Tools And Algorithms](technical/TOOLS_AND_ALGORITHMS.md) | Referensi tool dan algoritma |
 | [Token Optimization Test Log](technical/TOKEN_OPTIMIZATION_TEST_LOG.md) | Catatan AB test token, hasil gagal/ditolak, dan arah optimasi berikutnya |
 | [Sales Sheet Sync Plan](technical/SALES_SHEET_SYNC_PLAN.md) | Browser Sales Sheet untuk sales follow-up, mapping field, dan fallback export |
+| [Google Business Review Monitor](technical/GOOGLE_REVIEW_MONITOR.md) | Scope, isolation contract, flowchart, sequence, operations, dan acceptance fitur review monitor |
 | [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL awal: investigation jobs, reports, LLM calls |
 | [Migration v2](technical/migration_v2_webhook_slack_queue.sql) | Schema webhook queue dan Slack daily digest tracking |
 

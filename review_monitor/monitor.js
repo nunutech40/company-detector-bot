@@ -92,6 +92,10 @@ async function collectWithBrowser() {
       const comment = node.querySelector('.wiI7pd, [class*="wiI7pd"]')?.textContent?.trim() || '';
       return { rating, reviewer, comment };
     }));
+    if (!reviews.length) {
+      writeCollectStatus(false, 'google_maps_review_cards_not_observed');
+      throw new Error('Google Maps review cards were not observed');
+    }
     const negative = reviews
       .filter((review) => review.rating >= 1 && review.rating <= 3)
       .map((review) => makeReview({ ...review, source: mapsUrl }));
@@ -120,6 +124,10 @@ async function collectWithHttp() {
 
   const reviews = parseEmbeddedReviews(html)
     .filter((review) => review.rating >= 1 && review.rating <= 3);
+  if (!reviews.length) {
+    writeCollectStatus(false, 'http_parser_did_not_observe_verified_reviews');
+    throw new Error('HTTP parser did not observe verified reviews');
+  }
   const existing = readJson(reviewsFile, []);
   const merged = dedupe([...existing, ...reviews]);
   writeJson(reviewsFile, merged);

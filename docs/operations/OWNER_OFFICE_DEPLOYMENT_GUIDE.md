@@ -34,6 +34,9 @@ Secret diberikan melalui password manager atau secure channel yang disetujui.
 - [ ] Siapkan final PostgreSQL dump dari VPS lama agar data investigasi tidak hilang.
 - [ ] Tentukan waktu cutover agar VPS lama dan server kantor tidak memproses job bersamaan.
 - [ ] Siapkan satu data nyata untuk acceptance test: email wajib; nama, brand, dan nomor WA opsional.
+- [ ] Putuskan apakah fitur opsional Google Review Monitor akan diaktifkan.
+- [ ] Jika diaktifkan, siapkan direct Google Maps URL, target Telegram, dan
+      authenticated browser storage-state melalui secure channel.
 
 ## Secret yang Harus Diberikan Secara Aman
 
@@ -129,6 +132,23 @@ no_hp: 08123456789
 Cari evidence bisnis dari public web dan social media yang tersedia.
 Simpan hasil investigasi sesuai standing orders.
 ```
+
+### Acceptance Opsional: Google Review Monitor
+
+Review monitor tetap satu project, tetapi service, scheduler, state, dan
+failure behavior-nya terisolasi dari investigation flow. Jangan menerimanya
+hanya karena dummy Telegram berhasil.
+
+- [ ] Engineer menjalankan authenticated collect dan collector melihat review cards.
+- [ ] Review rating 1-3 tersimpan tanpa duplikasi.
+- [ ] `test-send` masuk ke target Telegram yang benar.
+- [ ] Limited view/CAPTCHA menghasilkan failure alert, bukan laporan kosong.
+- [ ] Scheduler menunjukkan collect 21:00 dan send 09:00 WIB.
+- [ ] Investigation worker dan OpenClaw tetap sehat setelah profile diaktifkan.
+
+Fitur ini opt-in dan tidak menghalangi cutover Company Detector utama. Bila
+authenticated Google Maps session belum siap, biarkan profile
+`review-monitor` mati.
 
 ## Keputusan Cutover
 

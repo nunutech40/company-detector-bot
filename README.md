@@ -68,6 +68,9 @@ Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 | `digest` | Daily Slack prospect digest |
 | `review-monitor` | Isolated Google Maps review 1-3 collector and Telegram report scheduler |
 
+`review-monitor` menggunakan Compose profile opt-in. Normal deployment tidak
+menyalakannya sampai authenticated Google Maps crawl lolos acceptance test.
+
 Application ports default ke loopback-only:
 
 ```text
@@ -189,6 +192,7 @@ go test ./...
 .
 ├── Dockerfile
 ├── compose.yml
+├── compose.review-monitor.yml
 ├── .env.docker.example
 ├── README.md
 ├── FETCH_CONTEXT.md
@@ -207,6 +211,7 @@ go test ./...
 ├── go-service/
 ├── dashboard/
 ├── webhook/
+├── review_monitor/
 ├── ops/docker/
 └── openclaw_workspace/
     ├── AGENTS.md
