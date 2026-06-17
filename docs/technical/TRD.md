@@ -1,9 +1,9 @@
 # Technical Requirements Document
 
 **Project:** AI Company Detection Agent  
-**Version:** v8
+**Version:** v9
 **Status:** Active technical source of truth  
-**Last updated:** 11 Juni 2026
+**Last updated:** 15 Juni 2026
 
 ---
 
@@ -21,7 +21,8 @@ Primary responsibilities:
 - Expose operator dashboard and platform webhook API.
 - Queue platform register payloads and process them sequentially.
 - Send one daily Slack prospect digest at 09:00 Asia/Jakarta.
-- Run an isolated deterministic Google Business review monitor.
+- Run an isolated Unified Negative Feedback Monitor:
+  deterministic Google Business reviews and AI-classified Meta comments.
 
 ---
 
@@ -87,19 +88,26 @@ Slack channel + Sales Sheet link
 
 Isolated review monitor
         |
-        +--> 21:00 Google Business Profile API collect
-        +--> filter rating 1-3
-        +--> dedicated state/deduplication volume
-        +--> 09:00 Slack report
+        +--> Google Pub/Sub + optional API reconciliation
+        +--> Meta Webhooks + optional API reconciliation
+        +--> Google rating 1-3 deterministic decision
+        +--> Meta structured AI classifier
+        +--> dedicated feedback storage/queues
+        +--> Telegram result for every completed event
+        +--> immediate Slack alert only for negative feedback
 ```
 
 AI reasoning runs inside OpenClaw. It must use the deterministic tools as evidence sources and must finish by calling `finish_investigation.sh`.
 
 Slack delivery is not part of the AI reasoning loop. Slack reads finalized data from PostgreSQL and sends a sales-ready digest once per day.
 
-The Google review monitor is not part of the AI reasoning loop or register
-investigation. It shares the repository, Docker image, and Slack integration, while keeping its service, scheduler, environment,
-storage, and failure behavior isolated.
+The Unified Negative Feedback Monitor is not part of the Company Detector AI
+reasoning loop or register investigation. It shares the repository, Docker
+image, PostgreSQL infrastructure, and Slack integration while keeping its
+service, queues, schema, environment, and failure behavior isolated.
+
+Google review decisions never call AI. Meta comments use a narrow structured
+AI classifier, not OpenClaw/ReAct/tool calling.
 
 ---
 
@@ -111,8 +119,9 @@ storage, and failure behavior isolated.
 | `openclaw_workspace/` | Agent prompt, standing orders, tool catalog, runtime scripts |
 | `dashboard/` | Express + EJS internal dashboard |
 | `webhook/` | Express webhook API |
-| `review_monitor/` | Isolated deterministic Google Business review collector and Slack reporter |
+| `review_monitor/` | Current isolated deterministic Google Business review collector and Slack reporter |
 | `ops/docker/review-monitor-scheduler.js` | Independent 21:00 collect and 09:00 send scheduler |
+| `docs/technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md` | Active Meta polling MVP + future Google/webhook monitoring architecture |
 | `docs/technical/migration_v1.sql` | PostgreSQL schema |
 | `docs/` | Product and technical documentation |
 
@@ -132,30 +141,32 @@ Investigation feature
 ├── deterministic Go tools
 └── investigation PostgreSQL tables
 
-Review monitor feature
-├── deterministic Google Business Profile API collector
-├── independent scheduler
-├── dedicated state volume
-└── Slack daily report
+Feedback monitor feature
+├── Google Pub/Sub/API connector + deterministic rating rule
+├── Meta Webhook/API connector + structured AI classifier
+├── independent ingestion/classification/delivery queues
+├── dedicated feedback schema/state
+└── Telegram all results + immediate negative-only Slack alerts
 ```
 
-Review monitor must not call OpenClaw, consume LLM credits, or modify
-investigation state unless a future requirement explicitly introduces a
-separate optional enrichment stage.
+Feedback monitor must not call OpenClaw or modify investigation state. Only
+Meta comments may consume LLM credits through the dedicated structured
+classifier. Google reviews must never consume LLM credits.
 
-## 3.2 Review Monitor Runtime Contract
+## 3.2 Current And Target Feedback Monitor Runtime Contract
 
 | Item | Contract |
 |---|---|
 | Compose service | `review-monitor` |
-| Schedule | Collect 21:00 WIB; send 09:00 WIB |
+| Trigger | Event-driven through Google Pub/Sub and Meta Webhooks; optional reconciliation only |
 | State | `company_detector_review_monitor` volume |
 | Configuration | `REVIEW_MONITOR_*` environment namespace |
-| Collection | Official Google Business Profile Reviews API |
-| Selection | Rating 1-3 only |
+| Collection | Current: Meta Graph API polling every 15 minutes. Future: Google Business Profile API/PubSub and Meta Webhooks |
+| Selection | Google rating 1-3; Meta validated AI classification |
 | Dedupe | SHA-256 fingerprint of rating, reviewer, and comment |
-| Delivery | Slack Web API using shared Company Detector bot |
-| Failure safety | Send OAuth/API health failure; never report false empty result |
+| Delivery | Telegram every completed result; Slack Web API only for negative feedback |
+| Failure safety | Never report false empty/non-negative; AI provider/auth/model failures remain replayable as `blocked_provider` |
+| AI recovery | Config/health-change sweep and operator replay requeue failed Meta jobs idempotently |
 
 ---
 

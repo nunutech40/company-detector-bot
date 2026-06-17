@@ -1,0 +1,18 @@
+{
+  "name": "company-detector-feedback-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "ingress": "node app.js",
+    "worker": "node worker.js",
+    "worker:once": "node worker.js --once",
+    "simulate:google": "node worker.js simulate-google",
+    "simulate:meta": "node worker.js simulate-meta",
+    "replay": "node worker.js replay-blocked",
+    "status": "node worker.js status"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.21.0"
+  }
+}

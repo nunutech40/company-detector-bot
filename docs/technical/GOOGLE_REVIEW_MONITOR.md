@@ -1,9 +1,19 @@
 # Google Business Profile Review Monitor
 
+> This document describes the current Google-only implementation and
+> operations. The target cross-platform architecture is documented in
+> `NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md`. Current negative feedback production MVP uses Meta Graph polling; this Google path remains pending API approval.
+
 ## Purpose
 
 Monitor review Google Business Profile berbintang 1-3 sebagai fitur
 deterministic yang terisolasi dari Company Detector investigation flow.
+
+Dalam target Unified Negative Feedback Monitor, modul ini menjadi Google
+connector. Keputusan negatif Google tetap berdasarkan rating 1-3 dan tidak
+boleh memakai AI. Google Pub/Sub notifications menjadi primary event path,
+sedangkan API reconciliation hanya menjadi optional recovery untuk event yang
+terlewat.
 
 Development menggunakan profil warung pribadi yang dimiliki/dikelola akun
 Google personal. Production nanti mengganti credential dan location ke Google
@@ -36,6 +46,25 @@ Production scheduler: disabled until API preflight passes
 - Tidak memanggil OpenClaw/LLM.
 - Tidak membaca/menulis investigation tables.
 - Boleh berbagi Docker, Slack integration, dan operations infrastructure.
+- Kelak boleh berbagi normalized feedback database dengan Meta monitor, tetapi
+  tetap tidak boleh menyentuh investigation tables.
+- Tidak boleh memanggil Meta AI classifier.
+
+## Target Migration
+
+Current implementation memakai official API polling dan dedicated JSON state.
+Setelah Google Business Profile API access tersedia, migrasi dilakukan
+bertahap:
+
+1. Validasi collector/API saat ini terhadap profil development.
+2. Tambahkan dedicated feedback PostgreSQL tables.
+3. Migrasikan dedupe/sent state dari JSON ke feedback tables.
+4. Tambahkan Google Pub/Sub notification receiver untuk `NEW_REVIEW` dan
+   `UPDATED_REVIEW`.
+5. Kirim setiap hasil review yang selesai ke Telegram.
+6. Kirim langsung ke Slack monitoring hanya jika rating 1-3.
+7. Gunakan scheduled reconciliation hanya sebagai optional recovery.
+8. Pertahankan rating 1-3 sebagai satu-satunya negative decision rule.
 
 ## Architecture Flowchart
 

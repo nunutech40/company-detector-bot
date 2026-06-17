@@ -44,6 +44,21 @@
 | Google OAuth refresh token | Only when review monitor is enabled | Authorized Business Profile manager | `.env.review-monitor` / secret manager | Reviews API collect succeeds | Pending |
 | `GBP_ACCOUNT_ID` / `GBP_LOCATION_ID` | Only when review monitor is enabled | Business Profile manager | `.env.review-monitor` | Correct profile reviews are returned | Pending |
 | `REVIEW_MONITOR_SLACK_CHANNEL` | Only when review monitor is enabled | Slack/channel owner | `.env.review-monitor` | Shared Slack bot `test-send` reaches `monitor-negatif-company` | Pending |
+| `META_ACCESS_TOKEN` | Yes for Meta feedback monitor | Meta Business/App owner | `.env.feedback-monitor` / secret manager | `sync-meta-pages` returns owned FB Pages and IG accounts | Pending |
+| `META_PAGE_IDS` | Optional allow-list | Meta Business/App owner | `.env.feedback-monitor` | Poller only monitors intended pages | Pending |
+| `FEEDBACK_AI_API_KEY` / `FEEDBACK_AI_BASE_URL` / `FEEDBACK_AI_MODEL` | Yes for Meta comment classifier | AI/provider owner | `.env.feedback-monitor` / secret manager | Test comment is classified and delivered to Telegram | Pending |
+| `FEEDBACK_TELEGRAM_TO` | Yes for feedback monitor | Telegram destination owner | `.env.feedback-monitor` | Non-negative test comment reaches Telegram | Pending |
+| `META_WEBHOOK_VERIFY_TOKEN` / `META_APP_SECRET` | Only if Meta webhook is enabled | Meta App owner | `.env.feedback-monitor` / secret manager | Meta webhook verification and signature validation pass | Pending |
+| `META_ACCESS_TOKEN` | Yes for Meta feedback monitor | Meta Business/App owner | `.env.feedback-monitor` / secret manager | `sync-meta-pages` returns owned FB Pages and IG accounts | Pending |
+| `META_PAGE_IDS` | Optional allow-list | Meta Business/App owner | `.env.feedback-monitor` | Poller only monitors intended pages | Pending |
+| `FEEDBACK_AI_API_KEY` / `FEEDBACK_AI_BASE_URL` / `FEEDBACK_AI_MODEL` | Yes for Meta comment classifier | AI/provider owner | `.env.feedback-monitor` / secret manager | Test comment is classified and delivered to Telegram | Pending |
+| `FEEDBACK_TELEGRAM_TO` | Yes for feedback monitor | Telegram destination owner | `.env.feedback-monitor` | Non-negative test comment reaches Telegram | Pending |
+| `META_WEBHOOK_VERIFY_TOKEN` / `META_APP_SECRET` | Only if Meta webhook is enabled | Meta App owner | `.env.feedback-monitor` / secret manager | Meta webhook verification and signature validation pass | Pending |
+| `META_ACCESS_TOKEN` | Yes for Meta feedback monitor | Meta Business/App owner | `.env.feedback-monitor` / secret manager | `sync-meta-pages` returns owned FB Pages and IG accounts | Pending |
+| `META_PAGE_IDS` | Optional allow-list | Meta Business/App owner | `.env.feedback-monitor` | Poller only monitors intended pages | Pending |
+| `FEEDBACK_AI_API_KEY` / `FEEDBACK_AI_BASE_URL` / `FEEDBACK_AI_MODEL` | Yes for Meta comment classifier | AI/provider owner | `.env.feedback-monitor` / secret manager | Test comment is classified and delivered to Telegram | Pending |
+| `FEEDBACK_TELEGRAM_TO` | Yes for feedback monitor | Telegram destination owner | `.env.feedback-monitor` | Non-negative test comment reaches Telegram | Pending |
+| `META_WEBHOOK_VERIFY_TOKEN` / `META_APP_SECRET` | Only if Meta webhook is enabled | Meta App owner | `.env.feedback-monitor` / secret manager | Meta webhook verification and signature validation pass | Pending |
 
 ## 4. Non-Secret Values That Must Be Confirmed
 
@@ -81,6 +96,21 @@ Telegram bot.
 Review monitor uses a separate `.env.review-monitor` with permission `600`.
 Do not enable the optional Compose profile until OAuth, real API collect, and
 Telegram test-send checks pass.
+
+Negative feedback monitor uses `.env.feedback-monitor` with permission `600`.
+Current production source is Meta Graph API polling, so `META_ACCESS_TOKEN` is
+required. `META_WEBHOOK_VERIFY_TOKEN` and `META_APP_SECRET` are only required
+when Meta webhook callback/subscription is activated.
+
+Negative feedback monitor uses `.env.feedback-monitor` with permission `600`.
+Current production source is Meta Graph API polling, so `META_ACCESS_TOKEN` is
+required. `META_WEBHOOK_VERIFY_TOKEN` and `META_APP_SECRET` are only required
+when Meta webhook callback/subscription is activated.
+
+Negative feedback monitor uses `.env.feedback-monitor` with permission `600`.
+Current production source is Meta Graph API polling, so `META_ACCESS_TOKEN` is
+required. `META_WEBHOOK_VERIFY_TOKEN` and `META_APP_SECRET` are only required
+when Meta webhook callback/subscription is activated.
 
 ## 6. Sign-Off
 

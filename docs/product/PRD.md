@@ -1,9 +1,9 @@
 # Product Requirements Document
 
 **Project:** AI Company Detection Agent  
-**Version:** v8
+**Version:** v9
 **Status:** Active product source of truth  
-**Last updated:** 11 Juni 2026
+**Last updated:** 15 Juni 2026
 
 ---
 
@@ -33,6 +33,9 @@ Hasil investigasi disimpan dalam dua bentuk:
 - Menjaga biaya AI tetap terkendali dengan stop condition, token tracking, dan fallback deterministik.
 - Memantau review Google Business Komerce berbintang 1-3 melalui fitur
   deterministic yang terisolasi dari investigation flow.
+- Memantau komentar negatif Facebook Page, Instagram Professional Account,
+  dan komentar iklan yang dapat diakses melalui Meta API menggunakan AI
+  classifier terstruktur yang terisolasi.
 
 ## 3. Non-Goals
 
@@ -45,7 +48,7 @@ Hasil investigasi disimpan dalam dua bentuk:
 
 ## 4. Current Product Status
 
-Status per 21 Mei 2026:
+Status per 15 Juni 2026:
 
 | Area | Status | Catatan |
 |---|---|---|
@@ -58,7 +61,8 @@ Status per 21 Mei 2026:
 | Queue worker | Done | Sequential worker memproses satu job per waktu via OpenClaw agent dan finalizer |
 | Slack delivery | Done | Daily prospect digest jam 09:00 WIB; realtime raw report disabled |
 | End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
-| Google review monitor | Experimental | Service/API client/OAuth bootstrap selesai; menunggu credential profil warung pribadi untuk real API preflight |
+| Google review monitor | Waiting approval | Service/API client/OAuth bootstrap selesai; Google Business Profile API access masih menunggu approval |
+| Meta negative comment monitor | Planned | Architecture defined; waiting Meta Business/App access and implementation |
 
 ### Google Review Monitor Product Requirement
 
@@ -66,8 +70,11 @@ Review monitor adalah fitur dalam repository dan deployment Company Detector,
 tetapi bukan bagian dari AI company investigation.
 
 ```text
-21:00 WIB -> collect Google Business Profile API reviews -> filter rating 1-3 -> deduplicate
-09:00 WIB -> send daily Slack report
+Google Pub/Sub review event
+-> durable queue
+-> rating 1-3 deterministic classification
+-> Telegram result for every review
+-> Slack monitoring only when rating 1-3
 ```
 
 Requirements:
@@ -80,6 +87,39 @@ Requirements:
   atau hasil collect stale.
 - AI enrichment, sentiment summary, dan response draft hanya boleh menjadi
   fitur opsional setelah raw review terverifikasi.
+
+### Unified Negative Feedback Monitor Requirement
+
+Google review monitor dan Meta comment monitor berada dalam satu operational
+feature dengan normalized feedback inbox dan Slack destination yang sama,
+tetapi memakai decision path berbeda:
+
+```text
+Google review -> rating 1-3 -> negative, tanpa AI
+Meta comment -> structured AI classifier -> negative/non-negative/needs-review
+```
+
+Requirements:
+
+- Event-driven melalui Google Pub/Sub dan Meta Webhooks, dengan optional
+  scheduled reconciliation hanya sebagai recovery backup.
+- Tidak memakai OpenClaw agent atau investigation tools.
+- AI hanya digunakan untuk klasifikasi komentar Meta.
+- Duplicate event tidak boleh menghasilkan duplicate alert.
+- AI/API/provider failure tidak boleh dianggap non-negative atau empty.
+- Komentar Meta yang gagal diklasifikasikan karena API key expired, provider
+  outage, model unavailable, timeout, rate limit, atau invalid provider output
+  harus tetap tersimpan sebagai antrean replayable.
+- Setelah key/model/provider diperbaiki, sistem harus dapat melakukan
+  sweep/requeue dan mengklasifikasikan ulang seluruh job monitoring AI yang
+  gagal tanpa membuat duplicate alert.
+- Retry/replay monitoring tidak boleh menyentuh antrean investigasi.
+- Setiap hasil monitoring yang selesai dikirim langsung ke Telegram.
+- Hanya feedback negatif yang langsung dikirim ke Slack monitoring.
+- Pemrosesan normal dipicu event, bukan jadwal hourly/daily. Scheduled
+  reconciliation hanya optional recovery untuk event yang terlewat.
+- Data, queue, secret, dan health monitoring terpisah dari Company Detector
+  investigation flow.
 
 ---
 

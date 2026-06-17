@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Audience:** Developer / AI agent penerus  
 **Status:** Active runtime map  
-**Last updated:** 11 Juni 2026
+**Last updated:** 17 Juni 2026
 
 ---
 
@@ -36,7 +36,8 @@ Status yang sesuai kondisi project sekarang:
 | Queue worker | Sequential worker sudah jalan; satu job per waktu |
 | Telegram delivery | Wajib untuk tiap investigasi queue/manual |
 | Slack routing | Daily prospect digest jam 09:00 sudah jalan; realtime raw report disabled |
-| Google review monitor | Fitur deterministic terisolasi; scheduler tersedia tetapi belum diaktifkan sampai authenticated crawl valid |
+| Google review monitor | Current implementation deterministic; scheduler tersedia tetapi belum diaktifkan sampai authenticated API collect valid |
+| Negative feedback monitor | Meta Graph polling MVP aktif; webhook optional/future; Google path menunggu API approval |
 
 Jalur persistence yang sudah divalidasi:
 
@@ -70,6 +71,21 @@ Google Business Profile API
   -> Slack report jam 09:00
 ```
 
+Negative feedback monitor aktif sekarang:
+
+```text
+Meta Graph API polling setiap 15 menit
+  -> Facebook Page + Instagram Business comments
+  -> normalized feedback inbox
+  -> structured AI classifier hanya untuk komentar baru/berubah
+  -> Telegram result selalu
+  -> Slack hanya jika negatif
+
+Optional/future:
+  -> Meta Webhook kalau callback/subscription Meta App sudah aktif
+  -> Google Business Profile rating 1-3 deterministic setelah API access approved
+```
+
 ---
 
 ## 3. Actor Boundaries
@@ -83,9 +99,26 @@ Google Business Profile API
 | Finalization | `finish_investigation.sh`, `db_writer.js`, token usage | Menutup investigasi dan menyimpan hasil |
 | Storage / Output | PostgreSQL, file evidence, dashboard | Menjadi tempat review dan source data operasional |
 | Slack Digest | Cron/digest script, Slack channel | Mengirim ringkasan prospect jam 09:00 dari data final di DB |
-| Review Monitor | Google Business Profile API client, independent scheduler, dedicated state, Slack API | Memantau review 1-3 tanpa OpenClaw/LLM dan tanpa menyentuh investigation flow |
+| Feedback Monitor | Google connector, Meta connector, dedicated classifier/queues/schema, Telegram + Slack APIs | Google rating 1-3 tanpa AI; Meta comments dengan structured AI; Telegram selalu; Slack hanya negatif |
 
-## 3.1 Feature Boundary Flowchart
+## 3.1 Active Negative Feedback Monitor
+
+```mermaid
+flowchart LR
+  Timer["15-minute Meta polling"] --> MetaAI["Structured AI classifier"]
+  MetaWebhook["Optional future Meta Webhook"] -.-> MetaAI
+  Google["Future Google API/PubSub"] -.-> GoogleRule["Rating 1-3 rule"]
+  GoogleRule --> Inbox["Normalized feedback inbox"]
+  MetaAI --> Inbox
+  Inbox --> Telegram["Telegram: every completed result"]
+  Inbox -->|negative only| Slack["Slack monitor-negatif-company"]
+```
+
+Detail source contract, queues, schema, classifier output, failure handling, dan
+implementation phases ada di
+`docs/technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md`.
+
+## 3.2 Current And Target Feature Boundary Flowchart
 
 ```mermaid
 flowchart TB
@@ -102,11 +135,21 @@ flowchart TB
     InvestigationDB["Investigation PostgreSQL tables"]
   end
 
-  subgraph reviews["Google Review Monitor Feature"]
+  subgraph currentReviews["Current: Google Review Monitor"]
     ReviewScheduler["Independent scheduler"]
-    Collector["Deterministic Google Business Profile API collector"]
+    Collector["Google Business Profile API polling"]
     ReviewState["Dedicated review-monitor state volume"]
     ReviewReport["Daily Slack review report"]
+  end
+
+  subgraph targetFeedback["Target: Unified Negative Feedback Monitor"]
+    GoogleEvents["Google Pub/Sub + optional recovery reconciliation"]
+    GoogleRule["Deterministic rating 1-3 rule"]
+    MetaEvents["Meta Webhooks + optional recovery reconciliation"]
+    MetaClassifier["Dedicated structured AI classifier"]
+    FeedbackDB["Dedicated normalized feedback schema"]
+    TelegramDelivery["Telegram: every result"]
+    SlackDelivery["Slack: negative only"]
   end
 
   Docker --> Agent
@@ -115,12 +158,21 @@ flowchart TB
   SlackBot --> ReviewReport
   Intake --> Agent --> Tools --> InvestigationDB
   ReviewScheduler --> Collector --> ReviewState --> ReviewReport
+  GoogleEvents --> GoogleRule --> FeedbackDB
+  MetaEvents --> MetaClassifier --> FeedbackDB
+  FeedbackDB --> TelegramDelivery
+  FeedbackDB -->|negative only| SlackDelivery
+  SlackBot --> SlackDelivery
 
   Collector -. "must not call" .-> Agent
   ReviewState -. "must not write" .-> InvestigationDB
+  GoogleRule -. "must not call AI" .-> MetaClassifier
+  FeedbackDB -. "must not write" .-> InvestigationDB
 ```
 
-## 3.2 Google Review Monitor Sequence
+## 3.3 Google Review Monitor Sequence
+
+Current active polling implementation before optional webhook migration:
 
 ```mermaid
 sequenceDiagram
@@ -153,6 +205,56 @@ sequenceDiagram
   else Latest collect unhealthy or stale
     State-->>Scheduler: Failure detail
     Scheduler->>Slack: Send monitoring failure alert
+  end
+```
+
+## 3.4 Target Feedback Monitoring Sequence
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Platform as Google Pub/Sub / Meta Webhook
+  participant Ingress as Feedback Ingress
+  participant DB as Feedback PostgreSQL Queue
+  participant Worker as Sequential Feedback Worker
+  participant API as Google / Meta API
+  participant AI as Meta Structured Classifier
+  participant Telegram
+  participant Slack as Slack monitor-negatif-company
+
+  Platform->>Ingress: Review/comment created or updated
+  Ingress->>DB: Validate and insert idempotent event
+  Ingress-->>Platform: Technical ACK after durable insert
+  Note over Platform,Ingress: ACK prevents platform retry; it is not a monitoring report
+
+  Worker->>DB: Lock oldest pending event
+  Worker->>API: Fetch current feedback and minimum context
+  API-->>Worker: Review/comment detail
+
+  alt Google review
+    Worker->>Worker: Rating 1-3 deterministic rule
+  else Meta comment
+    Worker->>AI: Fixed prompt + structured output
+    alt AI request succeeds
+      AI-->>Worker: negative / non_negative / needs_review
+    else Provider/auth/model/timeout/output failure
+      AI-->>Worker: Retryable failure
+      Worker->>DB: retry_pending or blocked_provider
+      Note over Worker,DB: Requeue after provider health/config change; no result assumed safe
+      break Classification incomplete; await replay
+        Worker->>DB: Do not enqueue normal Telegram/Slack result
+      end
+    end
+  end
+
+  Worker->>DB: Store classification and enqueue Telegram
+  DB-->>Telegram: Send every completed monitoring result
+
+  alt Result is negative
+    Worker->>DB: Enqueue Slack negative alert
+    DB-->>Slack: Send immediately
+  else Result is non-negative or needs-review
+    Worker->>DB: No Slack delivery
   end
 ```
 

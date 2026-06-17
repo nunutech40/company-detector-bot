@@ -46,6 +46,7 @@ Untuk engineer/deployer:
 4. [TRD](docs/technical/TRD.md)
 5. [Flow Map](docs/technical/FLOW_MAP.md)
 6. [Google Review Monitor](docs/technical/GOOGLE_REVIEW_MONITOR.md) - isolated deterministic review monitoring feature
+7. [Negative Feedback Monitor Architecture](docs/technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md) - active Meta polling MVP, Telegram all-results, Slack negative-only, and future Google/webhook path
 
 Untuk AI agent:
 
@@ -67,10 +68,22 @@ Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 | `gateway` | Telegram inbound/manual investigation poller |
 | `digest` | Daily Slack prospect digest |
 | `review-monitor` | Isolated Google Business Profile review 1-3 collector and Slack report scheduler |
+| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
+| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
+| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
+| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
 
 `review-monitor` menggunakan Compose profile opt-in dan `.env.review-monitor`
 terpisah. Normal deployment tidak menyalakannya sampai Google Business Profile
 API preflight lolos.
+
+Negative Feedback Monitor sekarang sudah aktif sebagai MVP terpisah:
+Meta feedback memakai polling Meta Graph API per 15 menit di VPS, komentar
+Facebook/Instagram diklasifikasikan oleh dedicated structured AI classifier
+tanpa OpenClaw agent, setiap hasil selesai dikirim ke Telegram, dan hanya hasil
+negatif yang dikirim ke Slack monitoring. Google Business Profile masih
+menunggu API approval dan nanti tetap memakai rule rating 1-3 tanpa AI.
+Webhook Meta masih opsi masa depan sampai callback/subscription Meta App aktif.
 
 Application ports default ke loopback-only:
 
@@ -208,6 +221,7 @@ go test ./...
 │       ├── DEPLOYMENT_SECRETS_HANDOVER.md
 │       ├── VPS_DOCKER_PARITY_AUDIT.md
 │       ├── FLOW_MAP.md
+│       ├── NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md
 │       └── REGISTER_WEBHOOK_API.md
 ├── go-service/
 ├── dashboard/

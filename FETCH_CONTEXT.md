@@ -1,7 +1,7 @@
 # Fetch Context
 
 **Purpose:** Fast orientation for any AI agent continuing this project.  
-**Last updated:** 11 Juni 2026
+**Last updated:** 17 Juni 2026
 
 ---
 
@@ -34,6 +34,7 @@ Canonical docs:
 10. `BACKLOG.md` — status and next priorities.
 11. `docs/technical/VPS_DOCKER_PARITY_AUDIT.md` — mandatory VPS-versus-Docker parity gate before office cutover.
 12. `docs/technical/GOOGLE_REVIEW_MONITOR.md` — isolated deterministic Google review monitor.
+13. `docs/technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md` — active Meta polling MVP + future Google/webhook negative feedback monitoring architecture.
 
 Runtime instructions:
 
@@ -97,6 +98,17 @@ Isolated Google review monitor
         +--> collect Google Business Profile reviews at 21:00
         +--> filter rating 1-3 + dedicated state
         +--> Slack report at 09:00
+
+Active Negative Feedback Monitor
+        |
+        +--> Meta Graph API polling every 15 minutes
+        +--> Facebook Page + attached Instagram Business comments
+        +--> structured AI classifier for new/changed Meta comments only
+        +--> normalized feedback inbox + isolated queues/schema
+        +--> Telegram result for every completed monitoring event
+        +--> immediate Slack alert only for negative feedback
+        +--> optional/future Meta Webhook once Meta App callback is subscribed
+        +--> future Google Business Profile rating 1-3 deterministic path after API approval
 ```
 
 Important point: AI can reason and choose tools, but deterministic scoring/classification is the source of truth.
@@ -108,6 +120,21 @@ shares Docker/Slack infrastructure, but it does not call OpenClaw,
 use an LLM, or touch investigation tables. Do not enable its scheduler until
 Google Business Profile API preflight succeeds. Its OAuth/account/location and
 Slack channel lives in separate `.env.review-monitor`; shared Slack bot token remains in core `.env`, not core `.env`.
+
+Negative feedback monitor boundary: Google reviews remain deterministic and never call AI. Meta
+comments call only a dedicated fixed structured classifier; they do not use
+OpenClaw/ReAct/investigation tools. Current production source is Meta Graph API
+polling every 15 minutes with a 60-minute lookback. Meta webhook endpoint exists
+but is not the active source until the Meta App callback/subscription is configured.
+Every completed monitoring result goes to Telegram, while Slack monitoring receives
+negative results only.
+
+Meta AI failures are durable and replayable. Expired keys, unavailable models,
+provider outages, rate limits, timeouts, and invalid provider responses must
+leave the comment in `retry_pending` or `blocked_provider`; they must never be
+treated as non-negative. After AI configuration/provider health changes, the
+monitoring worker sweeps/requeues those jobs idempotently. This recovery flow
+is isolated from investigation queues.
 
 Current production AI provider:
 
@@ -136,7 +163,9 @@ Docker office deployment checks:
 | Dashboard | 3001 | `dashboard/` | Express + EJS |
 | Webhook API | 3002 | `webhook/` | Express enqueue-only API backed by PostgreSQL queue |
 | PostgreSQL | 5432 | VPS service | DB `company_detection` |
-| Review monitor | none | `review_monitor/` + Compose `review-monitor` | Isolated scheduler/state; currently not enabled on VPS |
+| Review monitor | none | `review_monitor/` + Compose `review-monitor` | Isolated Google review scheduler/state; waiting for Google Business Profile API approval |
+| Feedback monitor ingress | 3003 | `feedback_monitor/` | Health/webhook placeholder for negative feedback monitor |
+| Feedback monitor worker/poller | none | `feedback_monitor/worker.js` | Active Meta Graph polling + AI classification + Telegram/Slack delivery |
 
 VPS:
 
@@ -156,6 +185,12 @@ docs/technical/migration_v1.sql
 docs/technical/migration_v2_webhook_slack_queue.sql
 docs/technical/migration_v3_report_provenance.sql
 docs/technical/migration_v4_llm_usage_provenance.sql
+docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v5_feedback_monitor.sql
 ```
 
 Current tables:
@@ -166,6 +201,42 @@ Current tables:
 - `register_intake_jobs`: PostgreSQL-backed queue for platform register payloads.
 - `slack_digest_runs`: one row per daily Slack digest execution.
 - `slack_digest_items`: sent prospect item tracking so jobs are not repeated.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
+- `feedback_sources`: connected Meta/Google sources for feedback monitoring.
+- `feedback_items`: normalized review/comment inbox.
+- `feedback_classifications`: Google rule or Meta AI classification output.
+- `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
+- `feedback_deliveries`: delivery audit.
+- `feedback_monitor_runs`: poll/classify/delivery run audit.
 
 Do not resurrect the older 7/8-table plan unless the user explicitly asks for a normalized analytics schema.
 

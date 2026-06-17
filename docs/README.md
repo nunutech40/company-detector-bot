@@ -15,6 +15,7 @@ Dokumentasi aktif dibuat sederhana:
 11. [Backlog](../BACKLOG.md) — status kerja berikutnya.
 12. [Google Business Review Monitor](technical/GOOGLE_REVIEW_MONITOR.md) — fitur deterministic terisolasi untuk review Google bintang 1-3.
 13. [Google Business Profile API Access Guide for Owner](handover/GOOGLE_BUSINESS_PROFILE_API_ACCESS_GUIDE_FOR_OWNER.docx) — panduan Word langkah demi langkah untuk owner profil bisnis sampai pengajuan Basic API Access berhasil.
+14. [Negative Feedback Monitor Architecture](technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md) — active Meta polling MVP + future Google/webhook monitoring architecture.
 
 Root [README](../README.md) adalah pintu masuk utama.
 
@@ -41,6 +42,7 @@ Untuk AI yang mau nerusin project, baca [FETCH_CONTEXT](../FETCH_CONTEXT.md) dul
 | [Token Optimization Test Log](technical/TOKEN_OPTIMIZATION_TEST_LOG.md) | Catatan AB test token, hasil gagal/ditolak, dan arah optimasi berikutnya |
 | [Sales Sheet Sync Plan](technical/SALES_SHEET_SYNC_PLAN.md) | Browser Sales Sheet untuk sales follow-up, mapping field, dan fallback export |
 | [Google Business Review Monitor](technical/GOOGLE_REVIEW_MONITOR.md) | Scope, isolation contract, flowchart, sequence, operations, dan acceptance fitur review monitor |
+| [Negative Feedback Monitor Architecture](technical/NEGATIVE_FEEDBACK_MONITOR_ARCHITECTURE.md) | Current Meta Graph polling MVP, optional future webhook, durable queue, Telegram all-results delivery, dan negative-only Slack routing |
 | [Migration v1](technical/migration_v1.sql) | Schema PostgreSQL awal: investigation jobs, reports, LLM calls |
 | [Migration v2](technical/migration_v2_webhook_slack_queue.sql) | Schema webhook queue dan Slack daily digest tracking |
 

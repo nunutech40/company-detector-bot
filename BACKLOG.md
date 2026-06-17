@@ -1,7 +1,7 @@
 # Backlog
 
 **Project:** AI Company Detection Agent  
-**Last updated:** 21 Mei 2026
+**Last updated:** 15 Juni 2026
 
 Backlog adalah tracker status kerja. Source of truth tetap:
 
@@ -201,3 +201,22 @@ docs/archive/
 - [ ] Run official API collector acceptance test against the selected personal warung location.
 - [ ] Enable the opt-in `review-monitor` Compose profile only after collection,
       deduplication, Slack, and failure-alert checks pass.
+
+# Unified Negative Feedback Monitor
+
+- [x] Define target architecture for Google deterministic reviews + Meta AI-classified comments.
+- [ ] Obtain Meta Business/Page/Instagram Professional Account/Ad Account access from Aji or office owner.
+- [ ] Define and migrate dedicated feedback PostgreSQL tables.
+- [ ] Add event simulator and idempotent normalized feedback inbox.
+- [ ] Add Google Pub/Sub receiver after Business Profile API approval.
+- [ ] Migrate current Google JSON state into feedback tables.
+- [ ] Add Meta Webhook receiver and signature verification.
+- [ ] Add Meta organic comment hydration and incremental reconciliation.
+- [ ] Build versioned structured AI classifier for Meta comments.
+- [ ] Add Meta AI error classification and replayable `blocked_provider` queue state.
+- [ ] Add config/provider-health sweep plus operator command to replay failed Meta AI jobs.
+- [ ] Verify model/API-key replacement retries monitoring jobs without duplicate Telegram/Slack delivery.
+- [ ] Create labeled Komerce comment evaluation set and validate thresholds.
+- [ ] Add Meta ad comment mapping and collection.
+- [ ] Add Telegram delivery for every completed monitoring result.
+- [ ] Add immediate negative-only Slack alerts, health alerts, and dead-letter operations.

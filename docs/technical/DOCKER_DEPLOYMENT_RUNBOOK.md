@@ -30,6 +30,9 @@ worker     : queue worker
 gateway    : OpenClaw Telegram inbound/manual investigation gateway
 digest     : Slack prospect digest scheduler, daily 09:00 WIB
 review-monitor : optional isolated Google review monitor; opt-in profile only
+feedback-monitor : optional negative feedback monitor; Meta polling/classifier path uses `.env.feedback-monitor`
+feedback-monitor : optional negative feedback monitor; Meta polling/classifier path uses `.env.feedback-monitor`
+feedback-monitor : optional negative feedback monitor; Meta polling/classifier path uses `.env.feedback-monitor`
 ```
 
 Important:
@@ -45,6 +48,9 @@ Important:
 | `Dockerfile` | Build runtime image berisi OpenClaw, dashboard, webhook, workspace scripts, dan seluruh binary Go aktif |
 | `compose.yml` | Service stack untuk PostgreSQL, migration, dashboard, webhook, worker |
 | `.env.docker.example` | Template env Compose tanpa nilai secret asli |
+| `.env.feedback-monitor.sample` | Template env negative feedback monitor tanpa secret asli |
+| `.env.feedback-monitor.sample` | Template env negative feedback monitor tanpa secret asli |
+| `.env.feedback-monitor.sample` | Template env negative feedback monitor tanpa secret asli |
 | `ops/docker/configure-openclaw.js` | Generate/update OpenClaw provider/model/Telegram config dari env |
 | `ops/docker/worker-entrypoint.sh` | Worker startup entrypoint untuk config OpenClaw saat agent mode |
 | `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md` | Checklist key/secrets yang harus diserahkan |
@@ -94,6 +100,9 @@ Engineer kantor must decide these before deployment:
 | OpenClaw runtime | Bundled and pinned in the repository Docker image |
 | Worker mode | Keep `REGISTER_WORKER_MODE=agent` for production |
 | Review monitor | Keep disabled until Google Business Profile API preflight passes |
+| Feedback monitor | VPS production currently uses systemd timer for `poll-meta`; Docker deployment must add an office scheduler/timer or manually run `node feedback_monitor/worker.js poll-meta` on the chosen interval |
+| Feedback monitor | VPS production currently uses systemd timer for `poll-meta`; Docker deployment must add an office scheduler/timer or manually run `node feedback_monitor/worker.js poll-meta` on the chosen interval |
+| Feedback monitor | VPS production currently uses systemd timer for `poll-meta`; Docker deployment must add an office scheduler/timer or manually run `node feedback_monitor/worker.js poll-meta` on the chosen interval |
 
 ## 4.1 Tools and Plugins on a Clean Server
 
@@ -115,6 +124,9 @@ Required outbound HTTPS access:
 - Brave Search API
 - GitHub/Docker registries during build/deploy
 - Google OAuth and Business Profile APIs only when the optional review-monitor profile is enabled
+- Meta Graph API when the optional feedback-monitor profile is enabled
+- Meta Graph API when the optional feedback-monitor profile is enabled
+- Meta Graph API when the optional feedback-monitor profile is enabled
 
 If office egress uses an allow-list or proxy, these destinations must be
 approved before acceptance testing.
