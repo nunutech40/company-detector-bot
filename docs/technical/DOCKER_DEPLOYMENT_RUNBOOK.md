@@ -118,7 +118,7 @@ The office engineer does not install Company Detector tools one by one.
 
 Required outbound HTTPS access:
 
-- `ai.sumopod.com`
+- `9router.komerce-tech.id`
 - Telegram API
 - Slack API
 - Brave Search API
@@ -143,12 +143,12 @@ DASHBOARD_PUBLIC_BASE_URL=https://<SERVER_DOMAIN>
 DASHBOARD_BIND_PORT=127.0.0.1:3001
 WEBHOOK_BIND_PORT=127.0.0.1:3002
 OPENCLAW_CONFIGURE=true
-LLM_PROVIDER=sumopod
-LLM_BASE_URL=https://ai.sumopod.com/v1
-LLM_API_KEY=...
-LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
-LLM_MODEL_ID=kimi-k2.6
-LLM_ADDITIONAL_MODELS=komerce
+LLM_PROVIDER=9router
+LLM_BASE_URL=https://9router.komerce-tech.id/v1
+LLM_API_KEY=not-required
+LLM_PRIMARY_MODEL=9router/komerce-1.2
+LLM_MODEL_ID=komerce-1.2
+LLM_ADDITIONAL_MODELS=
 LLM_TIMEOUT_SECONDS=120
 REGISTER_WORKER_MODE=agent
 REGISTER_WORKER_DELIVER_TELEGRAM=true
@@ -192,11 +192,13 @@ chmod 600 .env.review-monitor
 If using an external PostgreSQL, update `DATABASE_URL` in `compose.yml` or add a
 production override file such as `compose.prod.yml`.
 
-To temporarily test Qwen without editing code:
+To temporarily switch provider/model without editing code, change these values in `.env`:
 
 ```text
-LLM_PRIMARY_MODEL=sumopod/qwen3.6-flash
-LLM_MODEL_ID=qwen3.6-flash
+LLM_PROVIDER=<provider-id>
+LLM_BASE_URL=<openai-compatible-base-url>
+LLM_PRIMARY_MODEL=<provider-id>/<model-id>
+LLM_MODEL_ID=<model-id>
 ```
 
 Then restart only the worker:
@@ -205,11 +207,11 @@ Then restart only the worker:
 docker compose up -d worker
 ```
 
-To return to Kimi:
+To return to current production model:
 
 ```text
-LLM_PRIMARY_MODEL=sumopod/kimi-k2.6
-LLM_MODEL_ID=kimi-k2.6
+LLM_PRIMARY_MODEL=9router/komerce-1.2
+LLM_MODEL_ID=komerce-1.2
 ```
 
 ## 6. OpenClaw In Docker
@@ -235,7 +237,7 @@ The worker also needs:
 OPENCLAW_WORKSPACE=/app/openclaw_workspace
 OPENCLAW_BIN=/usr/local/bin/openclaw
 OPENCLAW_CONFIG or equivalent provider config
-Sumopod API key
+9Router endpoint/API configuration
 Telegram/search credentials if enabled
 ```
 
@@ -253,7 +255,7 @@ Local note from 2026-06-08: the developer machine's default OpenClaw config had
 a stale `9router` provider entry that failed schema validation. Telegram was
 tested with an isolated OpenClaw state directory copied from the existing
 Telegram config and with the invalid model provider removed. Before production,
-use a clean office-approved OpenClaw config containing the active Sumopod
+use a clean office-approved OpenClaw config containing the active 9Router
 provider/model and Telegram credentials.
 
 Telegram smoke test pattern:

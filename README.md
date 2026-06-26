@@ -146,9 +146,9 @@ docker compose down
 Default primary model:
 
 ```text
-provider: sumopod
-base URL: https://ai.sumopod.com/v1
-model: sumopod/kimi-k2.6
+provider: 9router
+base URL: https://9router.komerce-tech.id/v1
+model: 9router/komerce-1.2
 ```
 
 Provider/model dikonfigurasi melalui `.env`, sehingga perubahan model tidak

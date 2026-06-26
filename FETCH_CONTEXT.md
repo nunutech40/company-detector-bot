@@ -139,12 +139,12 @@ is isolated from investigation queues.
 Current production AI provider:
 
 ```text
-OpenClaw primary model: sumopod/kimi-k2.6
-Provider base URL: https://ai.sumopod.com/v1
+OpenClaw primary model: 9router/komerce-1.2
+Provider base URL: https://9router.komerce-tech.id/v1
 Config path on VPS: /home/nunuopc/.openclaw/openclaw.json
 ```
 
-`deploy.sh` syncs this provider URL and primary model while preserving the existing API key in the VPS config. Do not reduce context, visible tools, or investigation depth just to make a provider fit; only swap the AI provider/model unless explicitly requested.
+`deploy.sh` syncs this provider URL and primary model while preserving the existing provider credentials in the VPS config. Do not reduce context, visible tools, or investigation depth just to make a provider fit; only swap the AI provider/model unless explicitly requested.
 
 Docker office deployment checks:
 

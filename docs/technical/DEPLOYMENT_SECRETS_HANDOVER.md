@@ -28,7 +28,7 @@
 |---|---:|---|---|---|---|
 | `POSTGRES_PASSWORD` or external DB credentials | Yes | Database/server engineer | Docker `.env` / secret manager | Acceptance test DB checks pass | Pending |
 | `WEBHOOK_SECRET` | Yes | Platform/backend owner | Docker `.env` and register platform | Authenticated webhook returns queued response | Pending |
-| `LLM_API_KEY` / Sumopod API key | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
+| `LLM_API_KEY` / 9Router API key or placeholder | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
 | `LLM_PRIMARY_MODEL` / `LLM_MODEL_ID` | Yes | Product/AI owner | Docker `.env` or OpenClaw config | `openclaw models list` and agent smoke test | Pending |
 | `DEEPSEEK_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | DeepSeek provider appears in OpenClaw config | Pending |
 | `MINIMAX_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | MiniMax provider appears in OpenClaw config | Pending |
@@ -74,7 +74,7 @@ agreement from the relevant owner.
 | App Linux user | `companydetector` | Infrastructure | Pending |
 | Database retention/backup policy | Office policy | Infrastructure/DBA | Pending |
 | Slack digest schedule | Daily `09:00 WIB` | Sales/Product | Pending |
-| Primary model | `sumopod/kimi-k2.6` | Product/AI owner | Pending |
+| Primary model | `9router/komerce-1.2` | Product/AI owner | Pending |
 
 ## 5. Installation Check
 

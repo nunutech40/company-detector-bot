@@ -317,16 +317,55 @@ async function classifyMeta(item) {
     }),
     signal: AbortSignal.timeout(parseInt(process.env.FEEDBACK_AI_TIMEOUT_MS || '60000', 10)),
   });
-  const payload = await response.json().catch(() => ({}));
+  const rawText = await response.text();
+  const payload = parseOpenAiLikeResponse(rawText, response.headers.get('content-type') || '');
   if (!response.ok) throw providerError(errorClassFromStatus(response.status, payload), payload.error?.message || `AI provider HTTP ${response.status}`);
-  const content = payload.choices?.[0]?.message?.content || '';
+  const content = payload.choices?.[0]?.message?.content || payload.choices?.[0]?.delta?.content || '';
   let parsed;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(extractJsonObject(content));
   } catch {
-    throw providerError('invalid_ai_output', 'AI response is not valid JSON');
+    throw providerError('invalid_ai_output', `AI response is not valid JSON: ${String(content).slice(0, 160)}`);
   }
   return validateAiResult(parsed, AI_MODEL);
+}
+
+function parseOpenAiLikeResponse(rawText, contentType) {
+  const text = String(rawText || '').trim();
+  if (!text) return {};
+  if (contentType.includes('text/event-stream') || text.startsWith('data:')) {
+    const chunks = [];
+    for (const line of text.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const data = trimmed.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      try { chunks.push(JSON.parse(data)); } catch {}
+    }
+    const merged = { choices: [{ message: { content: '' } }] };
+    for (const chunk of chunks) {
+      const choice = chunk.choices?.[0] || {};
+      const deltaContent = choice.delta?.content || '';
+      const messageContent = choice.message?.content || '';
+      if (deltaContent || messageContent) merged.choices[0].message.content += deltaContent || messageContent;
+      if (!merged.usage && chunk.usage) merged.usage = chunk.usage;
+      if (chunk.error) merged.error = chunk.error;
+    }
+    if (!merged.choices[0].message.content && chunks.length) {
+      merged.choices[0].message.content = chunks[chunks.length - 1].choices?.[0]?.message?.content || chunks[chunks.length - 1].choices?.[0]?.delta?.content || '';
+    }
+    return merged;
+  }
+  try { return JSON.parse(text); } catch { return {}; }
+}
+
+function extractJsonObject(content) {
+  const text = String(content || '').trim();
+  if (text.startsWith('{')) return text;
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) return text.slice(start, end + 1);
+  return text;
 }
 
 function classifyMetaStub(item) {

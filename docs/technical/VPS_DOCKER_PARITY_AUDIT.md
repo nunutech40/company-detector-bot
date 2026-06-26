@@ -28,9 +28,9 @@ active. It intentionally skips the Telegram poller and full AI call.
 | Node.js | `v24.15.0` | Node 24, tested `v24.16.0` | PASS | Same major runtime |
 | PostgreSQL | `16.14` | `16.14` | PASS | Keep PostgreSQL 16 |
 | Database schema | 6 tables, 74 columns | Same exact column and index fingerprints | PASS | Run all four migrations |
-| Primary model | `sumopod/kimi-k2.6` | `sumopod/kimi-k2.6` | PASS | Keep exact model ID |
-| Sumopod protocol | `openai-completions` | `openai-completions` | PASS | Set `LLM_API` |
-| Sumopod models | `komerce`, `kimi-k2.6` | Same | PASS | Keep both configured |
+| Primary model | `9router/komerce-1.2` | `9router/komerce-1.2` | PASS | Keep exact model ID |
+| 9Router protocol | `openai-completions` | `openai-completions` | PASS | Set `LLM_API` |
+| 9Router models | `komerce-1.2` | Same | PASS | Keep both configured |
 | OpenClaw plugins | `deepseek`, `llm-task`, `minimax` | Same | PASS | Supply provider keys |
 | Tool profile | `full` + `llm-task` | Same | PASS | Checked automatically |
 | Deterministic Go pipeline | Active | Active | PASS | Docker compiles current source |
@@ -115,9 +115,10 @@ Security verification:
 
 ## Known Blockers and Risks
 
-1. Sumopod Kimi currently returns intermittent errors/timeouts from both Docker
-   and VPS. A temporary `qwen3.6-flash` acceptance test completed successfully
-   and found the same Siti Romelah business evidence at confidence 80/100.
+1. 9Router `komerce-1.2` is the current production AI provider/model. VPS
+   verification completed for register investigation and negative feedback
+   classification, but 9Router can still return intermittent socket resets;
+   workers must keep retry behavior enabled.
 2. The VPS gateway is active and currently owns the production Telegram bot.
    Starting the office/Docker gateway before stopping VPS causes duplicate
    polling/conflicts.
@@ -151,7 +152,7 @@ Acceptance criteria:
 Temporary test-only override:
 
 ```text
-sumopod/qwen3.6-flash
+9router/komerce-1.2
 ```
 
 Result:
@@ -164,5 +165,5 @@ Result:
 - Docker Telegram gateway health passed while it temporarily owned the bot
   poller.
 - Agent DB runtime environment persistence was fixed and verified separately.
-- Docker configuration was returned to production model `sumopod/kimi-k2.6`.
+- Docker configuration was returned to production model `9router/komerce-1.2`.
 - Telegram poller was returned to the VPS after testing.

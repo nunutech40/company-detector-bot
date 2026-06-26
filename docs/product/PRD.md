@@ -53,7 +53,7 @@ Status per 15 Juni 2026:
 | Area | Status | Catatan |
 |---|---|---|
 | Go deterministic pipeline | Done | Email intelligence, domain check, crawler, search cascade, scraper, scoring, report |
-| AI reasoning loop | Done | OpenClaw + Sumopod `kimi-k2.6`, controlled by AGENTS.md and STANDING_ORDERS.md |
+| AI reasoning loop | Done | OpenClaw + 9Router `komerce-1.2`, controlled by AGENTS.md and STANDING_ORDERS.md |
 | Telegram flow | Active | Channel testing dan operasional AI loop |
 | PostgreSQL storage | Done | 3-table MVP schema |
 | Dashboard | Done | Express + EJS, port 3001 |
