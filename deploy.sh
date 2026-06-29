@@ -11,10 +11,10 @@ VPS_PASS="IloveIndonesia123"
 VPS_WORKSPACE="/home/nunuopc/.openclaw/workspace"
 VPS_GO_BIN="/home/nunuopc/.openclaw/go-service/bin"
 OPENCLAW_CONFIG="/home/nunuopc/.openclaw/openclaw.json"
-OPENCLAW_PROVIDER="sumopod"
-OPENCLAW_BASE_URL="https://ai.sumopod.com/v1"
-OPENCLAW_PRIMARY_MODEL="sumopod/kimi-k2.6"
-OPENCLAW_MODEL_ID="kimi-k2.6"
+OPENCLAW_PROVIDER="9router"
+OPENCLAW_BASE_URL="https://9router.komerce-tech.id/v1"
+OPENCLAW_PRIMARY_MODEL="9router/komerce-1.2"
+OPENCLAW_MODEL_ID="komerce-1.2"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GO_SERVICE_DIR="${REPO_DIR}/go-service"
 
@@ -176,10 +176,16 @@ if [[ -f "${REPO_DIR}/webhook/package-lock.json" ]]; then
 fi
 scp_file "${REPO_DIR}/webhook/app.js" "/home/nunuopc/.openclaw/webhook/app.js"
 scp_file "${REPO_DIR}/webhook/worker.js" "/home/nunuopc/.openclaw/webhook/worker.js"
-ssh_cmd "chmod +x /home/nunuopc/.openclaw/webhook/worker.js"
+scp_file "${REPO_DIR}/webhook/ops_health_monitor.js" "/home/nunuopc/.openclaw/webhook/ops_health_monitor.js"
+ssh_cmd "chmod +x /home/nunuopc/.openclaw/webhook/worker.js /home/nunuopc/.openclaw/webhook/ops_health_monitor.js"
 ssh_cmd "cd /home/nunuopc/.openclaw/webhook && npm install --omit=dev"
 ssh_cmd "systemctl --user restart company-webhook"
 echo "      ✓ webhook deployed"
+
+# 5c.1 Apply additive queue/operational migration
+scp_file "${REPO_DIR}/docs/technical/migration_v7_operational_health.sql" "/tmp/migration_v7_operational_health.sql"
+ssh_cmd "set -a; . /home/nunuopc/.openclaw/gateway.systemd.env; set +a; psql \"\$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /tmp/migration_v7_operational_health.sql; rm -f /tmp/migration_v7_operational_health.sql"
+echo "      ✓ operational migration applied"
 
 # 5d. Deploy user systemd units used by webhook queue and daily Slack digest
 echo "[5d] Deploying systemd units..."
@@ -187,6 +193,10 @@ for unit in \
   company-dashboard.service \
   company-webhook.service \
   company-register-worker.service \
+  company-ops-health.service \
+  company-ops-health.timer \
+  company-register-backlog-replay.service \
+  company-register-backlog-replay.timer \
   company-slack-digest.service \
   company-slack-digest.timer; do
   if [[ -f "${REPO_DIR}/ops/systemd/${unit}" ]]; then
@@ -198,6 +208,9 @@ ssh_cmd "systemctl --user daemon-reload"
 ssh_cmd "systemctl --user enable --now company-dashboard"
 ssh_cmd "systemctl --user enable --now company-webhook"
 ssh_cmd "systemctl --user restart company-register-worker"
+ssh_cmd "systemctl --user disable --now company-register-worker-health.timer >/dev/null 2>&1 || true"
+ssh_cmd "systemctl --user enable --now company-ops-health.timer"
+ssh_cmd "systemctl --user enable --now company-register-backlog-replay.timer"
 ssh_cmd "systemctl --user enable --now company-slack-digest.timer"
 echo "      ✓ queue/digest units reloaded"
 echo ""

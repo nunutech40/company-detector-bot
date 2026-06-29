@@ -665,12 +665,12 @@ sequenceDiagram
   Webhook->>DB: Insert into register_intake_jobs
   DB-->>Webhook: intake_job_id
   Webhook-->>Platform: queued response + dashboard_url
-  Worker->>DB: Lock oldest due pending/retry_pending row
+  Worker->>DB: Lock highest-priority due row (live=100, replay=10)
   Worker->>OpenClaw: Run investigation one by one
   alt Provider timeout / HTTP 5xx
     OpenClaw-->>Worker: Provider transient error
     Worker->>DB: retry_pending + next_attempt_at
-    Worker->>OpenClaw: Telegram incident alert once
+    Worker->>DB: Persist provider failure evidence
   else Provider auth / credit / model error
     OpenClaw-->>Worker: Provider blocked error
     Worker->>DB: blocked_provider + config fingerprint
@@ -679,7 +679,7 @@ sequenceDiagram
     OpenClaw-->>Worker: Return final report
     Worker->>Finalizer: Execute finalizer
     Finalizer->>DB: Persist investigation_jobs final_reports llm_calls
-    Worker->>OpenClaw: Telegram recovery alert if incident was open
+    Worker->>DB: Persist successful real job
   end
   DB-->>Dashboard: Job visible
 ```
@@ -690,9 +690,38 @@ Worker rule:
 - One job is processed at a time. A delayed retry does not block newer due jobs.
 - Transient provider failures remain retryable; they are not converted to false results.
 - Provider-blocked jobs replay automatically after an AI config fingerprint change,
-  or manually with `node worker.js replay-provider-failures --since-hours 72`.
+  or manually with `node worker.js replay-provider-failures --all --limit 25`.
+- A six-hour timer admits at most 25 legacy failures at priority 10. New
+  registrations at priority 100 preempt the backlog.
 - Around 100 register payloads per day is small enough for sequential processing.
 - Queue rows are persistent in PostgreSQL; they do not disappear daily.
+
+### Operational alert sequence
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Timer as Ops Health Timer (2 min)
+  participant Systemd as systemd user services
+  participant DB as PostgreSQL queues/incidents
+  participant SlackProspect as Slack Brands Prospect
+  participant SlackMonitor as Slack Negative Monitor
+
+  Timer->>Systemd: Check both worker states
+  Timer->>DB: Read queue progress and real AI failure evidence
+  Note over Timer,DB: No AI request and no token usage
+  alt Investigation incident confirmed
+    Timer->>DB: Open/dedupe brands_prospect incident
+    Timer->>SlackProspect: Send one alert
+  else Negative monitor incident confirmed
+    Timer->>DB: Open/dedupe negative_comment_monitor incident
+    Timer->>SlackMonitor: Send one alert
+  end
+  Timer->>DB: Require confirmed service health or 2 real AI successes
+  DB-->>Timer: Recovery confirmed
+  Timer->>SlackProspect: One recovery for investigation incident
+  Timer->>SlackMonitor: One recovery for monitor incident
+```
 
 ---
 

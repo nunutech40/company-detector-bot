@@ -94,7 +94,7 @@ async function lockNextJob() {
         FROM register_intake_jobs
         WHERE (status IN ('pending', 'retry_pending') AND next_attempt_at <= NOW())
            OR (status = 'processing' AND locked_at < NOW() - INTERVAL '30 minutes')
-        ORDER BY created_at ASC
+        ORDER BY queue_priority DESC, created_at ASC
         FOR UPDATE SKIP LOCKED
         LIMIT 1
       )
@@ -276,21 +276,33 @@ async function replayBlockedAfterConfigChange() {
 
 async function replayProviderFailures() {
   const sinceHours = readIntArg('--since-hours', 72);
+  const replayLimit = Math.max(1, readIntArg('--limit', 25));
+  const includeAll = args.includes('--all');
   const result = await pool.query(`
-    UPDATE register_intake_jobs
+    WITH candidates AS (
+      SELECT id
+      FROM register_intake_jobs
+      WHERE ($2::BOOLEAN OR created_at >= NOW() - ($3::TEXT || ' hours')::INTERVAL)
+        AND (
+          status = 'blocked_provider'
+          OR (status = 'failed' AND (
+            error_class LIKE 'provider_%'
+            OR last_error ~* '(HTTP 40[1234]|HTTP 429|HTTP 5[0-9]{2}|522|credit|quota|key is blocked|temporarily unavailable|timeout|socket|ECONN)'
+          ))
+        )
+      ORDER BY created_at ASC
+      FOR UPDATE SKIP LOCKED
+      LIMIT $4
+    )
+    UPDATE register_intake_jobs j
     SET status = 'retry_pending', attempt_count = 0, locked_at = NULL,
-        next_attempt_at = NOW(), updated_at = NOW(), config_fingerprint = $1
-    WHERE created_at >= NOW() - ($2::TEXT || ' hours')::INTERVAL
-      AND (
-        status = 'blocked_provider'
-        OR (status = 'failed' AND (
-          error_class LIKE 'provider_%'
-          OR last_error ~* '(HTTP 40[1234]|HTTP 429|HTTP 5[0-9]{2}|522|credit|quota|key is blocked|temporarily unavailable|timeout|socket|ECONN)'
-        ))
-      )
-    RETURNING id
-  `, [CONFIG_FINGERPRINT, sinceHours]);
-  console.log(`register_worker: replay_provider_failures since_hours=${sinceHours} requeued=${result.rowCount}`);
+        next_attempt_at = NOW(), updated_at = NOW(), config_fingerprint = $1,
+        queue_priority = 10
+    FROM candidates
+    WHERE j.id = candidates.id
+    RETURNING j.id
+  `, [CONFIG_FINGERPRINT, includeAll, sinceHours, replayLimit]);
+  console.log(`register_worker: replay_provider_failures all=${includeAll} since_hours=${sinceHours} limit=${replayLimit} requeued=${result.rowCount}`);
 }
 
 async function printStatus() {

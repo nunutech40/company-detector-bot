@@ -84,7 +84,7 @@ Sequential worker
         |
         +--> transient AI error: retry_pending + backoff
         +--> auth/credit/model error: blocked_provider
-        +--> Telegram incident/recovery alert
+        +--> feature-specific Slack incident/recovery alert
         |
         v
 Existing investigation + finalization path
@@ -204,6 +204,8 @@ Current tables:
 - `llm_calls`: model token usage and estimated cost.
 - `register_intake_jobs`: PostgreSQL-backed queue for platform register payloads.
 - `register_worker_incidents`: deduplicated AI outage/recovery alert state.
+- `operational_incidents`: anti-spam operational incident state, separated by
+  `brands_prospect` and `negative_comment_monitor`.
 - `slack_digest_runs`: one row per daily Slack digest execution.
 - `slack_digest_items`: sent prospect item tracking so jobs are not repeated.
 - `feedback_sources`: connected Meta/Google sources for feedback monitoring.
@@ -212,6 +214,14 @@ Current tables:
 - `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
 - `feedback_deliveries`: delivery audit.
 - `feedback_monitor_runs`: poll/classify/delivery run audit.
+
+Production operational automation:
+
+- `company-ops-health.timer`: every two minutes; checks systemd and PostgreSQL,
+  never calls AI.
+- `company-register-backlog-replay.timer`: every six hours; requeues up to 25
+  historical provider failures at priority 10.
+- New register jobs retain priority 100 and are always selected before backlog.
 - `feedback_sources`: connected Meta/Google sources for feedback monitoring.
 - `feedback_items`: normalized review/comment inbox.
 - `feedback_classifications`: Google rule or Meta AI classification output.

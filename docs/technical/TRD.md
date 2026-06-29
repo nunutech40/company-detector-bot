@@ -310,12 +310,21 @@ Key fields:
 - `attempt_count`
 - `last_error`, `error_class`, `next_attempt_at`
 - `last_provider`, `last_model`, `config_fingerprint`
+- `queue_priority`: 100 for live register jobs, 10 for historical replay
 - `locked_at`, `processed_at`, `created_at`, `updated_at`
 - `investigation_job_id`
 
-`register_worker_incidents` stores deduplicated AI provider incidents and the
-Telegram alert/recovery timestamps. It prevents one notification per failed job
-during the same outage.
+`register_worker_incidents` retains the original investigation-provider incident
+history. `operational_incidents` is the shared anti-spam state used by the
+production health monitor. Rows are separated by feature (`brands_prospect` or
+`negative_comment_monitor`) and kind (`service_down`, `queue_stalled`, or
+`ai_provider`). Slack receives one confirmed alert and one confirmed recovery
+per incident.
+
+`company-ops-health.timer` runs every two minutes but only queries systemd and
+PostgreSQL. It does not call an LLM. Service and queue incidents require two
+consecutive unhealthy checks. Transient AI incidents require two affected jobs
+or three attempts on one job; auth, credit, and model errors are definitive.
 
 #### `slack_digest_runs`
 

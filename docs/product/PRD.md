@@ -332,8 +332,12 @@ Final webhook integration must:
 - Avoid running investigation inside the HTTP request.
 - Let a background worker process queued data sequentially.
 - Keep AI provider failures replayable; never turn them into false investigation results.
-- Notify Telegram once when an AI incident opens and once when processing recovers.
-- Notify Telegram when the register worker goes down and when it becomes active again.
+- Send confirmed, deduplicated Slack incident/recovery notifications separately
+  for Brands Prospect Investigation and Negative Comment Monitor.
+- Do not call AI from periodic health checks; infer provider health from real job
+  evidence and queue progress.
+- Drain historical provider failures in limited low-priority batches while new
+  register submissions retain priority.
 - Store completed investigation output through the existing DB/dashboard path.
 - Deliver each queued investigation result to Telegram as part of the workflow.
 

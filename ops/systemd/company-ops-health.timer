@@ -1,5 +1,5 @@
 [Unit]
-Description=Check Company Detector register worker health every two minutes
+Description=Evaluate Company Detector operational health every two minutes
 
 [Timer]
 OnBootSec=2min

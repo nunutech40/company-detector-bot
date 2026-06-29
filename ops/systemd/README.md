@@ -25,8 +25,11 @@ Units:
 - `company-dashboard.service` runs the internal dashboard.
 - `company-webhook.service` runs the register intake webhook API.
 - `company-register-worker.service` runs the sequential queue worker.
-- `company-register-worker-health.timer` checks the worker every two minutes and
-  sends Telegram down/recovery notifications.
+- `company-ops-health.timer` checks both feature workers and queues every two
+  minutes without calling AI. Confirmed incidents and recoveries are sent once
+  to each feature's Slack channel.
+- `company-register-backlog-replay.timer` returns at most 25 historical AI
+  failures to the low-priority queue every six hours.
 - `company-slack-digest.service` runs one digest send.
 - `company-slack-digest.timer` triggers digest daily at 09:00.
 
@@ -39,8 +42,10 @@ Example commands on the server:
 ```bash
 mkdir -p ~/.config/systemd/user
 cp company-register-worker.service ~/.config/systemd/user/
-cp company-register-worker-health.service ~/.config/systemd/user/
-cp company-register-worker-health.timer ~/.config/systemd/user/
+cp company-ops-health.service ~/.config/systemd/user/
+cp company-ops-health.timer ~/.config/systemd/user/
+cp company-register-backlog-replay.service ~/.config/systemd/user/
+cp company-register-backlog-replay.timer ~/.config/systemd/user/
 cp company-dashboard.service ~/.config/systemd/user/
 cp company-webhook.service ~/.config/systemd/user/
 cp company-slack-digest.service ~/.config/systemd/user/
@@ -49,7 +54,8 @@ systemctl --user daemon-reload
 systemctl --user enable --now company-dashboard.service
 systemctl --user enable --now company-webhook.service
 systemctl --user enable --now company-register-worker.service
-systemctl --user enable --now company-register-worker-health.timer
+systemctl --user enable --now company-ops-health.timer
+systemctl --user enable --now company-register-backlog-replay.timer
 systemctl --user enable --now company-slack-digest.timer
 systemctl --user list-timers
 ```
@@ -59,8 +65,13 @@ Queue operations:
 ```bash
 cd ~/.openclaw/webhook
 node worker.js status
-node worker.js replay-provider-failures --since-hours 72
+node worker.js replay-provider-failures --since-hours 72 --limit 25
+node worker.js replay-provider-failures --all --limit 25
 ```
+
+Replay updates the original rows to `retry_pending`; it does not create duplicate
+jobs. Replayed legacy rows use priority 10 while new registrations use priority
+100, so live registrations always take precedence.
 
 Provider timeouts and HTTP 5xx remain `retry_pending` with exponential backoff.
 Authentication, credit, and model errors become `blocked_provider`. Changing the

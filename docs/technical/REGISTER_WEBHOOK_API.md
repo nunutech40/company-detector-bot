@@ -157,18 +157,33 @@ Platform Register
 
 Volume target sekitar 100 register/hari, jadi worker sengaja jalan sequential supaya lebih mudah dipantau dan tidak membanjiri tool/search/LLM.
 
-Queue tidak membuang job saat AI bermasalah. Worker mengirim satu Telegram alert
-saat insiden provider dibuka dan satu recovery alert setelah investigasi real
-berhasil lagi. Timer `company-register-worker-health.timer` mengirim alert terpisah
-jika service worker mati dan recovery ketika service aktif kembali.
+Queue tidak membuang job saat AI bermasalah. Timer
+`company-ops-health.timer` memeriksa worker investigasi dan worker negative
+comment secara terpisah. Check membaca systemd/PostgreSQL tanpa memanggil AI.
+Alert Slack hanya dikirim setelah gangguan terkonfirmasi dan dideduplikasi sampai
+recovery terkonfirmasi.
 
 Operasi manual:
 
 ```bash
 cd ~/.openclaw/webhook
 node worker.js status
-node worker.js replay-provider-failures --since-hours 72
+node worker.js replay-provider-failures --since-hours 72 --limit 25
+node worker.js replay-provider-failures --all --limit 25
 ```
+
+Replay mengubah row asli menjadi `retry_pending`, bukan membuat job duplikat.
+Legacy replay memakai priority 10, sementara register baru tetap priority 100.
+Timer `company-register-backlog-replay.timer` memasukkan maksimal 25 job lama
+setiap enam jam agar backlog terkuras bertahap tanpa menahan register baru.
+
+Tujuan alert dipisah per fitur:
+
+- `Brands Prospect Investigation` memakai
+  `BRANDS_PROSPECT_ALERT_SLACK_CHANNEL`, fallback `SLACK_REPORT_CHANNEL`.
+- `Negative Comment Monitor` memakai
+  `NEGATIVE_MONITOR_ALERT_SLACK_CHANNEL`, fallback
+  `REVIEW_MONITOR_SLACK_CHANNEL`.
 
 Nomor HP disimpan masked di kolom queue utama, tetapi raw payload tetap disimpan di `payload_json`. Sales Sheet memakai raw phone dari payload jika tersedia, karena sales butuh nomor penuh untuk follow-up.
 

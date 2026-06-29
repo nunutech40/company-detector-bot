@@ -95,6 +95,12 @@ Webhook:   http://127.0.0.1:3002
 Health:    http://127.0.0.1:3002/health
 ```
 
+Production uses `company-ops-health.timer` to check the investigation and
+negative-comment workers independently. Incidents are deduplicated in
+PostgreSQL and sent once to each feature's Slack channel; the two-minute check
+does not invoke an LLM. Historical AI failures drain automatically in batches
+of 25 every six hours at lower priority than new register submissions.
+
 Gunakan reverse proxy kantor dan HTTPS untuk public access.
 
 ## Quick Start
