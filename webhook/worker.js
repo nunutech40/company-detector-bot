@@ -11,6 +11,7 @@
  */
 
 const { execFile } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
@@ -26,6 +27,7 @@ const WORKSPACE = process.env.OPENCLAW_WORKSPACE
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const MAX_ATTEMPTS = parseInt(process.env.REGISTER_WORKER_MAX_ATTEMPTS || '3', 10);
+const MAX_BACKOFF_SEC = parseInt(process.env.REGISTER_WORKER_MAX_BACKOFF_SEC || '1800', 10);
 const IDLE_MS = parseInt(process.env.REGISTER_WORKER_IDLE_MS || '10000', 10);
 const RUN_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_RUN_TIMEOUT_MS || '120000', 10);
 const WORKER_MODE = process.env.REGISTER_WORKER_MODE || 'agent';
@@ -35,8 +37,12 @@ const DELIVER_TELEGRAM = (process.env.REGISTER_WORKER_DELIVER_TELEGRAM || 'true'
 const TELEGRAM_TARGET = process.env.REGISTER_WORKER_TELEGRAM_TO
   || process.env.TELEGRAM_DELIVERY_TO
   || readTelegramAllowFromTarget(path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'credentials', 'telegram-default-allowFrom.json'));
+const TELEGRAM_TOKEN = process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
+const ACTIVE_MODEL = readActiveModel();
+const CONFIG_FINGERPRINT = fingerprint(JSON.stringify(ACTIVE_MODEL));
 
 const args = process.argv.slice(2);
+const command = args[0] && !args[0].startsWith('--') ? args[0] : 'worker';
 const once = args.includes('--once');
 const limit = readIntArg('--limit', once ? 1 : 0);
 
@@ -54,6 +60,10 @@ main().catch(async (err) => {
 });
 
 async function main() {
+  if (command === 'replay-provider-failures') return closeAfter(replayProviderFailures());
+  if (command === 'status') return closeAfter(printStatus());
+  await replayBlockedAfterConfigChange();
+
   let processed = 0;
 
   while (true) {
@@ -82,7 +92,7 @@ async function lockNextJob() {
       WITH next_job AS (
         SELECT id
         FROM register_intake_jobs
-        WHERE status = 'pending'
+        WHERE (status IN ('pending', 'retry_pending') AND next_attempt_at <= NOW())
            OR (status = 'processing' AND locked_at < NOW() - INTERVAL '30 minutes')
         ORDER BY created_at ASC
         FOR UPDATE SKIP LOCKED
@@ -126,13 +136,15 @@ async function processJob(job) {
           processed_at = NOW(),
           locked_at = NULL,
           last_error = NULL,
+          error_class = NULL,
           updated_at = NOW()
       WHERE id = $1
     `, [job.id, investigationJobId]);
 
     console.log(`register_worker: completed id=${job.id} investigation_job_id=${investigationJobId}`);
+    await resolveProviderIncident(job);
   } catch (err) {
-    await markFailedOrPending(job, err);
+    await markRetry(job, err);
   }
 }
 
@@ -225,17 +237,145 @@ async function runFinishInvestigation(job, reportText, usage = null) {
   }
 }
 
-async function markFailedOrPending(job, err) {
-  const nextStatus = job.attempt_count >= MAX_ATTEMPTS ? 'failed' : 'pending';
+async function markRetry(job, err) {
+  const failure = classifyFailure(err);
+  const providerBlocked = ['provider_auth', 'provider_credit', 'provider_model'].includes(failure.errorClass);
+  const providerFailure = failure.errorClass.startsWith('provider_');
+  const nextStatus = providerBlocked
+    ? 'blocked_provider'
+    : (providerFailure || job.attempt_count < MAX_ATTEMPTS ? 'retry_pending' : 'failed');
+  const backoff = backoffSeconds(job.attempt_count);
   await pool.query(`
     UPDATE register_intake_jobs
     SET status = $2,
         locked_at = NULL,
-        last_error = $3,
+        next_attempt_at = NOW() + ($3::TEXT || ' seconds')::INTERVAL,
+        last_error = $4,
+        error_class = $5,
+        last_provider = $6,
+        last_model = $7,
+        config_fingerprint = $8,
         updated_at = NOW()
     WHERE id = $1
-  `, [job.id, nextStatus, String(err.message || err).slice(0, 2000)]);
-  console.error(`register_worker: ${nextStatus} id=${job.id}: ${err.message}`);
+  `, [job.id, nextStatus, backoff, String(err.message || err).slice(0, 2000), failure.errorClass, ACTIVE_MODEL.provider, ACTIVE_MODEL.model, CONFIG_FINGERPRINT]);
+  console.error(`register_worker: ${nextStatus} id=${job.id} error_class=${failure.errorClass}: ${err.message}`);
+  if (providerFailure) await openProviderIncident(job, failure, err, nextStatus);
+}
+
+async function replayBlockedAfterConfigChange() {
+  const result = await pool.query(`
+    UPDATE register_intake_jobs
+    SET status = 'retry_pending', attempt_count = 0, locked_at = NULL,
+        next_attempt_at = NOW(), updated_at = NOW(), config_fingerprint = $1
+    WHERE status = 'blocked_provider'
+      AND config_fingerprint IS DISTINCT FROM $1
+    RETURNING id
+  `, [CONFIG_FINGERPRINT]);
+  if (result.rowCount) console.log(`register_worker: config_changed requeued=${result.rowCount}`);
+}
+
+async function replayProviderFailures() {
+  const sinceHours = readIntArg('--since-hours', 72);
+  const result = await pool.query(`
+    UPDATE register_intake_jobs
+    SET status = 'retry_pending', attempt_count = 0, locked_at = NULL,
+        next_attempt_at = NOW(), updated_at = NOW(), config_fingerprint = $1
+    WHERE created_at >= NOW() - ($2::TEXT || ' hours')::INTERVAL
+      AND (
+        status = 'blocked_provider'
+        OR (status = 'failed' AND (
+          error_class LIKE 'provider_%'
+          OR last_error ~* '(HTTP 40[1234]|HTTP 429|HTTP 5[0-9]{2}|522|credit|quota|key is blocked|temporarily unavailable|timeout|socket|ECONN)'
+        ))
+      )
+    RETURNING id
+  `, [CONFIG_FINGERPRINT, sinceHours]);
+  console.log(`register_worker: replay_provider_failures since_hours=${sinceHours} requeued=${result.rowCount}`);
+}
+
+async function printStatus() {
+  const rows = await pool.query(`
+    SELECT status, count(*)::int
+    FROM register_intake_jobs
+    GROUP BY status
+    ORDER BY status
+  `);
+  console.table(rows.rows);
+}
+
+async function openProviderIncident(job, failure, err, queueStatus) {
+  const result = await pool.query(`
+    INSERT INTO register_worker_incidents (
+      incident_type, status, error_class, provider, model, message, occurrence_count, opened_at, last_seen_at
+    ) VALUES ('ai_provider', 'open', $1, $2, $3, $4, 1, NOW(), NOW())
+    ON CONFLICT (incident_type) WHERE status = 'open'
+    DO UPDATE SET error_class = EXCLUDED.error_class, provider = EXCLUDED.provider,
+      model = EXCLUDED.model, message = EXCLUDED.message,
+      occurrence_count = register_worker_incidents.occurrence_count + 1,
+      last_seen_at = NOW(), updated_at = NOW()
+    RETURNING id, (xmax = 0) AS opened
+  `, [failure.errorClass, ACTIVE_MODEL.provider, ACTIVE_MODEL.model, String(err.message || err).slice(0, 1000)]);
+  if (!result.rows[0]?.opened) return;
+  const counts = await queueCounts();
+  const text = [
+    'ALERT Company Detector: AI investigation error',
+    `Provider/model: ${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model}`,
+    `Error: ${failure.errorClass}`,
+    `Job: ${job.email} (${queueStatus})`,
+    `Queue: ${counts}`,
+    'Job tidak dibuang; worker akan retry sesuai status queue.',
+  ].join('\n');
+  if (await sendTelegramAlert(text)) {
+    await pool.query('UPDATE register_worker_incidents SET alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [result.rows[0].id]);
+  }
+}
+
+async function resolveProviderIncident(job) {
+  const result = await pool.query(`
+    UPDATE register_worker_incidents
+    SET status = 'resolved', resolved_at = NOW(), updated_at = NOW()
+    WHERE incident_type = 'ai_provider' AND status = 'open'
+    RETURNING id, opened_at, occurrence_count
+  `);
+  if (!result.rowCount) return;
+  const text = [
+    'RECOVERY Company Detector: AI investigation normal kembali',
+    `Provider/model: ${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model}`,
+    `Validasi: job ${job.email} berhasil diproses`,
+    `Gangguan tercatat: ${result.rows[0].occurrence_count} error`,
+    `Queue: ${await queueCounts()}`,
+  ].join('\n');
+  if (await sendTelegramAlert(text)) {
+    await pool.query('UPDATE register_worker_incidents SET recovery_alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [result.rows[0].id]);
+  }
+}
+
+async function queueCounts() {
+  const result = await pool.query(`
+    SELECT status, count(*)::int FROM register_intake_jobs
+    WHERE status <> 'completed' GROUP BY status ORDER BY status
+  `);
+  return result.rows.map((row) => `${row.status}=${row.count}`).join(', ') || 'empty';
+}
+
+async function sendTelegramAlert(text) {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_TARGET) {
+    console.error('register_worker: alert skipped; Telegram token/target missing');
+    return false;
+  }
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_TARGET, text }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.description || `HTTP ${response.status}`);
+    return true;
+  } catch (err) {
+    console.error(`register_worker: Telegram alert failed: ${err.message}`);
+    return false;
+  }
 }
 
 function runCommand(cmd, commandArgs, opts = {}) {
@@ -383,4 +523,63 @@ function readTelegramAllowFromTarget(filePath) {
   } catch (_) {
     return '';
   }
+}
+
+function classifyFailure(err) {
+  const message = String(err?.message || err || '');
+  const normalized = message.toLowerCase();
+  if (/http 40[13]/i.test(message) || normalized.includes('authentication') || normalized.includes('key is blocked') || normalized.includes('invalid api key')) {
+    return { errorClass: 'provider_auth' };
+  }
+  if (/http 402/i.test(message) || normalized.includes('credit') || normalized.includes('quota') || normalized.includes('membership')) {
+    return { errorClass: 'provider_credit' };
+  }
+  if (/http 404/i.test(message) || normalized.includes('model not found') || normalized.includes('unknown model')) {
+    return { errorClass: 'provider_model' };
+  }
+  if (/http (408|429|5[0-9]{2})/i.test(message)
+    || normalized.includes('temporarily unavailable')
+    || normalized.includes('timeout')
+    || normalized.includes('timed out')
+    || normalized.includes('socket')
+    || normalized.includes('econn')
+    || normalized.includes('fetch failed')
+    || normalized.includes('failovererror')
+    || normalized.includes('ai service')) {
+    return { errorClass: 'provider_transient' };
+  }
+  return { errorClass: 'worker_error' };
+}
+
+function backoffSeconds(attempt) {
+  return Math.min(MAX_BACKOFF_SEC, Math.max(10, 10 * Math.pow(2, Math.max(0, attempt - 1))));
+}
+
+function readActiveModel() {
+  const configPath = process.env.OPENCLAW_CONFIG_PATH
+    || path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'openclaw.json');
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const primary = String(config?.agents?.defaults?.model?.primary || 'unknown/unknown');
+    const [provider, ...modelParts] = primary.split('/');
+    const model = modelParts.join('/') || 'unknown';
+    const providerConfig = config?.models?.providers?.[provider] || {};
+    return {
+      provider,
+      model,
+      baseUrl: providerConfig.baseUrl || '',
+      apiKeyMarker: providerConfig.apiKey ? fingerprint(String(providerConfig.apiKey)).slice(0, 12) : '',
+    };
+  } catch (_) {
+    return { provider: 'unknown', model: 'unknown', baseUrl: '', apiKeyMarker: '' };
+  }
+}
+
+function fingerprint(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+async function closeAfter(promise) {
+  await promise;
+  await pool.end();
 }

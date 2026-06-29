@@ -289,6 +289,7 @@ Schema sources:
 
 - `docs/technical/migration_v1.sql`
 - `docs/technical/migration_v2_webhook_slack_queue.sql`
+- `docs/technical/migration_v6_register_worker_recovery.sql`
 
 ### Planned Final-Phase Tables
 
@@ -305,11 +306,16 @@ Key fields:
 - `external_id` or `idempotency_key`
 - `payload_json`
 - `email`, `full_name`, `brand_name`, `no_hp_masked`
-- `status`: `pending`, `processing`, `completed`, `failed`, `skipped`
+- `status`: `pending`, `retry_pending`, `blocked_provider`, `processing`, `completed`, `failed`, `skipped`
 - `attempt_count`
-- `last_error`
+- `last_error`, `error_class`, `next_attempt_at`
+- `last_provider`, `last_model`, `config_fingerprint`
 - `locked_at`, `processed_at`, `created_at`, `updated_at`
 - `investigation_job_id`
+
+`register_worker_incidents` stores deduplicated AI provider incidents and the
+Telegram alert/recovery timestamps. It prevents one notification per failed job
+during the same outage.
 
 #### `slack_digest_runs`
 

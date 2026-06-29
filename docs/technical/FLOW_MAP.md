@@ -665,19 +665,32 @@ sequenceDiagram
   Webhook->>DB: Insert into register_intake_jobs
   DB-->>Webhook: intake_job_id
   Webhook-->>Platform: queued response + dashboard_url
-  Worker->>DB: Lock oldest pending register_intake_jobs row
+  Worker->>DB: Lock oldest due pending/retry_pending row
   Worker->>OpenClaw: Run investigation one by one
-  OpenClaw->>OpenClaw: Deliver final report to Telegram
-  OpenClaw-->>Worker: Return final report
-  Worker->>Finalizer: Execute finalizer
-  Finalizer->>DB: Persist investigation_jobs final_reports llm_calls
+  alt Provider timeout / HTTP 5xx
+    OpenClaw-->>Worker: Provider transient error
+    Worker->>DB: retry_pending + next_attempt_at
+    Worker->>OpenClaw: Telegram incident alert once
+  else Provider auth / credit / model error
+    OpenClaw-->>Worker: Provider blocked error
+    Worker->>DB: blocked_provider + config fingerprint
+  else Investigation succeeds
+    OpenClaw->>OpenClaw: Deliver final report to Telegram
+    OpenClaw-->>Worker: Return final report
+    Worker->>Finalizer: Execute finalizer
+    Finalizer->>DB: Persist investigation_jobs final_reports llm_calls
+    Worker->>OpenClaw: Telegram recovery alert if incident was open
+  end
   DB-->>Dashboard: Job visible
 ```
 
 Worker rule:
 
 - Default concurrency is one job at a time.
-- A job must finish, fail, or be skipped before the next payload starts.
+- One job is processed at a time. A delayed retry does not block newer due jobs.
+- Transient provider failures remain retryable; they are not converted to false results.
+- Provider-blocked jobs replay automatically after an AI config fingerprint change,
+  or manually with `node worker.js replay-provider-failures --since-hours 72`.
 - Around 100 register payloads per day is small enough for sequential processing.
 - Queue rows are persistent in PostgreSQL; they do not disappear daily.
 

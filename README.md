@@ -16,7 +16,8 @@ Status per 10 Juni 2026:
 - Runtime Docker telah diuji setara dengan VPS lama: OpenClaw `2026.5.12`,
   Node 24, PostgreSQL 16, Go binaries, plugins, providers, search tools, dan
   agent investigation flow.
-- Webhook queue memproses register secara sequential melalui OpenClaw agent.
+- Webhook queue memproses register secara sequential melalui OpenClaw agent,
+  menyimpan retry provider secara durable, dan mengirim alert outage/recovery ke Telegram.
 - Telegram mendukung outbound report dan inbound/manual investigation.
 - Dashboard menyediakan investigation records dan browser-based Sales Sheet.
 - Slack daily prospect digest berjalan setiap pukul 09:00 Asia/Jakarta.

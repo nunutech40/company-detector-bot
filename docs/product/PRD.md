@@ -183,6 +183,9 @@ PostgreSQL table: register_intake_jobs
         v
 Sequential worker
         |
+        +--> AI transient failure: retry_pending
+        +--> AI auth/credit/model failure: blocked_provider
+        |
         v
 Same investigation + finalization path above
 ```
@@ -193,6 +196,7 @@ Jalur yang sudah valid:
 
 - Manual/Telegram investigation.
 - Webhook queue -> sequential worker -> OpenClaw agent -> Telegram delivery -> finalizer -> DB/dashboard.
+- Provider failures remain replayable; transient failures use backoff and blocked provider jobs resume after configuration recovery.
 - Slack daily prospect digest dari row final PostgreSQL.
 
 ---
@@ -327,10 +331,13 @@ Final webhook integration must:
 - Return fast JSON acknowledgement with queue/job ID.
 - Avoid running investigation inside the HTTP request.
 - Let a background worker process queued data sequentially.
+- Keep AI provider failures replayable; never turn them into false investigation results.
+- Notify Telegram once when an AI incident opens and once when processing recovers.
+- Notify Telegram when the register worker goes down and when it becomes active again.
 - Store completed investigation output through the existing DB/dashboard path.
 - Deliver each queued investigation result to Telegram as part of the workflow.
 
-The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing uses PostgreSQL-backed status rows and must be one-at-a-time by default, with retry, idempotency, and failure tracking.
+The webhook must support around 100 register submissions per day without burst-processing all of them at once. Queue processing uses PostgreSQL-backed status rows and must be one-at-a-time by default, with scheduled retry, provider-blocked recovery, idempotency, incident notification, and failure tracking.
 
 ---
 

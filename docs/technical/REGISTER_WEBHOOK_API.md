@@ -146,6 +146,8 @@ Platform Register
 -> PostgreSQL register_intake_jobs status=pending
 -> sequential worker ambil satu job
 -> OpenClaw investigation
+-> provider transient error: retry_pending + exponential backoff
+-> provider auth/credit/model error: blocked_provider sampai config diperbaiki
 -> finish_investigation.sh
 -> PostgreSQL result tables + dashboard
 -> Telegram report wajib terkirim
@@ -154,6 +156,19 @@ Platform Register
 ```
 
 Volume target sekitar 100 register/hari, jadi worker sengaja jalan sequential supaya lebih mudah dipantau dan tidak membanjiri tool/search/LLM.
+
+Queue tidak membuang job saat AI bermasalah. Worker mengirim satu Telegram alert
+saat insiden provider dibuka dan satu recovery alert setelah investigasi real
+berhasil lagi. Timer `company-register-worker-health.timer` mengirim alert terpisah
+jika service worker mati dan recovery ketika service aktif kembali.
+
+Operasi manual:
+
+```bash
+cd ~/.openclaw/webhook
+node worker.js status
+node worker.js replay-provider-failures --since-hours 72
+```
 
 Nomor HP disimpan masked di kolom queue utama, tetapi raw payload tetap disimpan di `payload_json`. Sales Sheet memakai raw phone dari payload jika tersedia, karena sales butuh nomor penuh untuk follow-up.
 
@@ -175,4 +190,3 @@ curl -X POST http://103.226.139.107:3002/webhook/check \
     "idempotency_key": "platform_register:register-user-id-123"
   }'
 ```
-

@@ -82,6 +82,10 @@ PostgreSQL company_detection.register_intake_jobs
         v
 Sequential worker
         |
+        +--> transient AI error: retry_pending + backoff
+        +--> auth/credit/model error: blocked_provider
+        +--> Telegram incident/recovery alert
+        |
         v
 Existing investigation + finalization path
 
@@ -199,6 +203,7 @@ Current tables:
 - `final_reports`: full report text and raw JSON.
 - `llm_calls`: model token usage and estimated cost.
 - `register_intake_jobs`: PostgreSQL-backed queue for platform register payloads.
+- `register_worker_incidents`: deduplicated AI outage/recovery alert state.
 - `slack_digest_runs`: one row per daily Slack digest execution.
 - `slack_digest_items`: sent prospect item tracking so jobs are not repeated.
 - `feedback_sources`: connected Meta/Google sources for feedback monitoring.
