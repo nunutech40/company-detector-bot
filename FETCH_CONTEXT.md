@@ -298,6 +298,12 @@ possible_company_affiliated + confidence_score >= 60 => listed as prospect
 empty prospect window => send heartbeat digest
 ```
 
+Digest mempertahankan semua kandidat yang lolos aturan di atas, tetapi setiap
+item membedakan pengambil keputusan, kontak yang terkait bisnis namun role-nya
+belum jelas, dan profil personal/hobbyist. Item selalu menyertakan kesimpulan,
+relasi/role bisnis, status prospect, serta saran follow-up. Personal/hobbyist
+ditandai bukan prospect utama dan perlu verifikasi sebelum hard-selling.
+
 Slack links to the browser Sales Sheet:
 
 ```text

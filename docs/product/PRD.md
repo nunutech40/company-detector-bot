@@ -365,6 +365,17 @@ Digest content:
 - Include browser Sales Sheet link in every digest; sales users should be able to open it without Excel.
 - If prospects exist, include a list of prospect-ready accounts from the previous window.
 - Each prospect item may include available website, marketplace, and social media summary.
+- Each prospect item must explain who the contact is, the detected business
+  relationship/role, prospect fit, and the recommended follow-up approach.
+- Owner/founder/CEO/director evidence is treated as a decision-maker signal.
+- Business assets without role evidence remain visible but are marked for role
+  verification before an offer is made.
+- Personal/hobbyist projects are retained for audit completeness, marked as
+  not a primary prospect, and must not receive hard-selling before a business
+  role is confirmed.
+- Outreach priority is action-aware: decision makers retain Hot/Warm tiers,
+  unknown business roles use `Qualification first`, and personal/weak-evidence
+  candidates use `Review only`.
 - Do not include dashboard detail links in Slack; sales should continue from the Sales Sheet.
 - Hide raw evidence, tool logic, AI reasoning, scraping details, and internal scoring explanation from Slack.
 - Keep full investigation detail in dashboard and DB.

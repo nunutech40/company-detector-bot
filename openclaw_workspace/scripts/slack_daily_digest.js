@@ -121,8 +121,11 @@ async function getProspects(client, window) {
         j.business_industry,
         j.business_website,
         j.business_city,
+        j.person_name,
+        j.person_role,
         j.marketplace_json,
         j.social_media_json,
+        j.role_evidence_json,
         j.source,
         j.confidence_score,
         j.finished_at,
@@ -163,8 +166,11 @@ async function getProspects(client, window) {
         business_industry,
         business_website,
         business_city,
+        person_name,
+        person_role,
         marketplace_json,
         social_media_json,
+        role_evidence_json,
         source,
         confidence_score,
         finished_at,
@@ -185,8 +191,11 @@ async function getProspects(client, window) {
       business_industry,
       business_website,
       business_city,
+      person_name,
+      person_role,
       marketplace_json,
       social_media_json,
+      role_evidence_json,
       source,
       confidence_score,
       finished_at,
@@ -217,20 +226,25 @@ function buildMessage(prospects, window, options = {}) {
     return lines.join('\n');
   }
 
-  lines.push(`Ada ${prospects.length} prospect baru siap follow up.`);
+  lines.push(`Ada ${prospects.length} kandidat baru untuk ditinjau dan di-follow up.`);
   lines.push('');
 
   prospects.forEach((job, index) => {
     const name = displayName(job);
     const contact = job.email;
     const whatsapp = extractPhone(job);
-    const tier = prospectTier(job.confidence_score);
     const marketplace = formatChannels(job.marketplace_json, { maxItems: 2 });
     const socialMedia = formatChannels(job.social_media_json, { maxItems: 3 });
+    const guidance = buildProspectGuidance(job);
+    const priority = outreachPriority(job.confidence_score, guidance.fit);
     lines.push(`${index + 1}. ${name}`);
     lines.push(`   Kontak: ${contact}`);
     if (whatsapp) lines.push(`   WhatsApp: ${whatsapp}`);
-    lines.push(`   Prioritas: ${tier}`);
+    lines.push(`   Prioritas outreach: ${priority}`);
+    lines.push(`   Status prospect: ${guidance.fit}`);
+    lines.push(`   Kesimpulan: ${guidance.conclusion}`);
+    lines.push(`   Relasi bisnis: ${guidance.relationship}`);
+    lines.push(`   Saran follow-up: ${guidance.followUp}`);
     if (job.business_website) lines.push(`   Website: ${job.business_website}`);
     if (marketplace) lines.push(`   Marketplace: ${marketplace}`);
     if (socialMedia) lines.push(`   Sosial Media: ${socialMedia}`);
@@ -298,12 +312,19 @@ function fileTimestamp(value) {
 
 function displayName(job) {
   const candidates = [
-    job.brand_name,
+    cleanDisplayValue(job.brand_name),
     cleanBusinessName(job.business_name),
-    job.full_name,
+    cleanDisplayValue(job.full_name),
     job.email,
   ];
   return candidates.find(Boolean) || job.email;
+}
+
+function cleanDisplayValue(value) {
+  const text = String(value || '').trim();
+  if (!text || /^(null|undefined|unknown|n\/a|-)$/i.test(text)) return '';
+  if (/^(nama|domain|website|deskripsi)(\s*,\s*(nama|domain|website|deskripsi))+$/i.test(text)) return '';
+  return text;
 }
 
 function cleanBusinessName(value) {
@@ -311,7 +332,8 @@ function cleanBusinessName(value) {
     .replace(/\*\*/g, '')
     .replace(/^nama:\s*/i, '')
     .trim();
-  if (!text) return '';
+  if (!text || /^(null|undefined|unknown|n\/a|-)(?:\s|\(|$)/i.test(text)) return '';
+  if (!cleanDisplayValue(text)) return '';
   if (text.length > 60) return '';
   if (/alat:|web_search|web_fetch|location:|education:/i.test(text)) return '';
   return text;
@@ -321,6 +343,135 @@ function prospectTier(confidence) {
   const score = Number(confidence || 0);
   if (score >= 75) return 'Hot prospect';
   return 'Warm prospect';
+}
+
+function outreachPriority(confidence, fit) {
+  if (/bukan prospect utama|bukti bisnis lemah/i.test(fit)) return 'Review only';
+  if (/perlu verifikasi role/i.test(fit)) return 'Qualification first';
+  return prospectTier(confidence);
+}
+
+function buildProspectGuidance(job) {
+  const person = cleanPersonName(job.person_name) || cleanPersonName(job.full_name) || 'Kontak ini';
+  const business = cleanDisplayValue(job.brand_name) || cleanBusinessName(job.business_name);
+  const role = normalizeRole(job.person_role) || roleFromEvidence(job.role_evidence_json);
+  const personalProject = hasPersonalProjectSignal(job);
+  const hasBusinessAsset = Boolean(
+    business
+    || cleanDisplayValue(job.business_website)
+    || parseJsonList(job.marketplace_json).length
+  );
+
+  if (role) {
+    const roleLabel = formatRole(role);
+    const target = business ? ` pada ${business}` : ' pada bisnis yang teridentifikasi';
+    const decisionMaker = /owner|founder|ceo|direktur|pemilik|co-founder/i.test(role);
+    return {
+      fit: decisionMaker ? 'Prospek utama - pengambil keputusan' : 'Prospek relevan - relasi bisnis teridentifikasi',
+      conclusion: `${person} terindikasi sebagai ${roleLabel}${target}.`,
+      relationship: `${roleLabel}${business ? ` di ${business}` : ''}.`,
+      followUp: decisionMaker
+        ? 'Hubungi langsung dengan penawaran kerja sama yang spesifik pada kebutuhan bisnisnya.'
+        : 'Gunakan konteks perannya, lalu konfirmasi kewenangan atau minta diarahkan ke pengambil keputusan.',
+    };
+  }
+
+  if (personalProject) {
+    return {
+      fit: 'Perlu verifikasi - bukan prospect utama',
+      conclusion: `${person} saat ini lebih kuat terindikasi sebagai akun atau proyek personal/hobbyist.`,
+      relationship: business
+        ? `Ada jejak ${business}, tetapi belum ada bukti bahwa kontak ini pemilik atau pengelola bisnis.`
+        : 'Belum ditemukan bukti kepemilikan, pengelolaan, atau role pada bisnis.',
+      followUp: 'Jangan langsung hard-selling. Tanyakan dahulu apakah ia menjalankan bisnis atau mewakili brand; lanjutkan hanya jika role bisnis terkonfirmasi.',
+    };
+  }
+
+  if (hasBusinessAsset) {
+    return {
+      fit: 'Perlu verifikasi role',
+      conclusion: `${person} memiliki keterkaitan dengan ${business || 'aset bisnis/kanal penjualan'}, tetapi perannya belum teridentifikasi.`,
+      relationship: business
+        ? `Terhubung dengan ${business}; status owner, pengelola, karyawan, atau partner belum dapat dipastikan.`
+        : 'Memiliki kanal bisnis, tetapi hubungan personal dengan bisnis belum dapat dipastikan.',
+      followUp: 'Mulai dengan qualification singkat: konfirmasi role, skala usaha, kebutuhan, dan siapa pengambil keputusan sebelum menawarkan kerja sama.',
+    };
+  }
+
+  return {
+    fit: 'Perlu verifikasi - bukti bisnis lemah',
+    conclusion: `${person} belum memiliki profil bisnis yang cukup jelas untuk langsung dianggap prospect utama.`,
+    relationship: 'Relasi bisnis dan role belum teridentifikasi.',
+    followUp: 'Lakukan verifikasi ringan terlebih dahulu; jangan masukkan ke outreach prioritas sampai ada bukti bisnis atau role yang jelas.',
+  };
+}
+
+function cleanPersonName(value) {
+  const text = cleanDisplayValue(value);
+  if (!text || /^https?:\/\//i.test(text) || /[@/]/.test(text)) return '';
+  const firstStatement = text.split(/[.*"“”|]/)[0].trim();
+  if (!firstStatement || firstStatement.length > 80) return '';
+  if (firstStatement.split(/\s+/).length > 7) return '';
+  return firstStatement;
+}
+
+function hasPersonalProjectSignal(job) {
+  const values = [
+    job.brand_name,
+    job.business_name,
+    job.business_industry,
+    job.person_role,
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  return /(proyek|project)\s+personal|personal\s+(project|proyek)|hobbyist|playground|portofolio|portfolio|eksperimen pribadi/.test(values);
+}
+
+function normalizeRole(value, strict = false) {
+  const text = cleanDisplayValue(value).toLowerCase();
+  if (!text) return '';
+  if (/owner|pemilik/.test(text)) return 'owner';
+  if (/co[- ]?founder/.test(text)) return 'co-founder';
+  if (/founder|pendiri/.test(text)) return 'founder';
+  if (/ceo|chief executive/.test(text)) return 'CEO';
+  if (/direktur|director/.test(text)) return 'direktur';
+  if (/distributor/.test(text)) return 'distributor';
+  if (/reseller/.test(text)) return 'reseller';
+  if (/merchant|seller|penjual/.test(text)) return 'merchant';
+  if (/marketing/.test(text)) return 'marketing';
+  if (/admin/.test(text)) return 'admin';
+  if (/manager|manajer/.test(text)) return 'manager';
+  return strict ? '' : text.slice(0, 60);
+}
+
+function roleFromEvidence(value) {
+  const evidence = parseJsonList(value);
+  for (const item of evidence) {
+    const text = typeof item === 'string'
+      ? item
+      : `${item.quote || ''} ${item.claim || ''} ${item.value || ''}`;
+    const role = normalizeRole(text, true);
+    if (role) return role;
+  }
+  return '';
+}
+
+function formatRole(role) {
+  if (role === 'owner') return 'pemilik';
+  if (role === 'founder') return 'pendiri';
+  if (role === 'co-founder') return 'co-founder';
+  return role;
+}
+
+function parseJsonList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return [value];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed;
+    return parsed && typeof parsed === 'object' ? [parsed] : [];
+  } catch (_err) {
+    return [];
+  }
 }
 
 async function createDigestRun(client, window, prospectCount, status) {
