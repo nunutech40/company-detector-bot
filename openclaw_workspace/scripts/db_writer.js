@@ -149,7 +149,7 @@ function getTokenUsage() {
           total_tokens:      Number(u.total_tokens ?? u.total ?? 0),
           cost_usd:          Number(u.cost_usd ?? 0),
         };
-        if (!usage.total_tokens) usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
         if (!usage.cost_usd) usage.cost_usd = costUsdFor(usage, costMap);
         return usage;
       });
@@ -186,7 +186,7 @@ function getTokenUsage() {
       }
       byModel[key].prompt_tokens     += s.inputTokens  || 0;
       byModel[key].completion_tokens += s.outputTokens || 0;
-      byModel[key].total_tokens      += s.totalTokens  || 0;
+      byModel[key].total_tokens       = byModel[key].prompt_tokens + byModel[key].completion_tokens;
     }
 
     return Object.entries(byModel).map(([key, m]) => {

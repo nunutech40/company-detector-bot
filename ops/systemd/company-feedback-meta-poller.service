@@ -1,0 +1,10 @@
+[Unit]
+Description=Company Detector Meta comment poller
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.openclaw/feedback_monitor
+EnvironmentFile=%h/.openclaw/gateway.systemd.env
+EnvironmentFile=%h/.openclaw/feedback-monitor.env
+ExecStart=/usr/bin/node worker.js poll-meta

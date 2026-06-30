@@ -22,6 +22,8 @@ const META_PAGE_IDS = (process.env.META_PAGE_IDS || '')
 const META_POST_LIMIT = parseInt(process.env.META_POST_LIMIT || '10', 10);
 const META_COMMENT_LIMIT = parseInt(process.env.META_COMMENT_LIMIT || '50', 10);
 const META_LOOKBACK_MINUTES = parseInt(process.env.META_LOOKBACK_MINUTES || '30', 10);
+const META_PAGE_CONCURRENCY = parseInt(process.env.META_PAGE_CONCURRENCY || '2', 10);
+const META_COMMENT_CONCURRENCY = parseInt(process.env.META_COMMENT_CONCURRENCY || '5', 10);
 const CLASSIFIER_VERSION = process.env.FEEDBACK_CLASSIFIER_VERSION || `meta-ai:${AI_PROVIDER}:${AI_MODEL}:v1`;
 const CONFIG_FINGERPRINT = process.env.FEEDBACK_AI_CONFIG_FINGERPRINT || fingerprint([
   AI_PROVIDER,
@@ -557,66 +559,85 @@ async function syncMetaPages() {
 }
 
 async function pollMetaComments() {
-  const pages = await resolveMetaPages();
-  let inserted = 0;
-  for (const page of pages) {
-    const posts = await graphGet(`/${page.id}/posts`, {
-      fields: 'id,message,created_time,permalink_url',
-      limit: META_POST_LIMIT,
-    }, page.page_access_token);
-    for (const post of posts.data || []) {
-      const comments = await graphGet(`/${post.id}/comments`, {
-        fields: 'id,message,from,created_time,permalink_url,parent{id}',
-        filter: 'stream',
-        limit: META_COMMENT_LIMIT,
-      }, page.page_access_token);
-      for (const comment of comments.data || []) {
-        if (!isWithinLookback(comment.created_time || comment.timestamp)) continue;
-        const event = {
-          source: 'facebook_page',
-          eventType: 'poll_comment',
-          externalAccountId: String(page.id),
-          externalFeedbackId: String(comment.id),
-          idempotencyKey: `facebook_page:${page.id}:${comment.id}`,
-          rawPayload: {
-            feedback: {
-              external_account_id: String(page.id),
-              external_content_id: String(post.id),
-              external_feedback_id: String(comment.id),
-              external_parent_feedback_id: comment.parent?.id || '',
-              author_display_name: comment.from?.name || '',
-              message: comment.message || '',
-              content_context: post.message || '',
-              permalink: comment.permalink_url || post.permalink_url || '',
-              created_at: comment.created_time || null,
-            },
-            page: { id: page.id, name: page.name || '' },
-            post,
-            comment,
-          },
-        };
-        const result = await pool.query(`
-          INSERT INTO feedback_ingestion_events (
-            source, event_type, idempotency_key, external_account_id, external_feedback_id, raw_payload
-          )
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (idempotency_key) DO NOTHING
-        `, [
-          event.source,
-          event.eventType,
-          event.idempotencyKey,
-          event.externalAccountId,
-          event.externalFeedbackId,
-          event.rawPayload,
+  const startedAt = Date.now();
+  try {
+    const pages = await resolveMetaPages();
+    const results = await mapLimit(pages, META_PAGE_CONCURRENCY, async (page) => {
+      try {
+        const [facebookInserted, instagramInserted] = await Promise.all([
+          pollFacebookComments(page),
+          page.instagram_business_account?.id ? pollInstagramComments(page) : Promise.resolve(0),
         ]);
-        inserted += result.rowCount || 0;
+        return { ok: true, inserted: facebookInserted + instagramInserted };
+      } catch (err) {
+        console.error(`feedback_worker: meta_poll page_failed page=${page.name || page.id}: ${err.message}`);
+        return { ok: false, inserted: 0, error: err.message };
       }
-    }
-    if (page.instagram_business_account?.id) {
-      inserted += await pollInstagramComments(page);
-    }
+    });
+    const successfulPages = results.filter((result) => result.ok).length;
+    const failedPages = results.length - successfulPages;
+    const inserted = results.reduce((sum, result) => sum + result.inserted, 0);
+    if (pages.length && successfulPages === 0) throw new Error('all Meta pages failed to poll');
+    const metrics = {
+      pages: pages.length,
+      successful_pages: successfulPages,
+      failed_pages: failedPages,
+      inserted_events: inserted,
+      duration_ms: Date.now() - startedAt,
+    };
+    await recordMonitorRun('meta_poll', failedPages ? 'partial' : 'completed', `inserted=${inserted}`, metrics);
+    console.log(`feedback_worker: meta_poll pages=${pages.length} successful=${successfulPages} failed=${failedPages} inserted_events=${inserted} duration_ms=${metrics.duration_ms}`);
+  } catch (err) {
+    await recordMonitorRun('meta_poll', 'failed', err.message, { duration_ms: Date.now() - startedAt });
+    throw err;
   }
-  console.log(`feedback_worker: meta_poll pages=${pages.length} inserted_events=${inserted}`);
+}
+
+async function pollFacebookComments(page) {
+  const posts = await graphGet(`/${page.id}/posts`, {
+    fields: 'id,message,created_time,permalink_url',
+    limit: META_POST_LIMIT,
+  }, page.page_access_token);
+  const counts = await mapLimit(posts.data || [], META_COMMENT_CONCURRENCY, async (post) => {
+    const comments = await graphGet(`/${post.id}/comments`, {
+      fields: 'id,message,from,created_time,permalink_url,parent{id}',
+      filter: 'stream',
+      limit: META_COMMENT_LIMIT,
+    }, page.page_access_token);
+    let inserted = 0;
+    for (const comment of comments.data || []) {
+      if (!isWithinLookback(comment.created_time || comment.timestamp)) continue;
+      const result = await pool.query(`
+        INSERT INTO feedback_ingestion_events (
+          source, event_type, idempotency_key, external_account_id, external_feedback_id, raw_payload
+        ) VALUES ('facebook_page', 'poll_comment', $1, $2, $3, $4)
+        ON CONFLICT (idempotency_key) DO NOTHING
+      `, [
+        `facebook_page:${page.id}:${comment.id}`,
+        String(page.id),
+        String(comment.id),
+        {
+          feedback: {
+            external_account_id: String(page.id),
+            external_content_id: String(post.id),
+            external_feedback_id: String(comment.id),
+            external_parent_feedback_id: comment.parent?.id || '',
+            author_display_name: comment.from?.name || '',
+            message: comment.message || '',
+            content_context: post.message || '',
+            permalink: comment.permalink_url || post.permalink_url || '',
+            created_at: comment.created_time || null,
+          },
+          page: { id: page.id, name: page.name || '' },
+          post,
+          comment,
+        },
+      ]);
+      inserted += result.rowCount || 0;
+    }
+    return inserted;
+  });
+  return counts.reduce((sum, count) => sum + count, 0);
 }
 
 async function pollInstagramComments(page) {
@@ -625,12 +646,12 @@ async function pollInstagramComments(page) {
     fields: 'id,caption,timestamp,permalink',
     limit: META_POST_LIMIT,
   }, page.page_access_token);
-  let inserted = 0;
-  for (const item of media.data || []) {
+  const counts = await mapLimit(media.data || [], META_COMMENT_CONCURRENCY, async (item) => {
     const comments = await graphGet(`/${item.id}/comments`, {
       fields: 'id,text,username,timestamp,permalink',
       limit: META_COMMENT_LIMIT,
     }, page.page_access_token);
+    let inserted = 0;
     for (const comment of comments.data || []) {
       if (!isWithinLookback(comment.timestamp)) continue;
       const result = await pool.query(`
@@ -664,8 +685,16 @@ async function pollInstagramComments(page) {
       ]);
       inserted += result.rowCount || 0;
     }
-  }
-  return inserted;
+    return inserted;
+  });
+  return counts.reduce((sum, count) => sum + count, 0);
+}
+
+async function recordMonitorRun(runType, status, detail, metrics) {
+  await pool.query(`
+    INSERT INTO feedback_monitor_runs (run_type, status, detail, metrics_json)
+    VALUES ($1, $2, $3, $4)
+  `, [runType, status, String(detail || '').slice(0, 1000), metrics || {}]);
 }
 
 async function resolveMetaPages() {
@@ -873,6 +902,21 @@ function fingerprint(value) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function mapLimit(items, concurrency, mapper) {
+  const values = Array.from(items || []);
+  const results = new Array(values.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(Number(concurrency) || 1, values.length || 1));
+  const runners = Array.from({ length: workerCount }, async () => {
+    while (cursor < values.length) {
+      const index = cursor++;
+      results[index] = await mapper(values[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
 }
 
 async function closeAfter(promise) {

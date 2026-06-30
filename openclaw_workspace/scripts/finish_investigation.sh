@@ -95,11 +95,15 @@ node "${SCRIPT_DIR}/db_writer.js" "${DB_ARGS[@]}" 2>&1 | grep -E "db_writer:" ||
 # Tampilkan token usage untuk session ini
 echo ""
 echo "--- AI Token Usage ---"
-bash "${SCRIPT_DIR}/token_usage.sh" 2>/dev/null || true
+TOKEN_USAGE_ARGS=()
+if [[ -n "${LLM_USAGE_FILE}" && -f "${LLM_USAGE_FILE}" ]]; then
+  TOKEN_USAGE_ARGS+=(--usage-file "${LLM_USAGE_FILE}")
+fi
+bash "${SCRIPT_DIR}/token_usage.sh" "${TOKEN_USAGE_ARGS[@]}" 2>/dev/null || true
 
 # Append token info ke AI report jika ada
 if [[ -f "${WORKSPACE_DIR}/reports/ai_report_latest.txt" ]]; then
-  TOKEN_INFO=$(bash "${SCRIPT_DIR}/token_usage.sh" 2>/dev/null || echo "")
+  TOKEN_INFO=$(bash "${SCRIPT_DIR}/token_usage.sh" "${TOKEN_USAGE_ARGS[@]}" 2>/dev/null || echo "")
   if [[ -n "${TOKEN_INFO}" ]]; then
     echo "" >> "${WORKSPACE_DIR}/reports/ai_report_latest.txt"
     echo "───" >> "${WORKSPACE_DIR}/reports/ai_report_latest.txt"

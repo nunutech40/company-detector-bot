@@ -30,6 +30,10 @@ Units:
   to each feature's Slack channel.
 - `company-register-backlog-replay.timer` returns at most 25 historical AI
   failures to the low-priority queue every six hours.
+- `company-feedback-monitor-worker.service` classifies and delivers normalized
+  Meta comments.
+- `company-feedback-meta-poller.timer` starts the next bounded Meta poll 15
+  minutes after the previous run finishes.
 - `company-slack-digest.service` runs one digest send.
 - `company-slack-digest.timer` triggers digest daily at 09:00.
 
@@ -46,6 +50,9 @@ cp company-ops-health.service ~/.config/systemd/user/
 cp company-ops-health.timer ~/.config/systemd/user/
 cp company-register-backlog-replay.service ~/.config/systemd/user/
 cp company-register-backlog-replay.timer ~/.config/systemd/user/
+cp company-feedback-monitor-worker.service ~/.config/systemd/user/
+cp company-feedback-meta-poller.service ~/.config/systemd/user/
+cp company-feedback-meta-poller.timer ~/.config/systemd/user/
 cp company-dashboard.service ~/.config/systemd/user/
 cp company-webhook.service ~/.config/systemd/user/
 cp company-slack-digest.service ~/.config/systemd/user/
@@ -56,6 +63,8 @@ systemctl --user enable --now company-webhook.service
 systemctl --user enable --now company-register-worker.service
 systemctl --user enable --now company-ops-health.timer
 systemctl --user enable --now company-register-backlog-replay.timer
+systemctl --user enable --now company-feedback-monitor-worker.service
+systemctl --user enable --now company-feedback-meta-poller.timer
 systemctl --user enable --now company-slack-digest.timer
 systemctl --user list-timers
 ```

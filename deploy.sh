@@ -83,6 +83,14 @@ expect eof
 EXPECTEOF
 }
 
+scp_file_atomic() {
+  local src="$1"
+  local dst="$2"
+  local tmp="${dst}.deploy-new"
+  scp_file "${src}" "${tmp}"
+  ssh_cmd "mv -f ${tmp} ${dst}"
+}
+
 echo "=== Deploy to VPS ==="
 echo "Repo: ${REPO_DIR}"
 echo "VPS:  ${VPS_USER}@${VPS_HOST}"
@@ -137,7 +145,7 @@ for script in \
   slack_reporter.js \
   slack_daily_digest.js; do
   if [[ -f "${REPO_DIR}/openclaw_workspace/scripts/${script}" ]]; then
-    scp_file "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
+    scp_file_atomic "${REPO_DIR}/openclaw_workspace/scripts/${script}" "${VPS_WORKSPACE}/scripts/${script}"
     ssh_cmd "chmod +x ${VPS_WORKSPACE}/scripts/${script}"
     echo "      ✓ ${script}"
   fi
@@ -175,8 +183,8 @@ if [[ -f "${REPO_DIR}/webhook/package-lock.json" ]]; then
   scp_file "${REPO_DIR}/webhook/package-lock.json" "/home/nunuopc/.openclaw/webhook/package-lock.json"
 fi
 scp_file "${REPO_DIR}/webhook/app.js" "/home/nunuopc/.openclaw/webhook/app.js"
-scp_file "${REPO_DIR}/webhook/worker.js" "/home/nunuopc/.openclaw/webhook/worker.js"
-scp_file "${REPO_DIR}/webhook/ops_health_monitor.js" "/home/nunuopc/.openclaw/webhook/ops_health_monitor.js"
+scp_file_atomic "${REPO_DIR}/webhook/worker.js" "/home/nunuopc/.openclaw/webhook/worker.js"
+scp_file_atomic "${REPO_DIR}/webhook/ops_health_monitor.js" "/home/nunuopc/.openclaw/webhook/ops_health_monitor.js"
 ssh_cmd "chmod +x /home/nunuopc/.openclaw/webhook/worker.js /home/nunuopc/.openclaw/webhook/ops_health_monitor.js"
 ssh_cmd "cd /home/nunuopc/.openclaw/webhook && npm install --omit=dev"
 ssh_cmd "systemctl --user restart company-webhook"
@@ -187,12 +195,23 @@ scp_file "${REPO_DIR}/docs/technical/migration_v7_operational_health.sql" "/tmp/
 ssh_cmd "set -a; . /home/nunuopc/.openclaw/gateway.systemd.env; set +a; psql \"\$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /tmp/migration_v7_operational_health.sql; rm -f /tmp/migration_v7_operational_health.sql"
 echo "      ✓ operational migration applied"
 
+scp_file "${REPO_DIR}/docs/technical/migration_v8_token_totals.sql" "/tmp/migration_v8_token_totals.sql"
+ssh_cmd "set -a; . /home/nunuopc/.openclaw/gateway.systemd.env; set +a; psql \"\$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /tmp/migration_v8_token_totals.sql; rm -f /tmp/migration_v8_token_totals.sql"
+echo "      ✓ token totals normalized"
+
+# 5c.2 Deploy isolated negative feedback monitor
+scp_file_atomic "${REPO_DIR}/feedback_monitor/worker.js" "/home/nunuopc/.openclaw/feedback_monitor/worker.js"
+ssh_cmd "chmod +x /home/nunuopc/.openclaw/feedback_monitor/worker.js"
+
 # 5d. Deploy user systemd units used by webhook queue and daily Slack digest
 echo "[5d] Deploying systemd units..."
 for unit in \
   company-dashboard.service \
   company-webhook.service \
   company-register-worker.service \
+  company-feedback-monitor-worker.service \
+  company-feedback-meta-poller.service \
+  company-feedback-meta-poller.timer \
   company-ops-health.service \
   company-ops-health.timer \
   company-register-backlog-replay.service \
@@ -208,6 +227,8 @@ ssh_cmd "systemctl --user daemon-reload"
 ssh_cmd "systemctl --user enable --now company-dashboard"
 ssh_cmd "systemctl --user enable --now company-webhook"
 ssh_cmd "systemctl --user restart company-register-worker"
+ssh_cmd "systemctl --user restart company-feedback-monitor-worker"
+ssh_cmd "systemctl --user enable --now company-feedback-meta-poller.timer"
 ssh_cmd "systemctl --user disable --now company-register-worker-health.timer >/dev/null 2>&1 || true"
 ssh_cmd "systemctl --user enable --now company-ops-health.timer"
 ssh_cmd "systemctl --user enable --now company-register-backlog-replay.timer"

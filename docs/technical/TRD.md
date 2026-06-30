@@ -161,12 +161,14 @@ classifier. Google reviews must never consume LLM credits.
 | Trigger | Event-driven through Google Pub/Sub and Meta Webhooks; optional reconciliation only |
 | State | `company_detector_review_monitor` volume |
 | Configuration | `REVIEW_MONITOR_*` environment namespace |
-| Collection | Current: Meta Graph API polling every 15 minutes. Future: Google Business Profile API/PubSub and Meta Webhooks |
+| Collection | Current: bounded Meta Graph polling, next run 15 minutes after completion, 24-hour lookback. Future: Google Business Profile API/PubSub and Meta Webhooks |
 | Selection | Google rating 1-3; Meta validated AI classification |
 | Dedupe | SHA-256 fingerprint of rating, reviewer, and comment |
 | Delivery | Telegram every completed result; Slack Web API only for negative feedback |
 | Failure safety | Never report false empty/non-negative; AI provider/auth/model failures remain replayable as `blocked_provider` |
 | AI recovery | Config/health-change sweep and operator replay requeue failed Meta jobs idempotently |
+| Poll audit | Every poll writes completed/partial/failed status and metrics to `feedback_monitor_runs` |
+| Poll health | `company-ops-health.timer` alerts the Negative Comment Monitor channel when timer/poll freshness is unhealthy |
 
 ---
 
@@ -576,8 +578,10 @@ Important variables:
 
 Current:
 
-- `token_usage.sh` reads model pricing from OpenClaw config.
+- `token_usage.sh --usage-file` reports only the completed investigation job.
+- Stored-session mode is diagnostic only and is never appended to a queued job report.
 - `llm_calls` stores token and estimated cost.
+- `llm_calls.total_tokens` is normalized to `prompt_tokens + completion_tokens`.
 - Dashboard shows cost per job.
 - Script logs are available through shell/systemd.
 - Daily Slack digest sends an operational heartbeat even when no prospect is found.

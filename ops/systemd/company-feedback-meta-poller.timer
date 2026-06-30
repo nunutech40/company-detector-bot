@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Company Detector Meta comment poller 15 minutes after completion
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=15min
+AccuracySec=30s
+Unit=company-feedback-meta-poller.service
+
+[Install]
+WantedBy=timers.target

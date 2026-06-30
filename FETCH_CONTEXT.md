@@ -105,7 +105,7 @@ Isolated Google review monitor
 
 Active Negative Feedback Monitor
         |
-        +--> Meta Graph API polling every 15 minutes
+        +--> Meta Graph API polling 15 minutes after each completed run
         +--> Facebook Page + attached Instagram Business comments
         +--> structured AI classifier for new/changed Meta comments only
         +--> normalized feedback inbox + isolated queues/schema
@@ -128,10 +128,16 @@ Slack channel lives in separate `.env.review-monitor`; shared Slack bot token re
 Negative feedback monitor boundary: Google reviews remain deterministic and never call AI. Meta
 comments call only a dedicated fixed structured classifier; they do not use
 OpenClaw/ReAct/investigation tools. Current production source is Meta Graph API
-polling every 15 minutes with a 60-minute lookback. Meta webhook endpoint exists
+polling 15 minutes after each completed run with a 1440-minute/24-hour lookback.
+The poller uses bounded concurrency, checks up to 100 posts/media and 50 comments
+per item, and writes every run to `feedback_monitor_runs`. Meta webhook endpoint exists
 but is not the active source until the Meta App callback/subscription is configured.
 Every completed monitoring result goes to Telegram, while Slack monitoring receives
 negative results only.
+
+`company-ops-health.timer` also checks poller freshness. A stopped timer, failed
+poll, or no completed poll for over 60 minutes opens a deduplicated
+`Negative Comment Monitor` Slack incident. Empty polls do not call AI.
 
 Meta AI failures are durable and replayable. Expired keys, unavailable models,
 provider outages, rate limits, timeouts, and invalid provider responses must
@@ -214,6 +220,11 @@ Current tables:
 - `feedback_delivery_jobs`: Telegram all-results and Slack negative-only delivery queue.
 - `feedback_deliveries`: delivery audit.
 - `feedback_monitor_runs`: poll/classify/delivery run audit.
+
+Token reporting contract: queued investigations pass a per-job usage file into
+`finish_investigation.sh`. Final Telegram reports show only that job's active
+provider/model and compute total as input + output. Historical OpenClaw sessions
+and previous providers are not appended to a completed job report.
 
 Production operational automation:
 

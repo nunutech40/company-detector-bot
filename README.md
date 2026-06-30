@@ -79,11 +79,14 @@ terpisah. Normal deployment tidak menyalakannya sampai Google Business Profile
 API preflight lolos.
 
 Negative Feedback Monitor sekarang sudah aktif sebagai MVP terpisah:
-Meta feedback memakai polling Meta Graph API per 15 menit di VPS, komentar
+Meta feedback menjalankan poll berikutnya 15 menit setelah poll sebelumnya
+selesai. Polling memakai bounded concurrency dan mencatat status run ke DB. Komentar
 Facebook/Instagram diklasifikasikan oleh dedicated structured AI classifier
 tanpa OpenClaw agent, setiap hasil selesai dikirim ke Telegram, dan hanya hasil
 negatif yang dikirim ke Slack monitoring. Google Business Profile masih
 menunggu API approval dan nanti tetap memakai rule rating 1-3 tanpa AI.
+Poll kosong tidak memanggil AI. Health monitor memberi alert khusus Negative
+Comment Monitor jika timer mati, polling gagal, atau hasil poll menjadi stale.
 Webhook Meta masih opsi masa depan sampai callback/subscription Meta App aktif.
 
 Application ports default ke loopback-only:
@@ -258,7 +261,9 @@ Post-investigation finalizer:
 openclaw_workspace/scripts/finish_investigation.sh --email <email>
 ```
 
-Finalizer menangani evidence saving, database write, dan token usage. Slack
+Finalizer menangani evidence saving, database write, dan token usage per job.
+Report final hanya menampilkan provider/model milik job tersebut; model dari
+session historis tidak ikut ditampilkan. Slack
 delivery ditangani daily digest flow.
 
 Slack daily digest target:

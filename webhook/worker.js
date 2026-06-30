@@ -457,7 +457,7 @@ function findAgentUsage(parsed) {
   if (!meta.provider && !meta.model && !usage.input && !usage.output && !usage.total) return null;
   const promptTokens = Number(usage.input ?? meta.promptTokens ?? 0);
   const completionTokens = Number(usage.output ?? 0);
-  const totalTokens = Number(usage.total ?? (promptTokens + completionTokens));
+  const totalTokens = promptTokens + completionTokens;
   return {
     model_provider: meta.provider || 'unknown',
     model_name: meta.model || 'unknown',

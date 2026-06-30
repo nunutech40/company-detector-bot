@@ -336,6 +336,9 @@ Final webhook integration must:
   for Brands Prospect Investigation and Negative Comment Monitor.
 - Do not call AI from periodic health checks; infer provider health from real job
   evidence and queue progress.
+- Record every Meta collection run and alert the Negative Comment Monitor channel
+  when its timer stops, collection fails, or no fresh run exists for 60 minutes.
+- Empty Meta polls must consume zero LLM calls.
 - Drain historical provider failures in limited low-priority batches while new
   register submissions retain priority.
 - Store completed investigation output through the existing DB/dashboard path.

@@ -1,137 +1,156 @@
 #!/usr/bin/env bash
-# token_usage.sh — tampilkan penggunaan token AI untuk session aktif
-# Pricing dibaca dinamis dari openclaw.json — otomatis update kalau model diganti.
-# Usage: bash scripts/token_usage.sh [--json]
+# token_usage.sh - report per-job usage or active-model stored sessions.
+# Usage:
+#   bash scripts/token_usage.sh --usage-file /path/to/job-usage.json
+#   bash scripts/token_usage.sh [--json] [--all-sessions]
 
 set -euo pipefail
 
 JSON_MODE=false
-[[ "${1:-}" == "--json" ]] && JSON_MODE=true
+ALL_SESSIONS=false
+USAGE_FILE=""
 
-OPENCLAW="/home/nunuopc/.npm-global/bin/openclaw"
-OPENCLAW_CONFIG="/home/nunuopc/.openclaw/openclaw.json"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --json) JSON_MODE=true; shift ;;
+    --all-sessions) ALL_SESSIONS=true; shift ;;
+    --usage-file) USAGE_FILE="${2:-}"; shift 2 ;;
+    *) echo "token_usage: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
 
-# Ambil session data
-SESSION_DATA=$("${OPENCLAW}" sessions --json 2>/dev/null)
+OPENCLAW="${OPENCLAW_BIN:-/home/nunuopc/.npm-global/bin/openclaw}"
+OPENCLAW_CONFIG="${OPENCLAW_CONFIG_PATH:-/home/nunuopc/.openclaw/openclaw.json}"
+CONFIG_FILE="${OPENCLAW_CONFIG}"
+SESSION_FILE=""
 
-if [[ -z "${SESSION_DATA}" ]]; then
-  echo "token_usage: no session data available" >&2
-  exit 0
-fi
-
-# Baca config untuk pricing + model aktif
-CONFIG_DATA=""
-if [[ -f "${OPENCLAW_CONFIG}" ]]; then
-  CONFIG_DATA=$(cat "${OPENCLAW_CONFIG}")
-fi
-
-# Parse dengan python3
-python3 << PYEOF
-import json, sys
-
-session_raw = '''${SESSION_DATA}'''
-config_raw  = '''${CONFIG_DATA}'''
-
-data     = json.loads(session_raw)
-sessions = data.get('sessions', [])
-
-if not sessions:
-    print("No active sessions")
-    sys.exit(0)
-
-# ── Baca pricing dari openclaw.json secara dinamis ──────────────────────────
-# Struktur: models.providers.<provider>.models[].{id, cost.{input, output}}
-# Fallback: cost_map statis untuk provider yang tidak ada di config
-cost_map = {
-    # fallback statis — dipakai kalau provider tidak ada di openclaw.json
-    'deepseek/deepseek-chat':        {'input': 0.27,  'output': 1.10},
-    'minimax/MiniMax-M2.7':          {'input': 0.30,  'output': 1.20},
-    'anthropic/claude-3-5-haiku':    {'input': 0.80,  'output': 4.00},
-    'anthropic/claude-3-5-sonnet':   {'input': 3.00,  'output': 15.00},
-    'openai/gpt-4o-mini':            {'input': 0.15,  'output': 0.60},
-    'openai/gpt-4o':                 {'input': 2.50,  'output': 10.00},
+cleanup() {
+  [[ -n "${SESSION_FILE}" ]] && rm -f "${SESSION_FILE}"
 }
+trap cleanup EXIT
 
-# Override dengan data dari openclaw.json (source of truth)
-primary_model = None
-if config_raw.strip():
+if [[ -z "${USAGE_FILE}" ]]; then
+  SESSION_FILE=$(mktemp)
+  if ! "${OPENCLAW}" sessions --json > "${SESSION_FILE}" 2>/dev/null; then
+    echo "token_usage: no session data available" >&2
+    exit 0
+  fi
+fi
+
+python3 - "${CONFIG_FILE}" "${USAGE_FILE}" "${SESSION_FILE}" "${JSON_MODE}" "${ALL_SESSIONS}" <<'PYEOF'
+import json
+import os
+import sys
+
+config_file, usage_file, session_file, json_mode_raw, all_sessions_raw = sys.argv[1:]
+json_mode = json_mode_raw.lower() == 'true'
+all_sessions = all_sessions_raw.lower() == 'true'
+
+cfg = {}
+if config_file and os.path.isfile(config_file):
     try:
-        cfg = json.loads(config_raw)
-
-        # Baca model primary dari agents.defaults.model.primary
-        primary_model = (
-            cfg.get('agents', {})
-               .get('defaults', {})
-               .get('model', {})
-               .get('primary')
-        )
-
-        # Baca pricing dari models.providers
-        providers = cfg.get('models', {}).get('providers', {})
-        for provider_name, provider_cfg in providers.items():
-            for m in provider_cfg.get('models', []):
-                model_id = m.get('id', '')
-                cost     = m.get('cost', {})
-                if model_id and cost:
-                    key = f"{provider_name}/{model_id}"
-                    cost_map[key] = {
-                        'input':  cost.get('input', 0),
-                        'output': cost.get('output', 0),
-                    }
+        with open(config_file, encoding='utf-8') as handle:
+            cfg = json.load(handle)
     except Exception:
-        pass  # config parse error — pakai fallback
+        cfg = {}
 
-# ── Aggregate token usage per model ─────────────────────────────────────────
-by_model = {}
-for s in sessions:
-    model    = s.get('model', 'unknown')
-    provider = s.get('modelProvider', 'unknown')
-    key      = f"{provider}/{model}"
-    costs    = cost_map.get(key, {'input': 0, 'output': 0})
+primary_model = (
+    cfg.get('agents', {})
+       .get('defaults', {})
+       .get('model', {})
+       .get('primary')
+)
 
-    if key not in by_model:
-        by_model[key] = {
-            'model':          model,
-            'provider':       provider,
-            'input_tokens':   0,
-            'output_tokens':  0,
-            'total_tokens':   0,
-            'sessions':       0,
-            'context_window': s.get('contextTokens', 0),
-            'cost_input':     costs['input'],
-            'cost_output':    costs['output'],
-            'is_primary':     (key == primary_model),
+cost_map = {}
+for provider_name, provider_cfg in cfg.get('models', {}).get('providers', {}).items():
+    for model_cfg in provider_cfg.get('models', []):
+        model_id = model_cfg.get('id', '')
+        if not model_id:
+            continue
+        cost = model_cfg.get('cost', {})
+        cost_map[f'{provider_name}/{model_id}'] = {
+            'input': float(cost.get('input', 0) or 0),
+            'output': float(cost.get('output', 0) or 0),
         }
-    by_model[key]['input_tokens']  += s.get('inputTokens', 0)
-    by_model[key]['output_tokens'] += s.get('outputTokens', 0)
-    by_model[key]['total_tokens']  += s.get('totalTokens', 0)
-    by_model[key]['sessions']      += 1
 
-json_mode = '${JSON_MODE}' == 'true'
+models = []
+scope = 'stored_sessions'
+
+if usage_file:
+    if not os.path.isfile(usage_file):
+        print('token_usage: usage file not found', file=sys.stderr)
+        sys.exit(0)
+    with open(usage_file, encoding='utf-8') as handle:
+        raw = json.load(handle)
+    entries = raw if isinstance(raw, list) else [raw]
+    scope = 'current_job'
+    for item in entries:
+        provider = str(item.get('model_provider') or item.get('provider') or 'unknown')
+        model = str(item.get('model_name') or item.get('model') or 'unknown')
+        input_tokens = int(item.get('prompt_tokens', item.get('input', 0)) or 0)
+        output_tokens = int(item.get('completion_tokens', item.get('output', 0)) or 0)
+        models.append({
+            'provider': provider,
+            'model': model,
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'total_tokens': input_tokens + output_tokens,
+            'sessions': 1,
+            'is_primary': f'{provider}/{model}' == primary_model,
+        })
+else:
+    with open(session_file, encoding='utf-8') as handle:
+        sessions = json.load(handle).get('sessions', [])
+    by_model = {}
+    for session in sessions:
+        provider = str(session.get('modelProvider') or 'unknown')
+        model = str(session.get('model') or 'unknown')
+        key = f'{provider}/{model}'
+        if not all_sessions and primary_model and key != primary_model:
+            continue
+        row = by_model.setdefault(key, {
+            'provider': provider,
+            'model': model,
+            'input_tokens': 0,
+            'output_tokens': 0,
+            'total_tokens': 0,
+            'sessions': 0,
+            'is_primary': key == primary_model,
+        })
+        row['input_tokens'] += int(session.get('inputTokens', 0) or 0)
+        row['output_tokens'] += int(session.get('outputTokens', 0) or 0)
+        row['sessions'] += 1
+    for row in by_model.values():
+        row['total_tokens'] = row['input_tokens'] + row['output_tokens']
+        models.append(row)
+
+for row in models:
+    key = f"{row['provider']}/{row['model']}"
+    pricing = cost_map.get(key, {'input': 0, 'output': 0})
+    row['cost_input'] = row['input_tokens'] * pricing['input'] / 1_000_000
+    row['cost_output'] = row['output_tokens'] * pricing['output'] / 1_000_000
+    row['cost_usd'] = row['cost_input'] + row['cost_output']
+    row['scope'] = scope
+
+models.sort(key=lambda row: (not row['is_primary'], row['provider'], row['model']))
 
 if json_mode:
-    print(json.dumps(list(by_model.values()), indent=2))
-else:
-    # Urutkan: model primary duluan
-    sorted_models = sorted(by_model.values(), key=lambda x: (not x['is_primary'], x['provider']))
+    print(json.dumps(models, indent=2))
+    sys.exit(0)
 
-    for m in sorted_models:
-        ctx   = m['context_window']
-        total = m['total_tokens']
-        pct   = round(total / ctx * 100, 1) if ctx > 0 else 0
+if not models:
+    print('No token usage available')
+    sys.exit(0)
 
-        cost_input  = m['input_tokens']  * m['cost_input']  / 1_000_000
-        cost_output = m['output_tokens'] * m['cost_output'] / 1_000_000
-        cost_total  = cost_input + cost_output
-
-        label = " [ACTIVE]" if m['is_primary'] else ""
-        print(f"LLM      : {m['provider']}/{m['model']}{label}")
-        print(f"Token    : {m['input_tokens']:,} input + {m['output_tokens']:,} output = {total:,} total")
-        if ctx > 0:
-            print(f"Context  : {total:,} / {ctx:,} ({pct}% used)")
-        if cost_total > 0:
-            print(f"Biaya    : ~\${cost_total:.4f} USD  (input \${cost_input:.4f} + output \${cost_output:.4f})")
-        elif m['cost_input'] == 0 and m['cost_output'] == 0:
-            print(f"Biaya    : tidak diketahui (pricing tidak ada di config)")
-        print("─" * 50)
+for row in models:
+    label = ' [ACTIVE]' if row['is_primary'] else ''
+    scope_label = 'job investigasi ini' if scope == 'current_job' else f"{row['sessions']} session OpenClaw tersimpan"
+    print(f"LLM       : {row['provider']}/{row['model']}{label}")
+    print(f"Token job : {row['input_tokens']:,} input + {row['output_tokens']:,} output = {row['total_tokens']:,} total")
+    print(f"Scope     : {scope_label}")
+    if row['cost_usd'] > 0:
+        print(f"Biaya     : ~${row['cost_usd']:.4f} USD")
+    else:
+        print('Biaya     : tidak diketahui (pricing tidak ada di config)')
+    print('-' * 50)
 PYEOF

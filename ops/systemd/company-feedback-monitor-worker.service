@@ -1,0 +1,15 @@
+[Unit]
+Description=Company Detector negative feedback monitor worker
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/feedback_monitor
+EnvironmentFile=%h/.openclaw/gateway.systemd.env
+EnvironmentFile=%h/.openclaw/feedback-monitor.env
+ExecStart=/usr/bin/node worker.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

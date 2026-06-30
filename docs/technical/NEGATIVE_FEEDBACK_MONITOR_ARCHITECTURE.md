@@ -2,7 +2,7 @@
 
 **Feature:** Google Business Profile + Meta negative feedback monitoring  
 **Status:** Meta polling MVP active on VPS; webhook remains optional/future  
-**Last updated:** 17 Juni 2026
+**Last updated:** 29 Juni 2026
 
 ---
 
@@ -22,7 +22,7 @@ Fitur tetap berada di repository Company Detector agar berbagi Docker, PostgreSQ
 Model aktif saat ini adalah **Meta Graph API polling**, bukan webhook.
 
 ```text
-systemd timer every 15 minutes
+systemd timer: next run 15 minutes after prior run completes
   -> node feedback_monitor/worker.js poll-meta
   -> Meta Graph API pages/media/comments
   -> PostgreSQL feedback tables
@@ -41,6 +41,8 @@ Konfigurasi VPS saat ini:
 | Lookback window | 1440 menit / 24 jam |
 | FB/IG post/media limit | 100 terbaru per source |
 | Comment limit | 50 komentar per post/media |
+| Page concurrency | 2 page paralel |
+| Comment request concurrency | 5 request paralel per source |
 | Telegram | Semua hasil selesai |
 | Slack | Hanya komentar negatif |
 | AI usage | Hanya untuk komentar Meta baru/berubah |
@@ -66,10 +68,11 @@ Alasannya:
 
 ```mermaid
 flowchart TB
-  Timer["systemd timer: every 15 minutes"] --> Poller["Meta poller"]
+  Timer["systemd timer: 15 min after completion"] --> Poller["Bounded Meta poller"]
   Poller --> Sources["feedback_sources: FB Pages + attached IG accounts"]
   Sources --> Graph["Meta Graph API"]
   Graph --> Normalize["Normalize comments"]
+  Poller --> RunAudit["feedback_monitor_runs: completed / partial / failed"]
   Normalize --> Items["feedback_items"]
   Items --> Queue["feedback_classification_jobs"]
   Queue --> AI["Fixed AI classifier"]
@@ -207,10 +210,12 @@ node feedback_monitor/worker.js replay-blocked
 |---|---|
 | `company-feedback-monitor-ingress` | HTTP endpoint health/webhook placeholder |
 | `company-feedback-monitor-worker` | Queue worker, classifier, delivery |
-| `company-feedback-meta-poller.timer` | Polling Meta Graph API setiap 15 menit |
+| `company-feedback-meta-poller.timer` | Menjalankan poll berikutnya 15 menit setelah run sebelumnya selesai |
 | `feedback_monitor/worker.js sync-meta-pages` | Sinkronisasi daftar FB Page dan IG account |
 | `feedback_monitor/worker.js poll-meta` | Ambil komentar baru dari Meta Graph API |
 | `feedback_monitor/worker.js status` | Cek queue, source, dan delivery status |
+| `feedback_monitor_runs` | Audit durasi, page sukses/gagal, dan jumlah event baru setiap poll |
+| `company-ops-health.timer` | Alert jika timer mati, poll gagal, atau poll stale lebih dari 60 menit |
 
 ## 10. Meta Webhook Future Path
 
@@ -264,7 +269,7 @@ node feedback_monitor/worker.js replay-blocked
 Production timer:
 
 ```text
-company-feedback-meta-poller.timer -> every 15 minutes
+company-feedback-meta-poller.timer -> 15 minutes after the previous run finishes
 ```
 
 ## 13. Important Non-Goals
@@ -274,3 +279,4 @@ company-feedback-meta-poller.timer -> every 15 minutes
 - Tidak mengirim komentar non-negative ke Slack.
 - Tidak memakai AI untuk Google rating.
 - Tidak memanggil AI untuk polling kosong; token hanya dipakai untuk komentar baru/berubah yang perlu diklasifikasi.
+- Poller memakai bounded concurrency dan tidak menjalankan catch-up loop `Persistent`.

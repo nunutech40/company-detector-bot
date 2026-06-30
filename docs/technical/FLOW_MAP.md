@@ -74,7 +74,7 @@ Google Business Profile API
 Negative feedback monitor aktif sekarang:
 
 ```text
-Meta Graph API polling setiap 15 menit
+Meta Graph API polling 15 menit setelah run sebelumnya selesai
   -> Facebook Page + Instagram Business comments
   -> normalized feedback inbox
   -> structured AI classifier hanya untuk komentar baru/berubah
@@ -105,7 +105,8 @@ Optional/future:
 
 ```mermaid
 flowchart LR
-  Timer["15-minute Meta polling"] --> MetaAI["Structured AI classifier"]
+  Timer["15 min after completed Meta poll"] --> Poller["Bounded FB/IG poller"]
+  Poller --> MetaAI["Structured AI classifier for new comments only"]
   MetaWebhook["Optional future Meta Webhook"] -.-> MetaAI
   Google["Future Google API/PubSub"] -.-> GoogleRule["Rating 1-3 rule"]
   GoogleRule --> Inbox["Normalized feedback inbox"]

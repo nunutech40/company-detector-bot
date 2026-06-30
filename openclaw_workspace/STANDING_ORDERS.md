@@ -24,7 +24,9 @@ AI wajib mengikutinya tanpa perlu diingatkan.
      --report "<isi report>"
    ```
 3. Verifikasi: pastikan selesai tanpa error
-4. Tambahkan token usage di akhir report: `bash scripts/token_usage.sh`
+4. Untuk queue register, jangan menambahkan token usage sendiri. Worker mengirim
+   usage file per-job ke finalizer dan finalizer menambahkan satu blok token yang
+   hanya berisi model/job tersebut.
 
 > **Note:** Slack delivery sekarang otomatis dengan smart routing — bisnis confidence >= 75 → kirim Slack, personal/unknown → DB only. Tidak perlu setting manual.
 
@@ -53,21 +55,24 @@ Setiap task harus:
 
 ## Program: Token Tracking
 
-**Authority:** Laporkan token usage setelah setiap investigasi.
-**Trigger:** Setelah `finish_investigation.sh` selesai.
+**Authority:** Token usage final harus berasal dari usage job yang sedang selesai,
+bukan agregasi seluruh session OpenClaw.
+**Trigger:** Otomatis oleh queue worker/finalizer.
 
 ### Execution steps
 
-1. Jalankan `bash scripts/token_usage.sh`
-2. Tampilkan output-nya langsung di akhir reply ke user — format sudah dinamis dari script.
-   Script otomatis baca model aktif dari `openclaw.json`, jadi kalau model diganti, output ikut berubah.
+1. Queue worker menjalankan `token_usage.sh --usage-file <job-usage.json>`.
+2. Tampilkan hanya satu blok provider/model yang dipakai job tersebut.
+3. `bash scripts/token_usage.sh` tanpa usage file hanya untuk diagnosis session
+   model aktif. Gunakan `--all-sessions` hanya saat audit historis.
+   Contoh output:
    Contoh output (isi sesuai model yang benar-benar dipakai):
    ```
    ───
-   LLM      : deepseek/deepseek-chat [ACTIVE]
-   Token    : 12,450 input + 3,210 output = 15,660 total
-   Context  : 15,660 / 65,536 (23.9% used)
-   Biaya    : ~$0.0069 USD  (input $0.0034 + output $0.0035)
+   LLM       : 9router/komerce-1.2 [ACTIVE]
+   Token job : 12,450 input + 3,210 output = 15,660 total
+   Scope     : job investigasi ini
+   Biaya     : tidak diketahui (pricing tidak ada di config)
    ──────────────────────────────────────────────────
    ```
-   Kalau ada model lain yang juga dipakai di session yang sama, script akan tampilkan semua — model primary duluan dengan label `[ACTIVE]`.
+   Jangan tampilkan provider/model historis pada report job baru.

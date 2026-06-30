@@ -72,6 +72,11 @@ async function evaluateFeature(feature) {
     metadata: queue,
   } : null, 2);
 
+  if (feature.key === 'negative_comment_monitor') {
+    const poller = await readMetaPollerHealth();
+    await observe(feature, 'source_poller', poller.issue, 2);
+  }
+
   const ai = await readAiHealth(feature.key);
   await observe(feature, 'ai_provider', ai.issue, 1, async (incident) => {
     const successes = await successfulAiJobsSince(feature.key, incident.opened_at);
@@ -173,6 +178,36 @@ async function readQueueHealth(featureKey) {
   };
 }
 
+async function readMetaPollerHealth() {
+  if (!isServiceActive('company-feedback-meta-poller.timer')) {
+    return { issue: {
+      summary: 'Meta comment poller timer tidak aktif',
+      fingerprint: 'meta-poller-timer-inactive',
+      evidenceCount: 1,
+    } };
+  }
+  const result = await pool.query(`
+    SELECT status, detail, metrics_json, created_at,
+           EXTRACT(EPOCH FROM (NOW() - created_at)) / 60 AS age_minutes
+    FROM feedback_monitor_runs
+    WHERE run_type='meta_poll'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `);
+  if (!result.rowCount) return { issue: null };
+  const row = result.rows[0];
+  const stale = Number(row.age_minutes || 0) > 60;
+  if (row.status !== 'failed' && !stale) return { issue: null };
+  return { issue: {
+    summary: stale
+      ? `Meta comment poller belum sukses lagi selama ${Math.round(row.age_minutes)} menit`
+      : `Meta comment poller gagal: ${row.detail || 'unknown error'}`,
+    fingerprint: hash(`meta-poller|${row.status}|${row.detail || ''}`),
+    evidenceCount: 1,
+    metadata: row.metrics_json || {},
+  } };
+}
+
 async function successfulAiJobsSince(featureKey, since) {
   const table = featureKey === 'brands_prospect' ? 'register_intake_jobs' : 'feedback_classification_jobs';
   const sourceFilter = featureKey === 'negative_comment_monitor' ? "AND source <> 'google_business'" : '';
@@ -261,6 +296,7 @@ function incidentLabel(kind) {
   if (kind === 'ai_provider') return 'AI provider bermasalah';
   if (kind === 'service_down') return 'Worker service berhenti';
   if (kind === 'queue_stalled') return 'Queue tidak bergerak';
+  if (kind === 'source_poller') return 'Sumber komentar Meta tidak terpantau';
   return kind;
 }
 
