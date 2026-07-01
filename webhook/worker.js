@@ -540,9 +540,10 @@ function buildAgentPrompt(job) {
     '',
     'Cara kerja wajib:',
     '1. Jalankan baseline check dengan scripts/company_check_go.sh --save.',
-    '2. Kalau baseline belum cukup dan ada sinyal brand/nama/domain, lanjutkan investigasi memakai search/fetch/browser yang tersedia.',
-    '3. Stop kalau confidence cukup, evidence tidak bertambah, atau budget tool habis.',
-    '4. Jangan kirim ke Slack. Jangan expose logic internal sales di output.',
+    '2. Kalau baseline belum cukup dan ada sinyal brand/nama/domain, cari lewat bash scripts/web_search_go.sh --query "..." --limit 5. Gunakan web_fetch hanya untuk URL hasil yang relevan.',
+    '3. Jangan panggil built-in web_search, browser, atau dir_list node sandbox; ketiganya tidak tersedia/stabil di runtime VPS.',
+    '4. Stop kalau confidence cukup, evidence tidak bertambah, atau budget tool habis.',
+    '5. Jangan kirim ke Slack. Jangan expose logic internal sales di output.',
     '',
     'Balas dengan final report lengkap saja, format Company Detection Report, berisi classification, confidence, evidence ringkas, source URL kalau ada, stop reason, dan rekomendasi. Jangan bungkus dalam markdown fence.',
   ];

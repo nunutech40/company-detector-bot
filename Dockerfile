@@ -4,6 +4,7 @@ WORKDIR /src/go-service
 COPY go-service/go.mod ./
 COPY go-service/ ./
 RUN go build -o /out/company-check ./cmd/company-check \
+    && go build -o /out/web-search ./cmd/web-search \
     && go build -o /out/tool-status ./cmd/tool-status \
     && go build -o /out/last-report ./cmd/last-report
 
@@ -35,10 +36,11 @@ COPY review_monitor/ ./review_monitor/
 COPY feedback_monitor/ ./feedback_monitor/
 COPY ops/docker/ ./ops/docker/
 COPY --from=go-builder /out/company-check /app/go-service/bin/company-check
+COPY --from=go-builder /out/web-search /app/go-service/bin/web-search
 COPY --from=go-builder /out/tool-status /app/go-service/bin/tool-status
 COPY --from=go-builder /out/last-report /app/go-service/bin/last-report
 
-RUN chmod +x /app/go-service/bin/company-check /app/go-service/bin/tool-status /app/go-service/bin/last-report \
+RUN chmod +x /app/go-service/bin/company-check /app/go-service/bin/web-search /app/go-service/bin/tool-status /app/go-service/bin/last-report \
     /app/openclaw_workspace/scripts/*.sh \
     && chmod +x /app/ops/docker/*.sh /app/ops/docker/*.js /app/review_monitor/*.js /app/feedback_monitor/*.js \
     && mkdir -p /app/openclaw_workspace/reports /app/openclaw_workspace/evidence /app/openclaw_workspace/exports /app/review_monitor/state

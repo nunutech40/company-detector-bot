@@ -102,13 +102,18 @@ cd "${GO_SERVICE_DIR}"
 env GOCACHE=/private/tmp/company-detector-go-cache \
     GOOS=linux GOARCH=amd64 \
     go build -o /tmp/company-check-linux ./cmd/company-check
-echo "      ✓ company-check built"
+env GOCACHE=/private/tmp/company-detector-go-cache \
+    GOOS=linux GOARCH=amd64 \
+    go build -o /tmp/web-search-linux ./cmd/web-search
+echo "      ✓ company-check and web-search built"
 
 # 2. Deploy Go binary
 echo "[2/5] Deploying Go binary..."
 scp_file "/tmp/company-check-linux" "${VPS_GO_BIN}/company-check"
+scp_file "/tmp/web-search-linux" "${VPS_GO_BIN}/web-search"
 ssh_cmd "chmod +x ${VPS_GO_BIN}/company-check"
-echo "      ✓ company-check deployed"
+ssh_cmd "chmod +x ${VPS_GO_BIN}/web-search"
+echo "      ✓ company-check and web-search deployed"
 
 # 3. Deploy workspace files (AGENTS.md, TOOLS.md, config)
 echo "[3/5] Deploying workspace files..."

@@ -27,12 +27,13 @@ This workspace is for the Company Detection Telegram MVP.
 - `evidence_store`: enabled via `company_check --save`; Go writes JSON to `evidence/` and report text to `reports/`.
 - `tool_status`: enabled, `scripts/tool_status_go.sh`.
 - `last_report`: enabled, `scripts/last_report_go.sh [email]`.
-- `web_search`: enabled via `ddg_search` fallback; dedicated provider not configured yet.
+- `web_search_go`: enabled via `scripts/web_search_go.sh`; uses the configured
+  provider cascade and currently reaches Brave on VPS.
 - `web_fetch`: check_runtime.
 - `firecrawl_scrape`: disabled_waiting_budget.
 - `tavily_search`: disabled_waiting_budget.
 - `enrichment_api`: disabled_waiting_budget.
-- `browser`: optional, skipped for Telegram MVP unless needed.
+- `browser`: disabled_runtime on VPS; do not call.
 - `slack_reporter`: enabled for all checks; Go sends when `--send-slack` is passed and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured, regardless of classification. After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
 
 ## Operational Rule

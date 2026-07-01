@@ -293,6 +293,10 @@ Dua provider failure berturut-turut membuka circuit breaker global. Queue tetap
 tersimpan tanpa memanggil AI; canary maksimal 2 output token dijalankan paling
 sering setiap 15 menit, lalu satu job nyata harus berhasil sebelum queue dibuka.
 
+Query lanjutan memakai `scripts/web_search_go.sh` agar melewati provider cascade
+yang sama dengan baseline. Built-in OpenClaw search/browser yang tidak tersedia
+di VPS sengaja tidak digunakan.
+
 Input rules:
 
 - `email` wajib.

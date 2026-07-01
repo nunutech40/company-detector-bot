@@ -46,9 +46,11 @@ Ini jalankan: emailintel → domain check → crawler → search cascade → scr
 Output-nya jadi hipotesis awal.
 
 **2. Investigasi lebih dalam:**
-- `web_search("query")` — search internet
+- `bash scripts/web_search_go.sh --query "query" --limit 5` — search internet
+  melalui cascade Google CSE → Brave → Bing → DDG. Gunakan ini, jangan built-in
+  `web_search` yang tidak memiliki provider stabil di VPS.
 - `web_fetch("url")` — baca halaman
-- `browser` — kalau web_fetch gagal (JS-heavy)
+- `browser` dan `dir_list` node sandbox tidak tersedia di VPS; jangan dipanggil.
 
 **2b. Setelah dapat teks dari search/fetch — extract ke JSON:**
 ```

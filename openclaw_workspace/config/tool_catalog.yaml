@@ -106,6 +106,7 @@ tools:
   web_search_cascade:
     status: enabled
     type: go_package
+    command: "scripts/web_search_go.sh --query <query> --limit 5"
     cost: free
     priority: mvp
     note: "Included in company_check. Tries providers in order: google_cse → brave → bing_html → ddg_html. Returns first success."
@@ -151,18 +152,18 @@ tools:
     note: "AI bisa panggil langsung. Fetch URL + extract readable content. Gunakan untuk /about, /team, social profiles, marketplace pages, LinkedIn snippets."
 
   openclaw_web_search:
-    status: check_runtime
+    status: disabled_runtime
     type: openclaw_builtin
     cost: free_or_low
     priority: phase_a
-    note: "AI bisa panggil langsung. Provider tergantung config OpenClaw. Gunakan untuk query yang berbeda dari Go cascade."
+    note: "Jangan dipanggil di VPS: SearXNG tidak dikonfigurasi dan fallback DDG timeout. Gunakan web_search_go."
 
   browser:
-    status: available
+    status: disabled_runtime
     type: openclaw_builtin
     cost: high_runtime
     priority: phase_a
-    note: "AI bisa panggil langsung. Playwright browser — render JS-heavy pages. Gunakan hanya jika web_fetch gagal. Lebih lambat dan resource-heavy."
+    note: "Tidak ada browser binary di VPS. Jangan dipanggil; laporkan URL JS-heavy sebagai keterbatasan evidence."
 
   # ── Tier 4: Paid/Not Configured (note in report, don't block) ────────────────
 

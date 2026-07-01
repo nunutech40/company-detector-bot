@@ -335,6 +335,9 @@ AI retry safety:
 - Two consecutive provider failures open a global circuit breaker. It pauses AI
   work and uses a maximum two-output-token canary every 15 minutes. One real job
   must then succeed before the incident resolves and bounded replay begins.
+- Follow-up searches use `scripts/web_search_go.sh` and the configured provider
+  cascade. Do not use built-in `web_search`, `browser`, or sandbox `dir_list` on
+  VPS; those unavailable paths previously added timeouts without evidence.
 
 ---
 
