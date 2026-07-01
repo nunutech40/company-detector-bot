@@ -277,10 +277,9 @@ empty prospect window => send heartbeat digest
 ```
 
 Digest tidak membuang kandidat yang bukti bisnisnya belum lengkap. Setiap item
-menampilkan status prospect, kesimpulan profil, relasi/role bisnis, dan saran
-follow-up. Proyek personal/hobbyist tetap dapat terlihat untuk audit, tetapi
-ditandai `Perlu verifikasi - bukan prospect utama` dan tidak disarankan untuk
-hard-selling sebelum role bisnisnya terkonfirmasi. Prioritas outreach untuk
+menampilkan status prospect, kesimpulan profil, dan relasi/role bisnis.
+Proyek personal/hobbyist tetap dapat terlihat untuk audit, tetapi ditandai
+`Perlu verifikasi - bukan prospect utama`. Prioritas outreach untuk
 kandidat seperti ini adalah `Review only`; kandidat bisnis tanpa role yang
 jelas menggunakan `Qualification first`.
 

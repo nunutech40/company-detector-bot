@@ -301,8 +301,8 @@ empty prospect window => send heartbeat digest
 Digest mempertahankan semua kandidat yang lolos aturan di atas, tetapi setiap
 item membedakan pengambil keputusan, kontak yang terkait bisnis namun role-nya
 belum jelas, dan profil personal/hobbyist. Item selalu menyertakan kesimpulan,
-relasi/role bisnis, status prospect, serta saran follow-up. Personal/hobbyist
-ditandai bukan prospect utama dan perlu verifikasi sebelum hard-selling.
+relasi/role bisnis, dan status prospect. Keputusan pendekatan follow-up tetap
+menjadi tanggung jawab sales. Personal/hobbyist ditandai bukan prospect utama.
 
 Slack links to the browser Sales Sheet:
 

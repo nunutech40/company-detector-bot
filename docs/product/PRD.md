@@ -366,7 +366,8 @@ Digest content:
 - If prospects exist, include a list of prospect-ready accounts from the previous window.
 - Each prospect item may include available website, marketplace, and social media summary.
 - Each prospect item must explain who the contact is, the detected business
-  relationship/role, prospect fit, and the recommended follow-up approach.
+  relationship/role, and prospect fit. The report must not prescribe a
+  follow-up approach; sales owns that decision.
 - Owner/founder/CEO/director evidence is treated as a decision-maker signal.
 - Business assets without role evidence remain visible but are marked for role
   verification before an offer is made.

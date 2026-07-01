@@ -103,7 +103,7 @@ AND not already in slack_digest_items
 - [x] Does not include dashboard detail links per prospect.
 - [x] Includes available website, marketplace, and social media summary per prospect.
 - [x] Includes prospect fit, concise profile conclusion, detected business
-  relationship/role, and a role-aware follow-up recommendation.
+  relationship/role without prescribing a sales follow-up action.
 - [x] Keeps personal/hobbyist candidates for audit but labels them as not a
   primary prospect instead of presenting them as immediately sales-ready.
 - [x] Sends heartbeat when prospect list is empty.

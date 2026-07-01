@@ -244,7 +244,6 @@ function buildMessage(prospects, window, options = {}) {
     lines.push(`   Status prospect: ${guidance.fit}`);
     lines.push(`   Kesimpulan: ${guidance.conclusion}`);
     lines.push(`   Relasi bisnis: ${guidance.relationship}`);
-    lines.push(`   Saran follow-up: ${guidance.followUp}`);
     if (job.business_website) lines.push(`   Website: ${job.business_website}`);
     if (marketplace) lines.push(`   Marketplace: ${marketplace}`);
     if (socialMedia) lines.push(`   Sosial Media: ${socialMedia}`);
@@ -370,9 +369,6 @@ function buildProspectGuidance(job) {
       fit: decisionMaker ? 'Prospek utama - pengambil keputusan' : 'Prospek relevan - relasi bisnis teridentifikasi',
       conclusion: `${person} terindikasi sebagai ${roleLabel}${target}.`,
       relationship: `${roleLabel}${business ? ` di ${business}` : ''}.`,
-      followUp: decisionMaker
-        ? 'Hubungi langsung dengan penawaran kerja sama yang spesifik pada kebutuhan bisnisnya.'
-        : 'Gunakan konteks perannya, lalu konfirmasi kewenangan atau minta diarahkan ke pengambil keputusan.',
     };
   }
 
@@ -383,7 +379,6 @@ function buildProspectGuidance(job) {
       relationship: business
         ? `Ada jejak ${business}, tetapi belum ada bukti bahwa kontak ini pemilik atau pengelola bisnis.`
         : 'Belum ditemukan bukti kepemilikan, pengelolaan, atau role pada bisnis.',
-      followUp: 'Jangan langsung hard-selling. Tanyakan dahulu apakah ia menjalankan bisnis atau mewakili brand; lanjutkan hanya jika role bisnis terkonfirmasi.',
     };
   }
 
@@ -394,7 +389,6 @@ function buildProspectGuidance(job) {
       relationship: business
         ? `Terhubung dengan ${business}; status owner, pengelola, karyawan, atau partner belum dapat dipastikan.`
         : 'Memiliki kanal bisnis, tetapi hubungan personal dengan bisnis belum dapat dipastikan.',
-      followUp: 'Mulai dengan qualification singkat: konfirmasi role, skala usaha, kebutuhan, dan siapa pengambil keputusan sebelum menawarkan kerja sama.',
     };
   }
 
@@ -402,7 +396,6 @@ function buildProspectGuidance(job) {
     fit: 'Perlu verifikasi - bukti bisnis lemah',
     conclusion: `${person} belum memiliki profil bisnis yang cukup jelas untuk langsung dianggap prospect utama.`,
     relationship: 'Relasi bisnis dan role belum teridentifikasi.',
-    followUp: 'Lakukan verifikasi ringan terlebih dahulu; jangan masukkan ke outreach prioritas sampai ada bukti bisnis atau role yang jelas.',
   };
 }
 
