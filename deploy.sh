@@ -215,7 +215,6 @@ for unit in \
   company-ops-health.service \
   company-ops-health.timer \
   company-register-backlog-replay.service \
-  company-register-backlog-replay.timer \
   company-slack-digest.service \
   company-slack-digest.timer; do
   if [[ -f "${REPO_DIR}/ops/systemd/${unit}" ]]; then
@@ -231,7 +230,7 @@ ssh_cmd "systemctl --user restart company-feedback-monitor-worker"
 ssh_cmd "systemctl --user enable --now company-feedback-meta-poller.timer"
 ssh_cmd "systemctl --user disable --now company-register-worker-health.timer >/dev/null 2>&1 || true"
 ssh_cmd "systemctl --user enable --now company-ops-health.timer"
-ssh_cmd "systemctl --user enable --now company-register-backlog-replay.timer"
+ssh_cmd "systemctl --user disable --now company-register-backlog-replay.timer >/dev/null 2>&1 || true"
 ssh_cmd "systemctl --user enable --now company-slack-digest.timer"
 echo "      ✓ queue/digest units reloaded"
 echo ""

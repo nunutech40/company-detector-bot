@@ -230,8 +230,10 @@ Production operational automation:
 
 - `company-ops-health.timer`: every two minutes; checks systemd and PostgreSQL,
   never calls AI.
-- `company-register-backlog-replay.timer`: every six hours; requeues up to 25
-  historical provider failures at priority 10.
+- `company-register-backlog-replay.timer`: disabled; periodic blind replay must
+  remain off.
+- Confirmed provider recovery requeues at most
+  `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT` historical failures at priority 10.
 - New register jobs retain priority 100 and are always selected before backlog.
 - `feedback_sources`: connected Meta/Google sources for feedback monitoring.
 - `feedback_items`: normalized review/comment inbox.
@@ -322,6 +324,14 @@ node scripts/slack_daily_digest.js --test-run --window-hours 999
 ```
 
 `--test-run` sends a `[TEST]` Slack preview from existing DB rows and does not insert `slack_digest_runs` or `slack_digest_items`.
+
+AI retry safety:
+
+- One register job is attempted at most `REGISTER_WORKER_MAX_ATTEMPTS` times.
+- Every retry uses a new OpenClaw session ID, so failed context is not reused.
+- Blind periodic backlog replay is disabled.
+- After a successful AI job confirms provider recovery, at most
+  `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT` failed provider jobs are requeued.
 
 ---
 

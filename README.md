@@ -101,8 +101,9 @@ Health:    http://127.0.0.1:3002/health
 Production uses `company-ops-health.timer` to check the investigation and
 negative-comment workers independently. Incidents are deduplicated in
 PostgreSQL and sent once to each feature's Slack channel; the two-minute check
-does not invoke an LLM. Historical AI failures drain automatically in batches
-of 25 every six hours at lower priority than new register submissions.
+does not invoke an LLM. Blind periodic replay is disabled. After a confirmed
+provider recovery, at most 5 historical AI failures return to the low-priority
+queue; operators can also trigger the same bounded batch manually.
 
 Gunakan reverse proxy kantor dan HTTPS untuk public access.
 
@@ -282,6 +283,11 @@ Proyek personal/hobbyist tetap dapat terlihat untuk audit, tetapi ditandai
 `Perlu verifikasi - bukan prospect utama`. Prioritas outreach untuk
 kandidat seperti ini adalah `Review only`; kandidat bisnis tanpa role yang
 jelas menggunakan `Qualification first`.
+
+AI retry memakai session baru untuk setiap attempt dan berhenti setelah batas
+`REGISTER_WORKER_MAX_ATTEMPTS`. Replay berkala tanpa health signal dimatikan;
+provider recovery hanya membuka kembali batch kecil agar gangguan AI tidak
+berubah menjadi retry storm dan pemborosan token.
 
 Input rules:
 

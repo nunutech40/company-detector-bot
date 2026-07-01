@@ -1,5 +1,5 @@
 [Unit]
-Description=Requeue 25 legacy AI failures every six hours
+Description=Legacy periodic replay (must remain disabled; use bounded recovery replay)
 
 [Timer]
 OnBootSec=10min

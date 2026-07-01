@@ -168,14 +168,15 @@ Operasi manual:
 ```bash
 cd ~/.openclaw/webhook
 node worker.js status
-node worker.js replay-provider-failures --since-hours 72 --limit 25
-node worker.js replay-provider-failures --all --limit 25
+node worker.js replay-provider-failures --since-hours 72 --limit 5
+node worker.js replay-provider-failures --all --limit 5
 ```
 
 Replay mengubah row asli menjadi `retry_pending`, bukan membuat job duplikat.
 Legacy replay memakai priority 10, sementara register baru tetap priority 100.
-Timer `company-register-backlog-replay.timer` memasukkan maksimal 25 job lama
-setiap enam jam agar backlog terkuras bertahap tanpa menahan register baru.
+Timer `company-register-backlog-replay.timer` harus tetap disabled. Recovery AI
+yang terkonfirmasi memasukkan maksimal `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT`
+job lama; replay manual juga harus memakai batch kecil.
 
 Tujuan alert dipisah per fitur:
 

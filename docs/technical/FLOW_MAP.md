@@ -689,11 +689,14 @@ Worker rule:
 
 - Default concurrency is one job at a time.
 - One job is processed at a time. A delayed retry does not block newer due jobs.
-- Transient provider failures remain retryable; they are not converted to false results.
-- Provider-blocked jobs replay automatically after an AI config fingerprint change,
-  or manually with `node worker.js replay-provider-failures --all --limit 25`.
-- A six-hour timer admits at most 25 legacy failures at priority 10. New
-  registrations at priority 100 preempt the backlog.
+- Transient provider failures retry only up to `REGISTER_WORKER_MAX_ATTEMPTS`;
+  exhausted jobs remain stored as failed rather than looping indefinitely.
+- Every attempt uses a fresh OpenClaw session so failed context is not inherited.
+- Confirmed provider recovery admits at most
+  `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT` legacy failures at priority 10, or an
+  operator can run `node worker.js replay-provider-failures --all --limit 5`.
+- The old six-hour replay timer is disabled. New registrations at priority 100
+  preempt any recovery backlog.
 - Around 100 register payloads per day is small enough for sequential processing.
 - Queue rows are persistent in PostgreSQL; they do not disappear daily.
 

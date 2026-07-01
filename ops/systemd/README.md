@@ -28,8 +28,11 @@ Units:
 - `company-ops-health.timer` checks both feature workers and queues every two
   minutes without calling AI. Confirmed incidents and recoveries are sent once
   to each feature's Slack channel.
-- `company-register-backlog-replay.timer` returns at most 25 historical AI
-  failures to the low-priority queue every six hours.
+- `company-register-backlog-replay.service` is a manual recovery command that
+  returns at most 5 historical AI failures to the low-priority queue.
+- Provider retries stop after `REGISTER_WORKER_MAX_ATTEMPTS`. A successful AI
+  job confirms recovery and requeues at most
+  `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT` failed provider jobs.
 - `company-feedback-monitor-worker.service` classifies and delivers normalized
   Meta comments.
 - `company-feedback-meta-poller.timer` starts the next bounded Meta poll 15
@@ -49,7 +52,6 @@ cp company-register-worker.service ~/.config/systemd/user/
 cp company-ops-health.service ~/.config/systemd/user/
 cp company-ops-health.timer ~/.config/systemd/user/
 cp company-register-backlog-replay.service ~/.config/systemd/user/
-cp company-register-backlog-replay.timer ~/.config/systemd/user/
 cp company-feedback-monitor-worker.service ~/.config/systemd/user/
 cp company-feedback-meta-poller.service ~/.config/systemd/user/
 cp company-feedback-meta-poller.timer ~/.config/systemd/user/
@@ -62,7 +64,7 @@ systemctl --user enable --now company-dashboard.service
 systemctl --user enable --now company-webhook.service
 systemctl --user enable --now company-register-worker.service
 systemctl --user enable --now company-ops-health.timer
-systemctl --user enable --now company-register-backlog-replay.timer
+systemctl --user disable --now company-register-backlog-replay.timer
 systemctl --user enable --now company-feedback-monitor-worker.service
 systemctl --user enable --now company-feedback-meta-poller.timer
 systemctl --user enable --now company-slack-digest.timer
@@ -74,8 +76,8 @@ Queue operations:
 ```bash
 cd ~/.openclaw/webhook
 node worker.js status
-node worker.js replay-provider-failures --since-hours 72 --limit 25
-node worker.js replay-provider-failures --all --limit 25
+node worker.js replay-provider-failures --since-hours 72 --limit 5
+node worker.js replay-provider-failures --all --limit 5
 ```
 
 Replay updates the original rows to `retry_pending`; it does not create duplicate

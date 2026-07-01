@@ -27,6 +27,7 @@ const WORKSPACE = process.env.OPENCLAW_WORKSPACE
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const MAX_ATTEMPTS = parseInt(process.env.REGISTER_WORKER_MAX_ATTEMPTS || '3', 10);
+const RECOVERY_REPLAY_LIMIT = parseInt(process.env.REGISTER_WORKER_RECOVERY_REPLAY_LIMIT || '5', 10);
 const MAX_BACKOFF_SEC = parseInt(process.env.REGISTER_WORKER_MAX_BACKOFF_SEC || '1800', 10);
 const IDLE_MS = parseInt(process.env.REGISTER_WORKER_IDLE_MS || '10000', 10);
 const RUN_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_RUN_TIMEOUT_MS || '120000', 10);
@@ -196,7 +197,8 @@ async function runDbWriter(job, reportText = '') {
 }
 
 async function runOpenClawAgent(job) {
-  const sessionId = `register-intake-${job.id}`;
+  // A retry must not inherit tool traces/context from a failed attempt.
+  const sessionId = `register-intake-${job.id}-attempt-${job.attempt_count}`;
   const prompt = buildAgentPrompt(job);
   const commandArgs = [
     'agent',
@@ -241,9 +243,10 @@ async function markRetry(job, err) {
   const failure = classifyFailure(err);
   const providerBlocked = ['provider_auth', 'provider_credit', 'provider_model'].includes(failure.errorClass);
   const providerFailure = failure.errorClass.startsWith('provider_');
+  const exhausted = job.attempt_count >= MAX_ATTEMPTS;
   const nextStatus = providerBlocked
     ? 'blocked_provider'
-    : (providerFailure || job.attempt_count < MAX_ATTEMPTS ? 'retry_pending' : 'failed');
+    : (exhausted ? 'failed' : 'retry_pending');
   const backoff = backoffSeconds(job.attempt_count);
   await pool.query(`
     UPDATE register_intake_jobs
@@ -335,7 +338,7 @@ async function openProviderIncident(job, failure, err, queueStatus) {
     `Error: ${failure.errorClass}`,
     `Job: ${job.email} (${queueStatus})`,
     `Queue: ${counts}`,
-    'Job tidak dibuang; worker akan retry sesuai status queue.',
+    `Job tidak dibuang; retry dibatasi maksimal ${MAX_ATTEMPTS} attempt sebelum menunggu recovery/manual replay.`,
   ].join('\n');
   if (await sendTelegramAlert(text)) {
     await pool.query('UPDATE register_worker_incidents SET alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [result.rows[0].id]);
@@ -350,16 +353,45 @@ async function resolveProviderIncident(job) {
     RETURNING id, opened_at, occurrence_count
   `);
   if (!result.rowCount) return;
+  const replayed = await replayFailedProviderBatch(RECOVERY_REPLAY_LIMIT);
   const text = [
     'RECOVERY Company Detector: AI investigation normal kembali',
     `Provider/model: ${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model}`,
     `Validasi: job ${job.email} berhasil diproses`,
     `Gangguan tercatat: ${result.rows[0].occurrence_count} error`,
+    `Replay recovery: ${replayed} job lama dimasukkan kembali ke antrean`,
     `Queue: ${await queueCounts()}`,
   ].join('\n');
   if (await sendTelegramAlert(text)) {
     await pool.query('UPDATE register_worker_incidents SET recovery_alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [result.rows[0].id]);
   }
+}
+
+async function replayFailedProviderBatch(replayLimit) {
+  const limit = Math.max(0, Number(replayLimit) || 0);
+  if (!limit) return 0;
+  const result = await pool.query(`
+    WITH candidates AS (
+      SELECT id
+      FROM register_intake_jobs
+      WHERE status = 'failed'
+        AND error_class LIKE 'provider_%'
+      ORDER BY updated_at ASC
+      FOR UPDATE SKIP LOCKED
+      LIMIT $1
+    )
+    UPDATE register_intake_jobs j
+    SET status = 'retry_pending',
+        attempt_count = 0,
+        locked_at = NULL,
+        next_attempt_at = NOW(),
+        queue_priority = 10,
+        updated_at = NOW()
+    FROM candidates
+    WHERE j.id = candidates.id
+    RETURNING j.id
+  `, [limit]);
+  return result.rowCount;
 }
 
 async function queueCounts() {

@@ -1,9 +1,9 @@
 [Unit]
-Description=Requeue a limited Company Detector AI-failure backlog batch
+Description=Manually requeue a limited Company Detector AI-failure backlog batch
 After=network-online.target company-register-worker.service
 
 [Service]
 Type=oneshot
 WorkingDirectory=%h/.openclaw/webhook
 EnvironmentFile=%h/.openclaw/gateway.systemd.env
-ExecStart=/usr/bin/node worker.js replay-provider-failures --all --limit 25
+ExecStart=/usr/bin/node worker.js replay-provider-failures --all --limit 5
