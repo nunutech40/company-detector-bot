@@ -332,6 +332,9 @@ AI retry safety:
 - Blind periodic backlog replay is disabled.
 - After a successful AI job confirms provider recovery, at most
   `REGISTER_WORKER_RECOVERY_REPLAY_LIMIT` failed provider jobs are requeued.
+- Two consecutive provider failures open a global circuit breaker. It pauses AI
+  work and uses a maximum two-output-token canary every 15 minutes. One real job
+  must then succeed before the incident resolves and bounded replay begins.
 
 ---
 

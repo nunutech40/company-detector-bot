@@ -697,6 +697,9 @@ Worker rule:
   operator can run `node worker.js replay-provider-failures --all --limit 5`.
 - The old six-hour replay timer is disabled. New registrations at priority 100
   preempt any recovery backlog.
+- Two consecutive provider failures open a global circuit breaker. While open,
+  queued jobs stay untouched. A two-token canary runs at most every 15 minutes;
+  after it passes, exactly one real job validates recovery before bounded replay.
 - Around 100 register payloads per day is small enough for sequential processing.
 - Queue rows are persistent in PostgreSQL; they do not disappear daily.
 

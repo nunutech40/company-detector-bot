@@ -76,6 +76,7 @@ Queue operations:
 ```bash
 cd ~/.openclaw/webhook
 node worker.js status
+node worker.js provider-canary
 node worker.js replay-provider-failures --since-hours 72 --limit 5
 node worker.js replay-provider-failures --all --limit 5
 ```

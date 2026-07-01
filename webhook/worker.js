@@ -28,6 +28,9 @@ const WORKSPACE = process.env.OPENCLAW_WORKSPACE
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const MAX_ATTEMPTS = parseInt(process.env.REGISTER_WORKER_MAX_ATTEMPTS || '3', 10);
 const RECOVERY_REPLAY_LIMIT = parseInt(process.env.REGISTER_WORKER_RECOVERY_REPLAY_LIMIT || '5', 10);
+const CIRCUIT_FAILURE_THRESHOLD = parseInt(process.env.REGISTER_WORKER_CIRCUIT_FAILURE_THRESHOLD || '2', 10);
+const CIRCUIT_CANARY_INTERVAL_MS = parseInt(process.env.REGISTER_WORKER_CIRCUIT_CANARY_INTERVAL_MS || '900000', 10);
+const CIRCUIT_CANARY_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_CIRCUIT_CANARY_TIMEOUT_MS || '30000', 10);
 const MAX_BACKOFF_SEC = parseInt(process.env.REGISTER_WORKER_MAX_BACKOFF_SEC || '1800', 10);
 const IDLE_MS = parseInt(process.env.REGISTER_WORKER_IDLE_MS || '10000', 10);
 const RUN_TIMEOUT_MS = parseInt(process.env.REGISTER_WORKER_RUN_TIMEOUT_MS || '120000', 10);
@@ -41,6 +44,7 @@ const TELEGRAM_TARGET = process.env.REGISTER_WORKER_TELEGRAM_TO
 const TELEGRAM_TOKEN = process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 const ACTIVE_MODEL = readActiveModel();
 const CONFIG_FINGERPRINT = fingerprint(JSON.stringify(ACTIVE_MODEL));
+let lastCanaryAt = 0;
 
 const args = process.argv.slice(2);
 const command = args[0] && !args[0].startsWith('--') ? args[0] : 'worker';
@@ -63,11 +67,17 @@ main().catch(async (err) => {
 async function main() {
   if (command === 'replay-provider-failures') return closeAfter(replayProviderFailures());
   if (command === 'status') return closeAfter(printStatus());
+  if (command === 'provider-canary') return closeAfter(testProviderCanary());
   await replayBlockedAfterConfigChange();
 
   let processed = 0;
 
   while (true) {
+    if (!await circuitAllowsInvestigation()) {
+      if (once || (limit && processed >= limit)) break;
+      await sleep(IDLE_MS);
+      continue;
+    }
     const job = await lockNextJob();
     if (!job) {
       if (once || (limit && processed >= limit)) break;
@@ -244,9 +254,11 @@ async function markRetry(job, err) {
   const providerBlocked = ['provider_auth', 'provider_credit', 'provider_model'].includes(failure.errorClass);
   const providerFailure = failure.errorClass.startsWith('provider_');
   const exhausted = job.attempt_count >= MAX_ATTEMPTS;
+  // A provider failure may already have consumed a full investigation worth of
+  // tokens. Park it for recovery replay instead of immediately running it again.
   const nextStatus = providerBlocked
     ? 'blocked_provider'
-    : (exhausted ? 'failed' : 'retry_pending');
+    : (providerFailure || exhausted ? 'failed' : 'retry_pending');
   const backoff = backoffSeconds(job.attempt_count);
   await pool.query(`
     UPDATE register_intake_jobs
@@ -328,9 +340,10 @@ async function openProviderIncident(job, failure, err, queueStatus) {
       model = EXCLUDED.model, message = EXCLUDED.message,
       occurrence_count = register_worker_incidents.occurrence_count + 1,
       last_seen_at = NOW(), updated_at = NOW()
-    RETURNING id, (xmax = 0) AS opened
+    RETURNING id, occurrence_count, alert_sent_at
   `, [failure.errorClass, ACTIVE_MODEL.provider, ACTIVE_MODEL.model, String(err.message || err).slice(0, 1000)]);
-  if (!result.rows[0]?.opened) return;
+  const incident = result.rows[0];
+  if (!incident || incident.alert_sent_at || incident.occurrence_count < CIRCUIT_FAILURE_THRESHOLD) return;
   const counts = await queueCounts();
   const text = [
     'ALERT Company Detector: AI investigation error',
@@ -338,11 +351,79 @@ async function openProviderIncident(job, failure, err, queueStatus) {
     `Error: ${failure.errorClass}`,
     `Job: ${job.email} (${queueStatus})`,
     `Queue: ${counts}`,
-    `Job tidak dibuang; retry dibatasi maksimal ${MAX_ATTEMPTS} attempt sebelum menunggu recovery/manual replay.`,
+    `Job tidak dibuang; provider failure diparkir sampai recovery terkonfirmasi.`,
   ].join('\n');
   if (await sendTelegramAlert(text)) {
-    await pool.query('UPDATE register_worker_incidents SET alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [result.rows[0].id]);
+    await pool.query('UPDATE register_worker_incidents SET alert_sent_at = NOW(), updated_at = NOW() WHERE id = $1', [incident.id]);
   }
+}
+
+async function circuitAllowsInvestigation() {
+  const incident = await pool.query(`
+    SELECT id, occurrence_count, last_seen_at
+    FROM register_worker_incidents
+    WHERE incident_type = 'ai_provider' AND status = 'open'
+    LIMIT 1
+  `);
+  const open = incident.rows[0];
+  if (!open || open.occurrence_count < CIRCUIT_FAILURE_THRESHOLD) return true;
+
+  const now = Date.now();
+  if (now - lastCanaryAt < CIRCUIT_CANARY_INTERVAL_MS) return false;
+  lastCanaryAt = now;
+  const healthy = await runProviderCanary();
+  if (!healthy) {
+    console.error(`register_worker: circuit_open provider=${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model} canary=failed`);
+    return false;
+  }
+  console.log(`register_worker: circuit_half_open provider=${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model} canary=passed; allowing one real job`);
+  return true;
+}
+
+async function runProviderCanary() {
+  const runtime = readProviderRuntimeConfig();
+  if (!runtime.baseUrl || !runtime.apiKey || !runtime.model) return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CIRCUIT_CANARY_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${runtime.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${runtime.apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: runtime.model,
+        messages: [{ role: 'user', content: 'Reply only: OK' }],
+        max_tokens: 2,
+        temperature: 0,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 500).replace(/\s+/g, ' ');
+      console.error(`register_worker: provider_canary http=${response.status} detail=${detail}`);
+      return false;
+    }
+    const body = await response.json();
+    if (!Array.isArray(body?.choices) || !body.choices.length) {
+      console.error('register_worker: provider_canary invalid_response=no_choices');
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`register_worker: provider_canary error=${String(err?.message || err).slice(0, 300)}`);
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function testProviderCanary() {
+  const healthy = await runProviderCanary();
+  console.log(`register_worker: provider_canary provider=${ACTIVE_MODEL.provider}/${ACTIVE_MODEL.model} healthy=${healthy}`);
+  if (!healthy) throw new Error('provider canary failed');
 }
 
 async function resolveProviderIncident(job) {
@@ -616,6 +697,24 @@ function readActiveModel() {
     };
   } catch (_) {
     return { provider: 'unknown', model: 'unknown', baseUrl: '', apiKeyMarker: '' };
+  }
+}
+
+function readProviderRuntimeConfig() {
+  const configPath = process.env.OPENCLAW_CONFIG_PATH
+    || path.join(process.env.HOME || '/home/nunuopc', '.openclaw', 'openclaw.json');
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const primary = String(config?.agents?.defaults?.model?.primary || '');
+    const [provider, ...modelParts] = primary.split('/');
+    const providerConfig = config?.models?.providers?.[provider] || {};
+    return {
+      model: modelParts.join('/'),
+      baseUrl: String(providerConfig.baseUrl || ''),
+      apiKey: String(providerConfig.apiKey || ''),
+    };
+  } catch (_) {
+    return { model: '', baseUrl: '', apiKey: '' };
   }
 }
 

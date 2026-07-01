@@ -289,6 +289,10 @@ AI retry memakai session baru untuk setiap attempt dan berhenti setelah batas
 provider recovery hanya membuka kembali batch kecil agar gangguan AI tidak
 berubah menjadi retry storm dan pemborosan token.
 
+Dua provider failure berturut-turut membuka circuit breaker global. Queue tetap
+tersimpan tanpa memanggil AI; canary maksimal 2 output token dijalankan paling
+sering setiap 15 menit, lalu satu job nyata harus berhasil sebelum queue dibuka.
+
 Input rules:
 
 - `email` wajib.
