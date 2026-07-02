@@ -63,6 +63,22 @@ cfg.agents.defaults = cfg.agents.defaults || {};
 cfg.agents.defaults.model = cfg.agents.defaults.model || {};
 cfg.agents.defaults.model.primary = primaryModel;
 
+cfg.tools = cfg.tools || {};
+cfg.tools.loopDetection = {
+  enabled: true,
+  historySize: 20,
+  warningThreshold: 2,
+  criticalThreshold: 3,
+  unknownToolThreshold: 3,
+  globalCircuitBreakerThreshold: 10,
+  detectors: {
+    genericRepeat: true,
+    knownPollNoProgress: true,
+    pingPong: true
+  },
+  postCompactionGuard: { windowSize: 3 }
+};
+
 fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\\n');
 console.log('OpenClaw model configured:', primaryModel, 'via', baseUrl);
 NODE

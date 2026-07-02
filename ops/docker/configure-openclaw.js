@@ -57,6 +57,20 @@ for (const id of ['deepseek', 'llm-task', 'minimax']) {
 cfg.tools = cfg.tools || {};
 cfg.tools.profile = 'full';
 cfg.tools.alsoAllow = Array.from(new Set([...(cfg.tools.alsoAllow || []), 'llm-task']));
+cfg.tools.loopDetection = {
+  enabled: true,
+  historySize: 20,
+  warningThreshold: 2,
+  criticalThreshold: 3,
+  unknownToolThreshold: 3,
+  globalCircuitBreakerThreshold: 10,
+  detectors: {
+    genericRepeat: true,
+    knownPollNoProgress: true,
+    pingPong: true,
+  },
+  postCompactionGuard: { windowSize: 3 },
+};
 
 cfg.channels = cfg.channels || {};
 if (process.env.TELEGRAM_DEFAULT_BOT_TOKEN || process.env.TELEGRAM_ASSISTANT_BOT_TOKEN) {

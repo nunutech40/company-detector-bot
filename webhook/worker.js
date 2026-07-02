@@ -172,6 +172,9 @@ async function processWithOpenClawAgent(job) {
   if (!reportText) {
     throw new Error('openclaw agent did not return report text');
   }
+  if (!/Company Detection Report/i.test(reportText)) {
+    throw new Error(`AI service returned incomplete report: ${reportText.slice(0, 300)}`);
+  }
 
   const finishOutput = await runFinishInvestigation(job, reportText, agentResult.usage);
   return parseJobId(finishOutput);
@@ -671,7 +674,9 @@ function classifyFailure(err) {
     || normalized.includes('econn')
     || normalized.includes('fetch failed')
     || normalized.includes('failovererror')
-    || normalized.includes('ai service')) {
+    || normalized.includes('ai service')
+    || normalized.includes('tool loop')
+    || normalized.includes('loop detection')) {
     return { errorClass: 'provider_transient' };
   }
   return { errorClass: 'worker_error' };

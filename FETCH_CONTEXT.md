@@ -338,6 +338,10 @@ AI retry safety:
 - Follow-up searches use `scripts/web_search_go.sh` and the configured provider
   cascade. Do not use built-in `web_search`, `browser`, or sandbox `dir_list` on
   VPS; those unavailable paths previously added timeouts without evidence.
+- OpenClaw `tools.loopDetection` is enabled. Identical no-progress calls warn at
+  2 repeats, abort at 3, and the global no-progress breaker stops at 10 calls.
+- Worker persistence rejects AI timeout/error text unless the response contains
+  a real `Company Detection Report`.
 
 ---
 

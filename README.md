@@ -297,6 +297,10 @@ Query lanjutan memakai `scripts/web_search_go.sh` agar melewati provider cascade
 yang sama dengan baseline. Built-in OpenClaw search/browser yang tidak tersedia
 di VPS sengaja tidak digunakan.
 
+OpenClaw tool-loop detection memblokir tiga pemanggilan identik tanpa progress
+dan menghentikan total no-progress pada 10 tool call. Worker juga menolak teks
+timeout/error agar tidak tersimpan sebagai laporan investigasi yang berhasil.
+
 Input rules:
 
 - `email` wajib.
