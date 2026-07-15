@@ -132,6 +132,7 @@ POSTGRES_PASSWORD=...
 WEBHOOK_SECRET=...
 DASHBOARD_BASE_URL=https://<SERVER_DOMAIN>
 DASHBOARD_PUBLIC_BASE_URL=https://<SERVER_DOMAIN>
+PUBLIC_WEBHOOK_URL=https://<SERVER_DOMAIN>/webhook/check
 DASHBOARD_BIND_PORT=127.0.0.1:3001
 WEBHOOK_BIND_PORT=127.0.0.1:3002
 OPENCLAW_CONFIGURE=true
@@ -154,6 +155,22 @@ BRAVE_SEARCH_API_KEY=...
 DEEPSEEK_API_KEY=...
 MINIMAX_API_KEY=...
 ```
+
+`PUBLIC_WEBHOOK_URL` is the canonical URL that the Komerce platform must call.
+It must point to the office reverse proxy, not the old VPS IP. If this is still
+`103.226.139.107` after the office stack is ready, new register jobs will keep
+entering the old VPS database and will not be processed by the office worker.
+
+`REGISTER_WORKER_MODE=agent` is the production AI mode. The office server does
+not need the old VPS, but it still needs outbound access to the configured LLM
+provider plus the Telegram/Slack APIs. If an office environment must run without
+AI provider access, set `REGISTER_WORKER_MODE=deterministic` only as a degraded
+fallback: it can persist baseline Go investigation results, but it will not
+produce the full AI-written Brand Prospect report.
+
+`DEEPSEEK_API_KEY` is optional unless the office explicitly enables DeepSeek as
+a fallback provider. Current VPS parity requires 9Router, Brave Search, MiniMax,
+Telegram, and Slack credentials.
 
 Optional review monitor values belong in a separate `.env.review-monitor`, not
 the core `.env`:
@@ -349,13 +366,18 @@ docker compose up -d worker
    separate operator handling and must not be silently dropped.
 3. Stop the old VPS gateway, register worker, feedback worker, feedback poller
    timer, Slack digest timer, and old webhook if the platform URL is about to
-   move.
+   move. Do not leave the old webhook receiving production traffic while its
+   worker is stopped.
 4. Start office `gateway`, then run `./ops/docker/verify-deployment.sh`.
 5. Confirm the report arrives through the production Telegram bot.
 6. Run Slack `--test-run` and confirm the office channel receives it.
 7. Start the feedback monitor profile and confirm `poll-meta` succeeds.
-8. Change the platform register webhook URL to the office server.
-9. Submit one final register test and confirm dashboard, DB, and Telegram.
+8. Change the platform register webhook URL to `PUBLIC_WEBHOOK_URL` on the
+   office server.
+9. Run `./ops/docker/verify-public-routing.sh` to verify that the configured
+   public webhook is not the old VPS endpoint and can enqueue into the office
+   database.
+10. Submit one final register test and confirm dashboard, DB, and Telegram.
 
 Rollback: point the platform webhook back to the old VPS and restart its
 services. Do not run both workers against the same intake flow.

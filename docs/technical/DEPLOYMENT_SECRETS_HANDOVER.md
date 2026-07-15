@@ -28,10 +28,10 @@
 |---|---:|---|---|---|---|
 | `POSTGRES_PASSWORD` or external DB credentials | Yes | Database/server engineer | Docker `.env` / secret manager | Acceptance test DB checks pass | Pending |
 | `WEBHOOK_SECRET` | Yes | Platform/backend owner | Docker `.env` and register platform | Authenticated webhook returns queued response | Pending |
-| `LLM_API_KEY` / 9Router API key or placeholder | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
+| `LLM_API_KEY` / 9Router API key or approved placeholder | Yes | AI/provider account owner | Docker `.env` or secret manager | OpenClaw agent smoke test completes | Pending |
 | `LLM_PRIMARY_MODEL` / `LLM_MODEL_ID` | Yes | Product/AI owner | Docker `.env` or OpenClaw config | `openclaw models list` and agent smoke test | Pending |
-| `DEEPSEEK_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | DeepSeek provider appears in OpenClaw config | Pending |
-| `MINIMAX_API_KEY` | Required for VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | MiniMax provider appears in OpenClaw config | Pending |
+| `DEEPSEEK_API_KEY` | Optional fallback if office enables DeepSeek | AI/provider account owner | Docker `.env` / secret manager | DeepSeek provider appears in OpenClaw config when provided | Pending |
+| `MINIMAX_API_KEY` | Required for current VPS-equivalent fallback | AI/provider account owner | Docker `.env` / secret manager | MiniMax provider appears in OpenClaw config | Pending |
 | `SLACK_BOT_TOKEN` | Yes | Slack app owner | Docker `.env` / secret manager | Slack digest dry-run/send test | Pending |
 | `SLACK_REPORT_CHANNEL` | Yes | Sales/Slack owner | Docker `.env` / secret manager | Test message reaches correct channel | Pending |
 | `TELEGRAM_DEFAULT_BOT_TOKEN` | Yes | Telegram bot owner | Docker `.env` / secret manager | Worker delivery test succeeds | Pending |
@@ -61,6 +61,7 @@ agreement from the relevant owner.
 | Public/internal domain | `company-detector.example.com` | Infrastructure | Pending |
 | Dashboard URL | `https://<SERVER_DOMAIN>/sales-sheet` | Product/Infrastructure | Pending |
 | Webhook URL | `https://<SERVER_DOMAIN>/webhook/check` | Platform/backend | Pending |
+| `PUBLIC_WEBHOOK_URL` | Must match the platform webhook URL and must not point to old VPS/localhost | Platform/backend + Infrastructure | Pending |
 | App Linux user | `companydetector` | Infrastructure | Pending |
 | Database retention/backup policy | Office policy | Infrastructure/DBA | Pending |
 | Slack digest schedule | Daily `09:00 WIB` | Sales/Product | Pending |
@@ -77,11 +78,20 @@ docker compose up -d postgres migrate dashboard webhook worker digest
 # Start gateway only during the final Telegram cutover window.
 docker compose up -d gateway
 ./ops/docker/verify-deployment.sh
+# Run after the platform webhook URL is changed to the office URL.
+./ops/docker/verify-public-routing.sh
 ```
 
 Do not use commands such as `cat .env` in shared screenshares or deployment reports.
 Do not start the office `gateway` while the VPS gateway is polling the same
 Telegram bot.
+
+The office Docker bundle does not depend on the old VPS after cutover. It still
+requires outbound access to 9Router, Telegram, Slack, Meta Graph API when the
+feedback monitor is enabled, and search/enrichment providers used by the active
+configuration. If the platform webhook still points to the old VPS while the
+old VPS worker is stopped, new jobs will be accepted by the old webhook and
+remain unprocessed.
 
 Review monitor uses a separate `.env.review-monitor` with permission `600`.
 Do not enable the optional Compose profile until OAuth, real API collect, and

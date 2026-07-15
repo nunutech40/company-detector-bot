@@ -29,6 +29,8 @@ Secret diberikan melalui password manager atau secure channel yang disetujui.
 ## Yang Harus Kamu Siapkan
 
 - [ ] Tentukan domain atau URL server kantor untuk dashboard dan webhook.
+- [ ] Pastikan URL public webhook final tersedia:
+      `https://<SERVER_DOMAIN>/webhook/check`.
 - [ ] Pastikan engineer kantor dapat clone repository.
 - [ ] Siapkan nilai secret berdasarkan `docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md`.
 - [ ] Siapkan final PostgreSQL dump dari VPS lama agar data investigasi tidak hilang.
@@ -42,14 +44,16 @@ Secret diberikan melalui password manager atau secure channel yang disetujui.
 
 - `POSTGRES_PASSWORD` atau credential database kantor.
 - `WEBHOOK_SECRET`.
-- `LLM_API_KEY`.
+- `LLM_API_KEY` untuk akses 9Router. Server tidak butuh VPS lama, tetapi tetap
+  butuh akses outbound ke provider AI.
 - `TELEGRAM_DEFAULT_BOT_TOKEN`.
 - `REGISTER_WORKER_TELEGRAM_TO`.
 - `SLACK_BOT_TOKEN`.
 - `SLACK_REPORT_CHANNEL`.
 - Search API key jika tersedia.
 - `BRAVE_SEARCH_API_KEY` wajib agar kemampuan pencarian setara VPS.
-- `DEEPSEEK_API_KEY` dan `MINIMAX_API_KEY` untuk fallback provider setara VPS.
+- `MINIMAX_API_KEY` untuk fallback provider setara VPS.
+- `DEEPSEEK_API_KEY` opsional jika kantor ingin mengaktifkan fallback DeepSeek.
 
 Jangan menulis nilai secret asli di dokumen atau repository.
 
@@ -58,12 +62,15 @@ Jangan menulis nilai secret asli di dokumen atau repository.
 - [ ] Docker dan Docker Compose tersedia.
 - [ ] Seluruh service berjalan: `postgres`, `dashboard`, `webhook`, `worker`, `gateway`, `digest`.
 - [ ] Reverse proxy dan HTTPS tersedia untuk dashboard serta webhook.
+- [ ] `PUBLIC_WEBHOOK_URL` di `.env` mengarah ke server kantor, bukan VPS lama
+      dan bukan localhost.
 - [ ] Backup database terjadwal dan diuji.
 - [ ] Engineer menjalankan:
 
 ```bash
 ./ops/docker/verify-precutover.sh
 ./ops/docker/verify-deployment.sh
+./ops/docker/verify-public-routing.sh
 ```
 
 - [ ] Engineer mengirimkan output PASS/FAIL acceptance test.
@@ -106,6 +113,9 @@ tetap aman. `verify-deployment.sh` dijalankan hanya pada jendela final test.
 Namun, sebelum webhook platform dipindahkan ke server kantor:
 
 - worker, webhook, dan digest VPS lama harus dimatikan;
+- URL webhook platform harus diganti ke `PUBLIC_WEBHOOK_URL` server kantor;
+- `verify-public-routing.sh` harus PASS agar tidak ada job baru masuk ke DB VPS
+  lama saat worker VPS sudah mati;
 - jangan menjalankan dua worker production untuk intake yang sama;
 - jangan menjalankan dua Telegram gateway/poller untuk menerima chat manual
   menggunakan bot token yang sama.
@@ -120,7 +130,9 @@ otomatis tetap dapat membuktikan outbound Telegram tanpa mematikan VPS.
 4. Pastikan `Company Detection Report` masuk ke bot Telegram production yang benar.
 5. Buka dashboard dan pastikan data test tampil.
 6. Minta Slack digest `--test-run`; pastikan pesan masuk ke channel yang benar.
-7. Uji investigasi manual melalui bot Telegram:
+7. Minta engineer menjalankan `./ops/docker/verify-public-routing.sh` setelah
+   platform webhook diarahkan ke server kantor.
+8. Uji investigasi manual melalui bot Telegram:
 
 ```text
 Investigasi akun ini sampai selesai:
@@ -169,9 +181,11 @@ Urutan:
 7. Nyalakan gateway kantor dan jalankan `verify-deployment.sh`.
 8. Aktifkan profile negative feedback monitor jika scope monitoring Meta ikut
    pindah, lalu pastikan `poll-meta` sukses.
-9. Ubah URL webhook platform register ke server kantor.
-10. Kirim satu register test terakhir.
-11. Pastikan database, dashboard, Telegram, Slack digest, dan Slack negative
+9. Ubah URL webhook platform register ke `PUBLIC_WEBHOOK_URL` server kantor.
+10. Jalankan `verify-public-routing.sh` dan pastikan probe masuk ke database
+    server kantor, bukan database VPS lama.
+11. Kirim satu register test terakhir.
+12. Pastikan database, dashboard, Telegram, Slack digest, dan Slack negative
     feedback alert berjalan.
 
 Jika gagal setelah cutover, arahkan webhook kembali ke VPS lama dan hidupkan

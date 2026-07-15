@@ -104,6 +104,9 @@ services:
       REGISTER_WORKER_IDLE_MS: ${REGISTER_WORKER_IDLE_MS:-10000}
       REGISTER_WORKER_RUN_TIMEOUT_MS: ${REGISTER_WORKER_RUN_TIMEOUT_MS:-120000}
       OPENCLAW_BIN: ${OPENCLAW_BIN:-/usr/local/bin/openclaw}
+      OPENCLAW_GATEWAY_URL: ws://gateway:18789
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_AUTH_TOKEN:-company-detector-local-gateway-token}
+      OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "1"
       TELEGRAM_ALLOW_FROM: ${TELEGRAM_ALLOW_FROM:-}
       TELEGRAM_ASSISTANT_ALLOW_FROM: ${TELEGRAM_ASSISTANT_ALLOW_FROM:-}
       TELEGRAM_DEFAULT_BOT_TOKEN: ${TELEGRAM_DEFAULT_BOT_TOKEN:-}
@@ -130,6 +133,7 @@ services:
       OPENCLAW_STATE_DIR: /root/.openclaw
       OPENCLAW_CONFIG_PATH: /root/.openclaw/openclaw.json
       OPENCLAW_CONFIGURE: ${OPENCLAW_CONFIGURE:-true}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_AUTH_TOKEN:-company-detector-local-gateway-token}
       LLM_PROVIDER: ${LLM_PROVIDER:-9router}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://9router.komerce-tech.id/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
@@ -146,7 +150,7 @@ services:
       GOOGLE_CSE_KEY: ${GOOGLE_CSE_KEY:-}
       GOOGLE_CSE_ID: ${GOOGLE_CSE_ID:-}
     entrypoint: ["/app/ops/docker/worker-entrypoint.sh"]
-    command: ["openclaw", "gateway", "run", "--bind", "loopback", "--compact"]
+    command: ["openclaw", "gateway", "run", "--bind", "lan", "--compact"]
     healthcheck:
       test: ["CMD", "openclaw", "gateway", "health"]
       interval: 30s
