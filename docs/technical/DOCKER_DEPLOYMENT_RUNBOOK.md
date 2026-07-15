@@ -96,7 +96,7 @@ Engineer kantor must decide these before deployment:
 | OpenClaw runtime | Bundled and pinned in the repository Docker image |
 | Worker mode | Keep `REGISTER_WORKER_MODE=agent` for production |
 | Review monitor | Keep disabled until Google Business Profile API preflight passes |
-| Feedback monitor | VPS production currently uses systemd timer for `poll-meta`; Docker deployment must add an office scheduler/timer or manually run `node feedback_monitor/worker.js poll-meta` on the chosen interval |
+| Feedback monitor | Docker `feedback-monitor-worker` runs `ops/docker/feedback-monitor-scheduler.js`, which polls Meta and drains the feedback queues every 15 minutes by default |
 
 ## 4.1 Tools and Plugins on a Clean Server
 
@@ -272,6 +272,10 @@ On server:
 ```bash
 git clone https://github.com/nunutech40/company-detector-bot.git
 cd company-detector-bot
+test -f go-service/go.mod
+test -f go-service/internal/evidence/evidence.go
+test ! -d go-services
+sed -n '1,40p' Dockerfile
 cp .env.docker.example .env
 # edit .env with real values
 docker compose build
@@ -280,7 +284,37 @@ docker compose ps
 ./ops/docker/verify-precutover.sh
 ```
 
+Important source-tree guard:
+
+- The Go module path is `go-service`, singular.
+- The Docker build entrypoints are `./cmd/company-check`, `./cmd/web-search`,
+  `./cmd/tool-status`, and `./cmd/last-report`.
+- There is no supported `go-services/cmd/main.go` build path. If an office
+  server sees that path, it is building an old checkout, stale archive, or
+  wrong Dockerfile.
+- `go-service/internal/evidence/evidence.go` must exist before running
+  `docker compose build`.
+
 Keep `gateway` stopped until the final Telegram cutover window.
+
+### Enable Negative Feedback Monitor
+
+Meta monitoring uses a separate env file and Compose profile. Enable it after
+the core stack is healthy:
+
+```bash
+cp .env.feedback-monitor.sample .env.feedback-monitor
+chmod 600 .env.feedback-monitor
+# Fill META_ACCESS_TOKEN, FEEDBACK_AI_*, FEEDBACK_TELEGRAM_TO,
+# REVIEW_MONITOR_SLACK_CHANNEL, and optional META_PAGE_IDS.
+docker compose --profile feedback-monitor up -d feedback-monitor-ingress feedback-monitor-worker
+docker compose run --rm feedback-monitor-worker node feedback_monitor/worker.js poll-meta
+docker compose run --rm feedback-monitor-worker node feedback_monitor/worker.js status
+```
+
+The first clean database run fetches Facebook Pages from `/me/accounts`.
+The poller normalizes Meta's `access_token` field to `page_access_token`
+internally; do not prefill stale page tokens in `feedback_sources`.
 
 ### Backup from the old VPS
 
@@ -310,12 +344,18 @@ docker compose up -d worker
 ### Cutover order
 
 1. Run `./ops/docker/verify-precutover.sh` while VPS production remains active.
-2. Stop the old VPS gateway, worker, webhook, and digest services.
-3. Start office `gateway`, then run `./ops/docker/verify-deployment.sh`.
-4. Confirm the report arrives through the production Telegram bot.
-5. Run Slack `--test-run` and confirm the office channel receives it.
-6. Change the platform register webhook URL to the office server.
-7. Submit one final register test and confirm dashboard, DB, and Telegram.
+2. Confirm the old VPS queues have no normal backlog (`pending`,
+   `retry_pending`, or `processing`). `failed` or `blocked_provider` rows need
+   separate operator handling and must not be silently dropped.
+3. Stop the old VPS gateway, register worker, feedback worker, feedback poller
+   timer, Slack digest timer, and old webhook if the platform URL is about to
+   move.
+4. Start office `gateway`, then run `./ops/docker/verify-deployment.sh`.
+5. Confirm the report arrives through the production Telegram bot.
+6. Run Slack `--test-run` and confirm the office channel receives it.
+7. Start the feedback monitor profile and confirm `poll-meta` succeeds.
+8. Change the platform register webhook URL to the office server.
+9. Submit one final register test and confirm dashboard, DB, and Telegram.
 
 Rollback: point the platform webhook back to the old VPS and restart its
 services. Do not run both workers against the same intake flow.
@@ -373,14 +413,17 @@ but `no_hp` remains confirmation-only and must not be used as a public search
 seed.
 
 - [ ] `docker compose ps` shows `dashboard`, `webhook`, `worker`, `gateway`, and `digest` running.
+- [ ] `docker compose ps` shows `feedback-monitor-ingress` and `feedback-monitor-worker` running if Meta monitoring is in scope.
 - [ ] `digest` is running and its log shows the next scheduled run.
 - [ ] `GET /health` returns OK.
+- [ ] Feedback ingress `/health` returns OK when its profile is enabled.
 - [ ] Dashboard `/sales-sheet` loads.
 - [ ] Smoke webhook inserts `register_intake_jobs`.
 - [ ] Worker processes deterministic smoke test.
 - [ ] OpenClaw works inside worker container.
 - [ ] Worker processes one full `agent` mode smoke test.
 - [ ] Full agent result is saved to DB and delivered by the production Telegram bot.
+- [ ] Meta `poll-meta` returns `successful_pages > 0` and `failed_pages = 0` when Meta monitoring is enabled.
 - [ ] Slack digest dry-run works in container.
 - [ ] Slack digest `--test-run` reaches the intended office Slack channel.
 - [ ] Public reverse proxy routes to dashboard and webhook.

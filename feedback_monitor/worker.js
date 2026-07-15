@@ -56,6 +56,7 @@ async function main() {
   if (command === 'poll-meta') return closeAfter(pollMetaComments());
   if (command === 'replay-blocked') return closeAfter(replayBlocked());
   if (command === 'status') return closeAfter(printStatus());
+  if (command === 'drain') return closeAfter(drainQueues());
   await workerLoop();
 }
 
@@ -71,6 +72,18 @@ async function workerLoop() {
   }
   await pool.end();
   console.log(`feedback_worker: stopped processed=${processed}`);
+}
+
+async function drainQueues() {
+  let processed = 0;
+  while (true) {
+    const didWork = await processOneIngestion()
+      || await processOneClassification()
+      || await processOneDelivery();
+    if (!didWork) break;
+    processed += 1;
+  }
+  console.log(`feedback_worker: drained processed=${processed}`);
 }
 
 async function processOneIngestion() {
@@ -721,7 +734,10 @@ async function fetchMetaPages() {
     fields: 'id,name,tasks,access_token,instagram_business_account{id,username,name}',
     limit: 100,
   });
-  return pages.data || [];
+  return (pages.data || []).map((page) => ({
+    ...page,
+    page_access_token: page.page_access_token || page.access_token || '',
+  }));
 }
 
 function isWithinLookback(value) {

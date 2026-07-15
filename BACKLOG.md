@@ -206,17 +206,18 @@ docs/archive/
 
 - [x] Define target architecture for Google deterministic reviews + Meta AI-classified comments.
 - [ ] Obtain Meta Business/Page/Instagram Professional Account/Ad Account access from Aji or office owner.
-- [ ] Define and migrate dedicated feedback PostgreSQL tables.
+- [x] Define and migrate dedicated feedback PostgreSQL tables.
 - [ ] Add event simulator and idempotent normalized feedback inbox.
 - [ ] Add Google Pub/Sub receiver after Business Profile API approval.
 - [ ] Migrate current Google JSON state into feedback tables.
 - [ ] Add Meta Webhook receiver and signature verification.
 - [ ] Add Meta organic comment hydration and incremental reconciliation.
-- [ ] Build versioned structured AI classifier for Meta comments.
+- [x] Build versioned structured AI classifier for Meta comments.
 - [ ] Add Meta AI error classification and replayable `blocked_provider` queue state.
 - [ ] Add config/provider-health sweep plus operator command to replay failed Meta AI jobs.
 - [ ] Verify model/API-key replacement retries monitoring jobs without duplicate Telegram/Slack delivery.
 - [ ] Create labeled Komerce comment evaluation set and validate thresholds.
 - [ ] Add Meta ad comment mapping and collection.
-- [ ] Add Telegram delivery for every completed monitoring result.
-- [ ] Add immediate negative-only Slack alerts, health alerts, and dead-letter operations.
+- [x] Add Telegram delivery for every completed monitoring result.
+- [x] Add immediate negative-only Slack alerts and dead-letter operations.
+- [ ] Add/verify health alerts for Docker feedback monitor after office deployment target is final.

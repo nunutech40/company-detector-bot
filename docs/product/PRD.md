@@ -62,7 +62,7 @@ Status per 15 Juni 2026:
 | Slack delivery | Done | Daily prospect digest jam 09:00 WIB; realtime raw report disabled |
 | End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
 | Google review monitor | Waiting approval | Service/API client/OAuth bootstrap selesai; Google Business Profile API access masih menunggu approval |
-| Meta negative comment monitor | Planned | Architecture defined; waiting Meta Business/App access and implementation |
+| Meta negative comment monitor | Active MVP | Meta Graph polling, structured AI classifier, Telegram all-results, Slack negative-only; webhook remains future |
 
 ### Google Review Monitor Product Requirement
 

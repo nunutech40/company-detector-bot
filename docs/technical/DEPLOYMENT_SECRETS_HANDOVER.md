@@ -92,6 +92,20 @@ Current production source is Meta Graph API polling, so `META_ACCESS_TOKEN` is
 required. `META_WEBHOOK_VERIFY_TOKEN` and `META_APP_SECRET` are only required
 when Meta webhook callback/subscription is activated.
 
+Legacy VPS env names may differ from Docker env names. When migrating manually:
+
+| Legacy VPS env | Docker env |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | `TELEGRAM_DEFAULT_BOT_TOKEN` |
+| `SLACK_BOT_TOKEN` | `SLACK_BOT_TOKEN` |
+| `SLACK_REPORT_CHANNEL` | `SLACK_REPORT_CHANNEL` |
+| `BRAVE_SEARCH_API_KEY` | `BRAVE_SEARCH_API_KEY` |
+| `META_ACCESS_TOKEN` in `feedback-monitor.env` | `META_ACCESS_TOKEN` in `.env.feedback-monitor` |
+
+Do not copy VPS `DATABASE_URL` into the office Docker `.env` unless the office
+deployment intentionally uses the same external PostgreSQL. For Compose
+PostgreSQL, let `DATABASE_URL` be generated from `POSTGRES_PASSWORD`.
+
 
 
 ## 6. Sign-Off

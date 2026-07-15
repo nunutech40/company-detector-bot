@@ -127,6 +127,27 @@ Security verification:
 4. A deterministic baseline is insufficient. Final acceptance must complete
    the agent investigation, save PostgreSQL output, display it on the
    dashboard, and deliver the report to Telegram.
+5. Office deployment must build the current repository tree. The active Go
+   path is `go-service/`; `go-services/cmd/main.go` is stale/unsupported and
+   will fail because it is not the current module layout.
+6. On a clean Docker database, Meta polling must fetch page tokens from
+   `/me/accounts`. The Docker poller normalizes Meta's `access_token` response
+   field into `page_access_token`; do not seed `feedback_sources` with stale
+   page tokens.
+
+## July 2026 Local Docker Cutover Check
+
+Temporary local Docker cutover verified:
+
+- Old VPS `openclaw-gateway`, register worker, feedback worker, feedback
+  poller timer, and Slack digest timer were stopped before enabling the local
+  gateway.
+- Docker `gateway` reported healthy and Telegram channel `ON/OK` for the
+  production bot.
+- Docker `worker` generated OpenClaw config with provider `9router` and primary
+  model `9router/komerce-1.2`.
+- Docker feedback monitor profile ran `poll-meta` successfully across 13 Meta
+  pages with `failed=0` after the clean-DB page token mapping fix.
 
 ## Final Acceptance Case
 

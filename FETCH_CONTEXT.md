@@ -163,6 +163,22 @@ Docker office deployment checks:
 ./ops/docker/verify-deployment.sh  # final cutover window; requires office gateway
 ```
 
+Office deployment source-tree guard:
+
+- Build from repo root with `docker compose build`.
+- Go path is `go-service/`, singular.
+- Required file: `go-service/internal/evidence/evidence.go`.
+- `go-services/cmd/main.go` is stale/unsupported and indicates the wrong
+  checkout/archive/Dockerfile.
+
+July 2026 local Docker cutover check:
+
+- VPS gateway/register worker/feedback worker/feedback poller timer/digest
+  timer were stopped before starting Docker gateway locally.
+- Docker gateway became healthy and Telegram channel reported `ON/OK`.
+- Docker feedback monitor clean-DB Meta polling succeeded across 13 pages after
+  normalizing Meta `/me/accounts` `access_token` into `page_access_token`.
+
 ---
 
 ## 4. Implemented Services
@@ -196,11 +212,9 @@ docs/technical/migration_v2_webhook_slack_queue.sql
 docs/technical/migration_v3_report_provenance.sql
 docs/technical/migration_v4_llm_usage_provenance.sql
 docs/technical/migration_v5_feedback_monitor.sql
-docs/technical/migration_v5_feedback_monitor.sql
-docs/technical/migration_v5_feedback_monitor.sql
-docs/technical/migration_v5_feedback_monitor.sql
-docs/technical/migration_v5_feedback_monitor.sql
-docs/technical/migration_v5_feedback_monitor.sql
+docs/technical/migration_v6_register_worker_recovery.sql
+docs/technical/migration_v7_operational_health.sql
+docs/technical/migration_v8_token_totals.sql
 ```
 
 Current tables:

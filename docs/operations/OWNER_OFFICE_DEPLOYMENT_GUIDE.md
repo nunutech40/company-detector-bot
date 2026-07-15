@@ -158,15 +158,39 @@ Urutan:
 
 1. Ambil final database dump dari VPS lama.
 2. Restore dump ke server kantor.
-3. Jalankan `verify-precutover.sh` dengan gateway kantor tetap mati.
-4. Matikan gateway, worker, webhook, dan digest di VPS lama.
-5. Nyalakan gateway kantor dan jalankan `verify-deployment.sh`.
-6. Ubah URL webhook platform register ke server kantor.
-7. Kirim satu register test terakhir.
-8. Pastikan database, dashboard, Telegram, dan Slack berjalan.
+3. Pastikan source server kantor adalah repo terbaru:
+   `go-service/go.mod` dan `go-service/internal/evidence/evidence.go` harus ada,
+   dan tidak boleh memakai path lama `go-services/cmd/main.go`.
+4. Jalankan `verify-precutover.sh` dengan gateway kantor tetap mati.
+5. Pastikan queue VPS tidak punya backlog normal (`pending`, `retry_pending`,
+   atau `processing`). Row `failed`/`blocked_provider` ditangani terpisah.
+6. Matikan gateway, register worker, feedback worker, feedback poller timer,
+   dan digest timer di VPS lama.
+7. Nyalakan gateway kantor dan jalankan `verify-deployment.sh`.
+8. Aktifkan profile negative feedback monitor jika scope monitoring Meta ikut
+   pindah, lalu pastikan `poll-meta` sukses.
+9. Ubah URL webhook platform register ke server kantor.
+10. Kirim satu register test terakhir.
+11. Pastikan database, dashboard, Telegram, Slack digest, dan Slack negative
+    feedback alert berjalan.
 
 Jika gagal setelah cutover, arahkan webhook kembali ke VPS lama dan hidupkan
 kembali servicenya. Jangan menjalankan dua worker production bersamaan.
+
+## Catatan Error Build Yang Pernah Terjadi
+
+Jika DevOps melihat error seperti `go-services/cmd/main.go` atau import
+`internal/evidence` tidak ditemukan, server sedang membuild source lama atau
+path yang salah. Struktur repo aktif adalah:
+
+```text
+go-service/go.mod
+go-service/cmd/company-check/main.go
+go-service/internal/evidence/evidence.go
+```
+
+Build resmi selalu dari root repo dengan `docker compose build`, bukan dari
+folder `go-services`.
 
 ## Patokan Teknis Internal
 

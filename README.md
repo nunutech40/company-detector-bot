@@ -69,10 +69,8 @@ Lihat [Documentation Index](docs/README.md) untuk seluruh dokumentasi.
 | `gateway` | Telegram inbound/manual investigation poller |
 | `digest` | Daily Slack prospect digest |
 | `review-monitor` | Isolated Google Business Profile review 1-3 collector and Slack report scheduler |
-| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
-| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
-| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
-| `feedback-monitor` | Negative feedback monitor: Meta polling, AI classifier, Telegram all-results, Slack negative-only |
+| `feedback-monitor-ingress` | Negative feedback monitor webhook/health ingress |
+| `feedback-monitor-worker` | Meta polling scheduler, AI classifier, Telegram all-results, Slack negative-only |
 
 `review-monitor` menggunakan Compose profile opt-in dan `.env.review-monitor`
 terpisah. Normal deployment tidak menyalakannya sampai Google Business Profile
@@ -133,6 +131,20 @@ docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose ps
 ./ops/docker/verify-precutover.sh
 ```
+
+Negative Feedback Monitor memakai Compose profile terpisah:
+
+```bash
+cp .env.feedback-monitor.sample .env.feedback-monitor
+chmod 600 .env.feedback-monitor
+# isi META_ACCESS_TOKEN, FEEDBACK_* dan Slack/Telegram destination
+docker compose --profile feedback-monitor up -d feedback-monitor-ingress feedback-monitor-worker
+docker compose run --rm feedback-monitor-worker node feedback_monitor/worker.js poll-meta
+```
+
+Pastikan source tree yang dibuild adalah repo terbaru. Path Go yang benar adalah
+`go-service/`; tidak ada path `go-services/` dan Dockerfile tidak membuild
+`cmd/main.go`.
 
 Keep `gateway` stopped selama VPS lama masih polling bot Telegram production.
 Pada final cutover, matikan gateway VPS terlebih dahulu, lalu:

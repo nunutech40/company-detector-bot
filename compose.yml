@@ -30,7 +30,10 @@ services:
         psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v2_webhook_slack_queue.sql &&
         psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v3_report_provenance.sql &&
         psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v4_llm_usage_provenance.sql &&
-        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v5_feedback_monitor.sql
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v5_feedback_monitor.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v6_register_worker_recovery.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v7_operational_health.sql &&
+        psql -h postgres -U company_detection -d company_detection -f /migrations/migration_v8_token_totals.sql
     restart: "no"
 
   dashboard:
@@ -44,7 +47,7 @@ services:
       DASHBOARD_PORT: 3001
     command: ["node", "dashboard/app.js"]
     ports:
-      - "${DASHBOARD_BIND_PORT:-3001}:3001"
+      - "${DASHBOARD_BIND_PORT:-127.0.0.1:3001}:3001"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/sales-sheet"]
       interval: 30s
@@ -66,7 +69,7 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-local-webhook-secret}
     command: ["node", "webhook/app.js"]
     ports:
-      - "${WEBHOOK_BIND_PORT:-3002}:3002"
+      - "${WEBHOOK_BIND_PORT:-127.0.0.1:3002}:3002"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3002/health"]
       interval: 30s
@@ -85,12 +88,12 @@ services:
       OPENCLAW_STATE_DIR: /root/.openclaw
       OPENCLAW_CONFIG_PATH: /root/.openclaw/openclaw.json
       OPENCLAW_CONFIGURE: ${OPENCLAW_CONFIGURE:-true}
-      LLM_PROVIDER: ${LLM_PROVIDER:-sumopod}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://ai.sumopod.com/v1}
+      LLM_PROVIDER: ${LLM_PROVIDER:-9router}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://9router.komerce-tech.id/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-sumopod/kimi-k2.6}
-      LLM_MODEL_ID: ${LLM_MODEL_ID:-kimi-k2.6}
-      LLM_ADDITIONAL_MODELS: ${LLM_ADDITIONAL_MODELS:-komerce}
+      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-9router/komerce-1.2}
+      LLM_MODEL_ID: ${LLM_MODEL_ID:-komerce-1.2}
+      LLM_ADDITIONAL_MODELS: ${LLM_ADDITIONAL_MODELS:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
@@ -127,12 +130,12 @@ services:
       OPENCLAW_STATE_DIR: /root/.openclaw
       OPENCLAW_CONFIG_PATH: /root/.openclaw/openclaw.json
       OPENCLAW_CONFIGURE: ${OPENCLAW_CONFIGURE:-true}
-      LLM_PROVIDER: ${LLM_PROVIDER:-sumopod}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://ai.sumopod.com/v1}
+      LLM_PROVIDER: ${LLM_PROVIDER:-9router}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://9router.komerce-tech.id/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-sumopod/kimi-k2.6}
-      LLM_MODEL_ID: ${LLM_MODEL_ID:-kimi-k2.6}
-      LLM_ADDITIONAL_MODELS: ${LLM_ADDITIONAL_MODELS:-komerce}
+      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-9router/komerce-1.2}
+      LLM_MODEL_ID: ${LLM_MODEL_ID:-komerce-1.2}
+      LLM_ADDITIONAL_MODELS: ${LLM_ADDITIONAL_MODELS:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       TELEGRAM_ALLOW_FROM: ${TELEGRAM_ALLOW_FROM:-}
@@ -204,7 +207,7 @@ services:
       FEEDBACK_MONITOR_PORT: 3003
     command: ["node", "feedback_monitor/app.js"]
     ports:
-      - "${FEEDBACK_MONITOR_BIND_PORT:-3003}:3003"
+      - "${FEEDBACK_MONITOR_BIND_PORT:-127.0.0.1:3003}:3003"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3003/health"]
       interval: 30s
@@ -223,11 +226,11 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql://company_detection:${POSTGRES_PASSWORD:-local_company_detection}@postgres:5432/company_detection
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://ai.sumopod.com/v1}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://9router.komerce-tech.id/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
       TELEGRAM_DEFAULT_BOT_TOKEN: ${TELEGRAM_DEFAULT_BOT_TOKEN:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
-    command: ["node", "feedback_monitor/worker.js"]
+    command: ["node", "ops/docker/feedback-monitor-scheduler.js"]
 
 volumes:
   company_detector_db:

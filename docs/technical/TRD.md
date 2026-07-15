@@ -514,35 +514,55 @@ Scheduler options:
 
 ## 12. Deployment
 
-Current production deployment is VPS + systemd, not Docker Compose.
+Target production deployment is Docker Compose for the office/server-kantor
+environment. The legacy VPS/systemd deployment remains the live migration and
+rollback reference until the office cutover is accepted.
 
-VPS:
+Docker office services:
+
+| Service | Port | Responsibility |
+|---|---:|---|
+| `postgres` | 5432 | PostgreSQL 16 database, unless office-managed PostgreSQL is used |
+| `migrate` | - | Runs SQL migrations v1-v8 |
+| `dashboard` | 3001 | Dashboard and browser Sales Sheet |
+| `webhook` | 3002 | Register enqueue API |
+| `worker` | - | Sequential register investigation worker |
+| `gateway` | 18789 | OpenClaw Telegram/manual investigation gateway |
+| `digest` | - | Slack daily prospect digest scheduler |
+| `feedback-monitor-ingress` | 3003 | Negative feedback monitor health/webhook ingress |
+| `feedback-monitor-worker` | - | Meta polling scheduler, classifier, Telegram/Slack delivery |
+
+Source tree contract:
+
+- Go module path is `go-service`, singular.
+- The build entrypoints are under `go-service/cmd/*`.
+- `go-service/internal/evidence/evidence.go` is required.
+- `go-services/cmd/main.go` is not an active path and indicates a stale
+  checkout/archive.
+
+Office deployment command from repo root:
+
+```bash
+docker compose build
+docker compose up -d postgres migrate dashboard webhook worker digest
+docker compose --profile feedback-monitor up -d feedback-monitor-ingress feedback-monitor-worker
+```
+
+Legacy VPS reference:
 
 - Host: `103.226.139.107`
 - User: `nunuopc`
 - Workspace: `/home/nunuopc/.openclaw/workspace/`
 - Go binary: `/home/nunuopc/.openclaw/go-service/bin/company-check`
-
-Services:
-
-| Service | Port | Responsibility |
-|---|---:|---|
-| `openclaw-gateway` | 18789 | OpenClaw gateway |
-| `company-dashboard` | 3001 | Dashboard |
-| `company-webhook` | 3002 | Webhook API |
-| `postgresql` | 5432 | Database |
-
-Deploy command from repo root:
-
-```bash
-bash deploy.sh
-```
+- `deploy.sh` is retained for VPS maintenance/rollback only, not as the office
+  deployment path.
 
 ---
 
 ## 13. Configuration
 
-Credentials live on VPS env files and must not be committed.
+Credentials live in Docker `.env`, `.env.feedback-monitor`,
+`.env.review-monitor`, or the office secret manager. They must not be committed.
 
 Important variables:
 

@@ -14,6 +14,7 @@ const baseUrl = process.env.LLM_BASE_URL || 'https://ai.sumopod.com/v1';
 const primaryModel = process.env.LLM_PRIMARY_MODEL || `${providerName}/kimi-k2.6`;
 const modelId = process.env.LLM_MODEL_ID || primaryModel.split('/').pop();
 const additionalModels = splitList(process.env.LLM_ADDITIONAL_MODELS);
+const gatewayAuthToken = process.env.OPENCLAW_GATEWAY_AUTH_TOKEN || 'company-detector-local-gateway-token';
 
 fs.mkdirSync(stateDir, { recursive: true });
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -34,6 +35,11 @@ cfg.gateway = cfg.gateway || {};
 cfg.gateway.mode = cfg.gateway.mode || 'local';
 cfg.gateway.port = Number(process.env.OPENCLAW_GATEWAY_PORT || cfg.gateway.port || 18789);
 cfg.gateway.bind = process.env.OPENCLAW_GATEWAY_BIND || cfg.gateway.bind || 'loopback';
+cfg.gateway.auth = cfg.gateway.auth || {};
+cfg.gateway.auth.mode = 'token';
+cfg.gateway.auth.token = gatewayAuthToken;
+cfg.gateway.remote = cfg.gateway.remote || {};
+cfg.gateway.remote.token = gatewayAuthToken;
 
 cfg.models = cfg.models || {};
 cfg.models.providers = cfg.models.providers || {};
