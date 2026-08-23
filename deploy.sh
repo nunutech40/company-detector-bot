@@ -7,7 +7,7 @@ set -euo pipefail
 
 VPS_USER="nunuopc"
 VPS_HOST="103.226.139.107"
-VPS_PASS="IloveIndonesia123"
+VPS_PASS="${VPS_PASS:?Set VPS_PASS in the shell; do not store it in this file}"
 VPS_WORKSPACE="/home/nunuopc/.openclaw/workspace"
 VPS_GO_BIN="/home/nunuopc/.openclaw/go-service/bin"
 OPENCLAW_CONFIG="/home/nunuopc/.openclaw/openclaw.json"

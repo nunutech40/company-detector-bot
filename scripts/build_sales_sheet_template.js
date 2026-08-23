@@ -56,7 +56,7 @@ const sampleRows = [
     '',
     '',
     '',
-    'http://103.226.139.107:3001/jobs/example-job-id',
+    '<DASHBOARD_PUBLIC_BASE_URL>/jobs/example-job-id',
   ],
   [
     '21 Mei 2026, 09:00 WIB',
@@ -75,7 +75,7 @@ const sampleRows = [
     '',
     '',
     '',
-    'http://103.226.139.107:3001/jobs/example-job-id-2',
+    '<DASHBOARD_PUBLIC_BASE_URL>/jobs/example-job-id-2',
   ],
 ];
 

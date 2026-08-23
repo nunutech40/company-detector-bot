@@ -514,9 +514,9 @@ Scheduler options:
 
 ## 12. Deployment
 
-Target production deployment is Docker Compose for the office/server-kantor
-environment. The legacy VPS/systemd deployment remains the live migration and
-rollback reference until the office cutover is accepted.
+Target production deployment is Docker Compose. The current pre-cutover instance
+runs on SYJ `103.59.94.121`; the old VPS/systemd instance is retained only as a
+rollback reference until final domain/webhook/Telegram cutover is accepted.
 
 Docker office services:
 
@@ -548,7 +548,7 @@ docker compose up -d postgres migrate dashboard webhook worker digest
 docker compose --profile feedback-monitor up -d feedback-monitor-ingress feedback-monitor-worker
 ```
 
-Legacy VPS reference:
+Legacy VPS rollback reference:
 
 - Host: `103.226.139.107`
 - User: `nunuopc`

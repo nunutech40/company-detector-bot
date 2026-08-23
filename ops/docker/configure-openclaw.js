@@ -9,9 +9,9 @@ const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(stateDir, 'open
 const runtimeEnvPath = path.join(stateDir, 'company-detector.env');
 const workspace = process.env.OPENCLAW_WORKSPACE || '/app/openclaw_workspace';
 
-const providerName = process.env.LLM_PROVIDER || 'sumopod';
-const baseUrl = process.env.LLM_BASE_URL || 'https://ai.sumopod.com/v1';
-const primaryModel = process.env.LLM_PRIMARY_MODEL || `${providerName}/kimi-k2.6`;
+const providerName = process.env.LLM_PROVIDER || '9router';
+const baseUrl = process.env.LLM_BASE_URL || 'https://9router.komerce-tech.id/v1';
+const primaryModel = process.env.LLM_PRIMARY_MODEL || `${providerName}/komerce-1.2`;
 const modelId = process.env.LLM_MODEL_ID || primaryModel.split('/').pop();
 const additionalModels = splitList(process.env.LLM_ADDITIONAL_MODELS);
 const gatewayAuthToken = process.env.OPENCLAW_GATEWAY_AUTH_TOKEN || 'company-detector-local-gateway-token';

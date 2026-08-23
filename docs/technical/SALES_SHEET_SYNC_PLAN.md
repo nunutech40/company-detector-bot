@@ -1,6 +1,6 @@
 # Sales Sheet Sync Plan
 
-**Status:** proposed next improvement  
+**Status:** implemented; retained as field-mapping reference
 **Template:** [`docs/templates/company_detector_sales_sheet_template.xlsx`](../templates/company_detector_sales_sheet_template.xlsx)
 
 ## Purpose
@@ -22,10 +22,11 @@ register_intake_jobs
 
 Sheet sync must be deterministic code, not AI. It should not consume investigation tokens.
 
-For the current VPS workflow, the primary sales handoff is a browser page:
+For the current Docker workflow, the public Sales Sheet URL comes from
+`DASHBOARD_PUBLIC_BASE_URL`:
 
 ```text
-http://103.226.139.107/sales-sheet
+<DASHBOARD_PUBLIC_BASE_URL>/sales-sheet
 ```
 
 The daily Slack digest links to that page as `Open Sales Sheet`, so sales users do not need Excel. The digest still generates a fresh `.xlsx` export from the same PostgreSQL rows as a fallback/internal artifact, but Slack does not rely on Excel download as the main path.

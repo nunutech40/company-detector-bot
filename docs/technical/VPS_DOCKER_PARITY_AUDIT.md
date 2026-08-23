@@ -1,6 +1,8 @@
-# VPS and Docker Production Parity Audit
+# VPS and Docker Production Parity Audit (Historical Snapshot)
 
 **Audit date:** 9 June 2026
+**Current note:** This is a historical parity record. Current deployment status
+is maintained in `README.md`, `FETCH_CONTEXT.md`, and the deployment checklist.
 **Purpose:** Prevent the office Docker deployment from running with fewer
 capabilities or producing lower-quality investigations than the current VPS.
 

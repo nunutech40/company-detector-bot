@@ -1,7 +1,7 @@
 # Webhook Queue + Slack Daily Digest Plan
 
 **Status:** Implemented workflow note  
-**Last updated:** 21 Mei 2026  
+**Last updated:** 24 Agustus 2026
 **Source of truth:** PRD + TRD  
 
 ---
@@ -87,7 +87,7 @@ Example response:
   "queued": true,
   "intake_job_id": "uuid",
   "status": "pending",
-  "dashboard_url": "http://103.226.139.107:3001"
+  "dashboard_url": "<DASHBOARD_PUBLIC_BASE_URL>"
 }
 ```
 
@@ -219,7 +219,7 @@ Per prospect item:
 The message points sales to:
 
 ```text
-http://103.226.139.107/sales-sheet
+<DASHBOARD_PUBLIC_BASE_URL>/sales-sheet
 ```
 
 The dashboard detail URL remains available in the Sales Sheet `Detail Lengkap` column for deeper internal review, but the Slack digest should not make dashboard detail links the main sales handoff.

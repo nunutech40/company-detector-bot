@@ -1,7 +1,7 @@
 # Webhook Queue + Slack Daily Digest Checklist
 
-**Status:** Implemented and VPS-tested  
-**Last updated:** 21 Mei 2026  
+**Status:** Implemented; Docker pre-cutover tested on SYJ
+**Last updated:** 24 Agustus 2026
 **Source of truth:** PRD, TRD, FLOW_MAP  
 
 ---
@@ -30,7 +30,7 @@
 - [x] Digest dedupe unique constraint added.
 - [x] FK from `register_intake_jobs.investigation_job_id` to `investigation_jobs.id`.
 - [x] FK from `slack_digest_items` to digest runs and investigation jobs.
-- [x] Migration applied on VPS.
+- [x] Migration applied in Docker PostgreSQL on SYJ.
 
 ---
 
@@ -52,7 +52,7 @@
 ## 4. Sequential Worker
 
 - [x] `webhook/worker.js` added.
-- [x] `company-register-worker` systemd unit added and deployed.
+- [x] Docker `worker` service added and deployed; systemd unit is legacy only.
 - [x] Worker locks oldest `pending` row.
 - [x] Worker marks row `processing`.
 - [x] Worker runs one job at a time.
@@ -119,7 +119,7 @@ AND not already in slack_digest_items
 - [x] `company-slack-digest.service` added.
 - [x] `company-slack-digest.timer` added.
 - [x] Timer uses `02:00 UTC`, equivalent to `09:00 Asia/Jakarta`.
-- [x] Timer enabled on VPS.
+- [x] Docker `digest` scheduler is running on SYJ.
 - [x] Manual run command works.
 - [x] Test-run command works without changing production digest marker tables.
 

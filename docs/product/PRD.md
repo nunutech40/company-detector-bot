@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Version:** v9
 **Status:** Active product source of truth  
-**Last updated:** 15 Juni 2026
+**Last updated:** 24 Agustus 2026
 
 ---
 
@@ -14,7 +14,7 @@ AI Company Detection Agent membantu Komerce mendeteksi apakah user yang register
 Sistem memakai dua lapisan:
 
 1. **Deterministic Go pipeline** untuk hasil cepat, repeatable, dan auditable.
-2. **AI reasoning loop via OpenClaw + Qwen** untuk investigasi lebih dalam saat sinyal awal belum cukup.
+2. **AI reasoning loop via OpenClaw + 9Router** untuk investigasi lebih dalam saat sinyal awal belum cukup.
 
 Hasil investigasi disimpan dalam dua bentuk:
 
@@ -48,7 +48,7 @@ Hasil investigasi disimpan dalam dua bentuk:
 
 ## 4. Current Product Status
 
-Status per 15 Juni 2026:
+Status per 24 Agustus 2026:
 
 | Area | Status | Catatan |
 |---|---|---|
@@ -63,6 +63,7 @@ Status per 15 Juni 2026:
 | End-to-end validation | Partial | Queue simulation 14 data selesai; Komerce platform register flow masih next validation |
 | Google review monitor | Waiting approval | Service/API client/OAuth bootstrap selesai; Google Business Profile API access masih menunggu approval |
 | Meta negative comment monitor | Active MVP | Meta Graph polling, structured AI classifier, Telegram all-results, Slack negative-only; webhook remains future |
+| Docker deployment | Pre-cutover active | Core stack deployed on SYJ `103.59.94.121`; final HTTPS/domain and Telegram gateway cutover pending |
 
 ### Google Review Monitor Product Requirement
 

@@ -1,7 +1,7 @@
 # Backlog
 
 **Project:** AI Company Detection Agent  
-**Last updated:** 15 Juni 2026
+**Last updated:** 24 Agustus 2026
 
 Backlog adalah tracker status kerja. Source of truth tetap:
 
@@ -56,6 +56,9 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [x] Validate Slack digest with prospects in dry-run and real `--test-run`.
 - [x] Validate Slack digest empty heartbeat in dry-run.
 - [ ] Validate Komerce platform register flow.
+- [x] Deploy Docker pre-cutover stack to SYJ `103.59.94.121`.
+- [ ] Configure final HTTPS reverse-proxy domain and move Komerce webhook.
+- [ ] Commit `go-service/internal/evidence/evidence.go` after the ignore-rule fix.
 
 ---
 
@@ -99,7 +102,7 @@ Backlog adalah tracker status kerja. Source of truth tetap:
 - [x] OpenClaw agent behavior in `AGENTS.md`.
 - [x] Persistent runtime instructions in `STANDING_ORDERS.md`.
 - [x] Tool catalog and scoring rules.
-- [x] Qwen3.6 Flash via Sumopod configured.
+- [x] `9router/komerce-1.2` via 9Router configured.
 - [x] Stop conditions and anti-hallucination rules.
 - [x] Token/cost display via `token_usage.sh`.
 

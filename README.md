@@ -10,9 +10,10 @@ Slack setiap pukul 09:00 Asia/Jakarta.
 
 ## Current Status
 
-Status per 10 Juni 2026:
+Status per 24 Agustus 2026:
 
-- Production bundle berbasis Docker Compose untuk server kantor.
+- Docker Compose bundle sudah dideploy sebagai pre-cutover stack di VPS SYJ
+  `103.59.94.121`.
 - Runtime Docker telah diuji setara dengan VPS lama: OpenClaw `2026.5.12`,
   Node 24, PostgreSQL 16, Go binaries, plugins, providers, search tools, dan
   agent investigation flow.
@@ -23,9 +24,11 @@ Status per 10 Juni 2026:
 - Slack daily prospect digest berjalan setiap pukul 09:00 Asia/Jakarta.
 - Pre-cutover, runtime parity, dan final deployment verification tersedia.
 
-Docker Compose adalah jalur production utama. VPS lama tetap aktif sampai
-cutover server kantor diterima. Jangan menjalankan dua Telegram gateway dengan
-bot token yang sama.
+Docker Compose adalah jalur production utama. Webhook sementara tersedia di
+`http://103.59.94.121:3002/webhook/check`. Dashboard dan database tetap private;
+route HTTPS/domain final belum dipasang. Telegram gateway baru masih stopped
+sampai gateway lama dipastikan berhenti. Jangan menjalankan dua Telegram
+gateway dengan bot token yang sama.
 
 Provider availability dan kredit merupakan dependency eksternal. Jangan
 mengurangi tools, context, atau kualitas investigation hanya agar provider bisa
@@ -38,6 +41,7 @@ Untuk pemilik sistem:
 1. [Owner Office Deployment Guide](docs/operations/OWNER_OFFICE_DEPLOYMENT_GUIDE.md)
 2. [Deployment Secrets Handover](docs/technical/DEPLOYMENT_SECRETS_HANDOVER.md)
 3. [PRD](docs/product/PRD.md)
+4. [Deployment Checklist](docs/operations/COMPANY_DETECTOR_DEPLOYMENT_CHECKLIST.md)
 
 Untuk engineer/deployer:
 

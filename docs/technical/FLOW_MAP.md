@@ -3,7 +3,7 @@
 **Project:** AI Company Detection Agent  
 **Audience:** Developer / AI agent penerus  
 **Status:** Active runtime map  
-**Last updated:** 17 Juni 2026
+**Last updated:** 24 Agustus 2026
 
 ---
 

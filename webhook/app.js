@@ -24,7 +24,7 @@ loadEnv(ENV_FILE);
 const PORT = process.env.WEBHOOK_PORT || 3002;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 const DATABASE_URL = process.env.DATABASE_URL || '';
-const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://103.226.139.107:3001').replace(/\/+$/, '');
+const DASHBOARD_BASE_URL = (process.env.DASHBOARD_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
 if (!DATABASE_URL) {
   console.warn('[webhook] DATABASE_URL not set; enqueue endpoint will return service_unavailable');

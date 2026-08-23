@@ -1,7 +1,7 @@
 # Fetch Context
 
 **Purpose:** Fast orientation for any AI agent continuing this project.  
-**Last updated:** 17 Juni 2026
+**Last updated:** 24 Agustus 2026
 
 ---
 
@@ -146,15 +146,18 @@ treated as non-negative. After AI configuration/provider health changes, the
 monitoring worker sweeps/requeues those jobs idempotently. This recovery flow
 is isolated from investigation queues.
 
-Current production AI provider:
+Current AI provider:
 
 ```text
 OpenClaw primary model: 9router/komerce-1.2
 Provider base URL: https://9router.komerce-tech.id/v1
-Config path on VPS: /home/nunuopc/.openclaw/openclaw.json
+Docker config path: /root/.openclaw/openclaw.json inside the worker/gateway image
 ```
 
-`deploy.sh` syncs this provider URL and primary model while preserving the existing provider credentials in the VPS config. Do not reduce context, visible tools, or investigation depth just to make a provider fit; only swap the AI provider/model unless explicitly requested.
+The Docker worker entrypoint generates this provider/model config from `.env`.
+The legacy `deploy.sh` only applies to the old VPS rollback path. Do not reduce
+context, visible tools, or investigation depth just to make a provider fit; only
+swap the AI provider/model unless explicitly requested.
 
 Docker office deployment checks:
 
@@ -185,20 +188,27 @@ July 2026 local Docker cutover check:
 
 | Service | Port | Path | Notes |
 |---|---:|---|---|
-| OpenClaw gateway | 18789 | VPS service | AI runtime |
-| Dashboard | 3001 | `dashboard/` | Express + EJS |
-| Webhook API | 3002 | `webhook/` | Express enqueue-only API backed by PostgreSQL queue |
-| PostgreSQL | 5432 | VPS service | DB `company_detection` |
+| OpenClaw gateway | 18789 | Docker `gateway` service | AI runtime; stopped until Telegram cutover |
+| Dashboard | 3001 | Docker `dashboard` service | Express + EJS |
+| Webhook API | 3002 | Docker `webhook` service | Express enqueue-only API backed by PostgreSQL queue |
+| PostgreSQL | 5432 | Docker `postgres` service | DB `company_detection` |
 | Review monitor | none | `review_monitor/` + Compose `review-monitor` | Isolated Google review scheduler/state; waiting for Google Business Profile API approval |
 | Feedback monitor ingress | 3003 | `feedback_monitor/` | Health/webhook placeholder for negative feedback monitor |
 | Feedback monitor worker/poller | none | `feedback_monitor/worker.js` | Active Meta Graph polling + AI classification + Telegram/Slack delivery |
 
-VPS:
+Legacy VPS rollback reference:
 
 - IP: `103.226.139.107`
 - Workspace: `/home/nunuopc/.openclaw/workspace/`
 - Go binary: `/home/nunuopc/.openclaw/go-service/bin/company-check`
 - OpenClaw config: `/home/nunuopc/.openclaw/openclaw.json`
+
+Current Docker pre-cutover:
+
+- Host: `103.59.94.121` (SYJ)
+- Deployment path: `/opt/company-detector`
+- Webhook: `http://103.59.94.121:3002/webhook/check`
+- Gateway: built but stopped until Telegram cutover
 
 ---
 
@@ -323,7 +333,7 @@ menjadi tanggung jawab sales. Personal/hobbyist ditandai bukan prospect utama.
 Slack links to the browser Sales Sheet:
 
 ```text
-http://103.226.139.107/sales-sheet
+<DASHBOARD_PUBLIC_BASE_URL>/sales-sheet
 ```
 
 This is the main sales handoff. The `.xlsx` export still exists as fallback/internal artifact, but Slack should not rely on an Excel-only download path.
@@ -410,7 +420,7 @@ go test ./...
 Test webhook:
 
 ```bash
-curl -X POST http://103.226.139.107:3002/webhook/check \
+curl -X POST <PUBLIC_WEBHOOK_URL> \
   -H "Content-Type: application/json" \
   -d '{
     "email": "contact@komerce.id",
@@ -428,7 +438,7 @@ Expected final webhook behavior is queued response, not direct investigation:
   "queued": true,
   "intake_job_id": "uuid",
   "status": "pending",
-  "dashboard_url": "http://103.226.139.107:3001"
+  "dashboard_url": "<DASHBOARD_PUBLIC_BASE_URL>"
 }
 ```
 

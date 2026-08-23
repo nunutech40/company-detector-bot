@@ -1,16 +1,20 @@
 # Register Webhook API
 
 **Status:** implemented  
-**Runtime:** VPS webhook service on port `3002`  
+**Runtime:** Docker `webhook` service on port `3002`
 **Purpose:** menerima data register dari platform, menaruhnya ke antrian PostgreSQL, lalu diproses worker satu per satu.
 
 ---
 
 ## Base URL
 
+Temporary SYJ URL:
+
 ```text
-http://103.226.139.107:3002
+http://103.59.94.121:3002
 ```
+
+Final deployment must replace this with an HTTPS domain from the reverse proxy.
 
 Health check:
 
@@ -102,7 +106,7 @@ Payload baru:
   "intake_job_id": "0c3c2f66-2df5-4c7a-a2a4-4b4f9f5eac1e",
   "status": "pending",
   "email": "buyer@example.com",
-  "dashboard_url": "http://103.226.139.107:3001"
+  "dashboard_url": "<DASHBOARD_PUBLIC_BASE_URL>"
 }
 ```
 
@@ -194,7 +198,7 @@ Nomor HP disimpan masked di kolom queue utama, tetapi raw payload tetap disimpan
 ## cURL Example
 
 ```bash
-curl -X POST http://103.226.139.107:3002/webhook/check \
+curl -X POST http://103.59.94.121:3002/webhook/check \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <WEBHOOK_SECRET>" \
   -d '{

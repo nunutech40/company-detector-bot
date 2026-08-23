@@ -1,5 +1,6 @@
 info
-evidence/
+/evidence/
+/openclaw_workspace/evidence/
 reports/
 .env
 .env.review-monitor

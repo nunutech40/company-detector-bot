@@ -4,12 +4,12 @@ This workspace is for the Company Detection Telegram MVP.
 
 ## Current Runtime
 
-- OpenClaw Gateway runs on the VPS.
-- Default model: `sumopod/kimi-k2.6`.
+- OpenClaw Gateway runs in the Docker `gateway` service after Telegram cutover.
+- Default model: `9router/komerce-1.2` via `https://9router.komerce-tech.id/v1`.
 - Telegram bot: `@company_detector_bot`.
 - Delivery channel: Telegram DM.
 - Primary company detection runtime: Go CLI via `scripts/company_check_go.sh`.
-- Node.js scripts remain available only as rollback/reference helpers.
+- Node.js scripts remain available for orchestration and persistence helpers.
 
 ## Tool Availability
 
@@ -34,7 +34,7 @@ This workspace is for the Company Detection Telegram MVP.
 - `tavily_search`: disabled_waiting_budget.
 - `enrichment_api`: disabled_waiting_budget.
 - `browser`: disabled_runtime on VPS; do not call.
-- `slack_reporter`: enabled for all checks; Go sends when `--send-slack` is passed and `SLACK_BOT_TOKEN` + `SLACK_REPORT_CHANNEL` are configured, regardless of classification. After a database is available, routing will be split: personal/unknown saved to DB only, company-associated to both Telegram and Slack.
+- `slack_reporter`: the production digest reads finalized PostgreSQL rows. Direct raw Slack forwarding from individual checks is not the production path.
 
 ## Operational Rule
 
